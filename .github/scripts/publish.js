@@ -27,7 +27,7 @@ async function main() {
     console.log(`Publishing article: ${title}`);
 
     await axios.post(
-      `${process.env.API_URL}/articles`,
+      `${process.env.NESTJS_API_URL}/articles`,
       {
         title,
         excerpt,
