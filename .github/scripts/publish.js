@@ -36,7 +36,7 @@ async function main() {
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.API_KEY}`,
+          Authorization: `Bearer ${process.env.NESTJS_API_KEY}`,
         },
       }
     );
