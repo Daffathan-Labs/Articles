@@ -27,7 +27,7 @@ async function main() {
     console.log(`Publishing article: ${title}`);
 
     await axios.post(
-      `${process.env.NESTJS_API_URL}/articles`,
+      `${process.env.API_URL}/articles`,
       {
         title,
         excerpt,
@@ -36,7 +36,7 @@ async function main() {
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.NESTJS_API_KEY}`,
+          Authorization: `Bearer ${process.env.API_KEY}`,
         },
       }
     );
