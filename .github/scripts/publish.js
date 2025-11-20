@@ -1,7 +1,6 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
-const { marked } = require("marked"); // <-- ADD THIS
 
 async function main() {
   const dir = path.join(process.cwd(), "articles");
@@ -11,7 +10,7 @@ async function main() {
     const fullPath = path.join(dir, file);
     const content = fs.readFileSync(fullPath, "utf8");
 
-    // Extract metadata from HTML comments
+    // Extract metadata using HTML comments
     const getMeta = (key) => {
       const regex = new RegExp(`<!--\\s*${key}:\\s*(.*?)\\s*-->`, "i");
       const match = content.match(regex);
@@ -21,14 +20,9 @@ async function main() {
     const title = getMeta("title");
     const excerpt = getMeta("excerpt");
     const date = getMeta("date");
-    const image = getMeta("image");
-    const category = getMeta("category");
-
-    // Hapus semua metadata comment
-    const mdWithoutMeta = content.replace(/<!--[\s\S]*?-->/g, "").trim();
-
-    // Convert Markdown → HTML
-    const htmlContent = marked(mdWithoutMeta);
+    
+    // Remove metadata lines from content
+    const cleanContent = content.replace(/<!--[\s\S]*?-->/g, "").trim();
 
     console.log(`Publishing article: ${title}`);
 
@@ -38,9 +32,7 @@ async function main() {
         title,
         excerpt,
         date,
-        image,
-        category,
-        content: htmlContent, // <-- content now HTML!
+        content: cleanContent,
       },
       {
         headers: {
