@@ -11,12 +11,12 @@ async function main() {
 
   for (const file of files) {
     const fullPath = path.join(dir, file);
-    const content = fs.readFileSync(fullPath, "utf8");
+    const rawMd = fs.readFileSync(fullPath, "utf8");
 
     // Extract metadata
     const getMeta = (key) => {
       const regex = new RegExp(`<!--\\s*${key}:\\s*(.*?)\\s*-->`, "i");
-      const match = content.match(regex);
+      const match = rawMd.match(regex);
       return match ? match[1].trim() : null;
     };
 
@@ -25,35 +25,42 @@ async function main() {
     const date = getMeta("date");
     const image = getMeta("image");
 
-    // Remove metadata comments
-    const mdWithoutMeta = content.replace(/<!--[\s\S]*?-->/g, "").trim();
+    // Remove metadata comments only
+    let md = rawMd.replace(/<!--[\s\S]*?-->/g, "").trim();
 
-    // Convert MD → HTML
-    const htmlContent = marked(mdWithoutMeta);
+    // Fix list formatting (very important)
+    md = md.replace(/([^\n])\n(\s*[-*]\s)/g, "$1\n\n$2");
+
+    // Convert Markdown → HTML
+    let html = marked(md);
+
+    // Clean unwanted HTML wrappers (if author accidentally added them)
+    html = html
+      .replace(/<\/?html[^>]*>/gi, "")
+      .replace(/<\/?head[^>]*>/gi, "")
+      .replace(/<\/?body[^>]*>/gi, "")
+      .trim();
 
     console.log(`✔ Parsed: ${title}`);
 
-    // Push sesuai format BE
     articles.push({
       title,
       excerpt,
       date,
       image,
-      content: htmlContent
+      content: html,
     });
   }
 
   console.log(`\n>> Sending ${articles.length} articles to backend...\n`);
 
-  // ⛔ Jangan { articles } 
-  // ✔ Kirim langsung array
   await axios.post(
     `${process.env.API_URL}/articles/sync`,
     articles,
     {
       headers: {
         Authorization: `Bearer ${process.env.API_KEY}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
     }
   );
