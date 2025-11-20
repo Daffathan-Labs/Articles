@@ -1,12 +1,11 @@
-<!-- title: Review Fantastic Four (2025) -->
-<!-- excerpt: Review lengkap film Fantastic Four (2025) — debut tim ikonik Marvel versi baru yang spektakuler dan penuh momen epik. -->
-<!-- image: https://github.com/user-attachments/assets/your-f4-banner -->
+<!-- title: The Fantastic Four: First Step (2025) -->
+<!-- excerpt: Review lengkap film The Fantastic Four: First Step (2025) — debut tim ikonik Marvel versi baru yang spektakuler dan penuh momen epik. -->
+<!-- image: https://github.com/user-attachments/assets/043bcc34-3fac-4495-87ef-f20896545f23 -->
 <!-- date: 2025-07-23 -->
 <!-- category: movie -->
-# Review Fantastic Four (2025)
+# The Fantastic Four: First Step (2025)
 
-<img width="799" height="533" alt="banner"
-  src="https://github.com/user-attachments/assets/your-f4-banner" />
+<img width="2000" height="1000" alt="image" src="https://github.com/user-attachments/assets/67bcd6d4-9f87-41d1-9886-c5ae3d7559c4" />
 
 <h1 class="ql-indent-5"><strong>"Marvel’s First Family Returns"</strong></h1>
 
@@ -24,11 +23,10 @@ dibayangkan: **Galactus**.
 
 # 🖼️ Cuplikan Adegan
 
-<img width="1280" height="723" alt="image"
-  src="https://github.com/user-attachments/assets/your-f4-scene" />
+<img width="681" height="383" alt="image" src="https://github.com/user-attachments/assets/069d32c5-76fc-4caa-a82d-e02e4bd47cca" />
 
 
-# 🔥 Tiga Hal Menarik dari Film Fantastic Four 2025
+# 🔥 Tiga Hal Menarik dari Film The Fantastic Four: First Step
 
 ## **1. Hadirnya Galactus — Ancaman Kosmik yang Ditunggu Fans**
 
@@ -79,7 +77,7 @@ Begitu credit muncul, lu langsung kepikiran,
 
 # 🎬 **Kesimpulan**
 
-**Fantastic Four (2025)** adalah langkah besar MCU ke ranah kosmik yang lebih serius.
+**The Fantastic Four: First Step (2025)** adalah langkah besar MCU ke ranah kosmik yang lebih serius.
 
 Kombinasi:
 
