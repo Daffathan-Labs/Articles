@@ -19,7 +19,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install gray-matter axios marked
+        run: npm install gray-matter axios
 
       - name: Publish updated articles
         run: node .github/scripts/publish.js
