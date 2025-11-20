@@ -26,7 +26,7 @@ Clark Kent di tengah dunia yang penuh dengan metahuman.
 
 # 🖼️ Cuplikan Adegan
 
-<img width="1280" height="722" alt="image"
+<img width="1280" height="723" alt="image"
   src="https://github.com/user-attachments/assets/bac125df-e2a4-4c63-90fd-fa41c0381800" />
 
 
