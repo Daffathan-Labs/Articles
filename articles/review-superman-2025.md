@@ -22,7 +22,7 @@ Cerita yang diangkat lebih personal, lebih menyentuh, dan bikin banyak penonton 
 
 # 🖼️ Cuplikan Adegan
 
-<img width="1280" height="723" alt="image" src="https://github.com/user-attachments/assets/bac125df-e2a4-4c63-90fd-fa41c0381800" />
+<img width="1280" height="722" alt="image" src="https://github.com/user-attachments/assets/bac125df-e2a4-4c63-90fd-fa41c0381800" />
 
 
 # 🔥 Tiga Hal Menarik dari Film Superman 2025
