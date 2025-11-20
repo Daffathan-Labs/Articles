@@ -21,7 +21,7 @@ dibayangkan: **Galactus**.
 
 <br>
 
-<img width="681" height="383" alt="image" src="https://github.com/user-attachments/assets/069d32c5-76fc-4caa-a82d-e02e4bd47cca" />
+<img width="681" height="385" alt="image" src="https://github.com/user-attachments/assets/069d32c5-76fc-4caa-a82d-e02e4bd47cca" />
 
 
 # 🔥 Tiga Hal Menarik dari Film The Fantastic Four: First Step
