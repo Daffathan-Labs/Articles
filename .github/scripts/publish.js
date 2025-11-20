@@ -33,23 +33,27 @@ async function main() {
 
     console.log(`✔ Parsed: ${title}`);
 
+    // Push sesuai format BE
     articles.push({
       title,
       excerpt,
       date,
       image,
-      content: htmlContent,
+      content: htmlContent
     });
   }
 
   console.log(`\n>> Sending ${articles.length} articles to backend...\n`);
 
+  // ⛔ Jangan { articles } 
+  // ✔ Kirim langsung array
   await axios.post(
     `${process.env.API_URL}/articles/sync`,
-    { articles }, // <--- kirim array
+    articles,
     {
       headers: {
         Authorization: `Bearer ${process.env.API_KEY}`,
+        "Content-Type": "application/json"
       },
     }
   );
