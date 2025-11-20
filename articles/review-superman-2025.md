@@ -5,7 +5,7 @@
 <!-- category: movie -->
 # Review Superman (2025)
 
-<img width="798" height="533" alt="image"
+<img width="798" height="533" alt="banner"
   src="https://github.com/user-attachments/assets/4ce5b3f6-de3c-4d5f-a776-986087915218" />
 
 <h1 class="ql-indent-5"><strong>"This Is Superman"</strong></h1>
