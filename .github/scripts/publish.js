@@ -22,7 +22,7 @@ async function main() {
     const excerpt = getMeta("excerpt");
     const date = getMeta("date");
     const image = getMeta("image");
-    const category = getMeta("category");
+    // const category = getMeta("category");
 
     // Hapus semua metadata comment
     const mdWithoutMeta = content.replace(/<!--[\s\S]*?-->/g, "").trim();
@@ -39,7 +39,7 @@ async function main() {
         excerpt: excerpt,
         date: date,
         image: image,
-        category: category,
+        // category: category,
         content: htmlContent,
       },
       {
