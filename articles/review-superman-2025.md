@@ -19,13 +19,11 @@ Cerita yang diangkat lebih personal, lebih menyentuh, dan bikin banyak penonton 
 
 <br>
 
----
 
 # 🖼️ Cuplikan Adegan
 
 <img width="1280" height="722" alt="image" src="https://github.com/user-attachments/assets/bac125df-e2a4-4c63-90fd-fa41c0381800" />
 
----
 
 # 🔥 Tiga Hal Menarik dari Film Superman 2025
 
@@ -70,7 +68,6 @@ Ini jadi angin segar, karena menunjukkan bahwa:
 
 Ini adalah pendekatan yang jarang dilakukan film superhero modern.
 
----
 
 # 🎬 **Kesimpulan**
 
@@ -86,5 +83,3 @@ Gabungan:
 membuat film ini layak ditonton lebih dari sekali.
 
 Superman kembali menjadi simbol harapan — seperti seharusnya.
-
----
