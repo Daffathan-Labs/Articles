@@ -1,17 +1,19 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
-const { marked } = require("marked"); // <-- ADD THIS
+const { marked } = require("marked");
 
 async function main() {
   const dir = path.join(process.cwd(), "articles");
   const files = fs.readdirSync(dir).filter(f => f.endsWith(".md"));
 
+  const articles = [];
+
   for (const file of files) {
     const fullPath = path.join(dir, file);
     const content = fs.readFileSync(fullPath, "utf8");
 
-    // Extract metadata from HTML comments
+    // Extract metadata
     const getMeta = (key) => {
       const regex = new RegExp(`<!--\\s*${key}:\\s*(.*?)\\s*-->`, "i");
       const match = content.match(regex);
@@ -22,35 +24,37 @@ async function main() {
     const excerpt = getMeta("excerpt");
     const date = getMeta("date");
     const image = getMeta("image");
-    // const category = getMeta("category");
 
-    // Hapus semua metadata comment
+    // Remove metadata comments
     const mdWithoutMeta = content.replace(/<!--[\s\S]*?-->/g, "").trim();
 
-    // Convert Markdown → HTML
+    // Convert MD → HTML
     const htmlContent = marked(mdWithoutMeta);
 
-    console.log(`Publishing article: ${title}`);
+    console.log(`✔ Parsed: ${title}`);
 
-    await axios.post(
-      `${process.env.API_URL}/articles`,
-      {
-        title: title,
-        excerpt: excerpt,
-        date: date,
-        image: image,
-        // category: category,
-        content: htmlContent,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.API_KEY}`,
-        },
-      }
-    );
+    articles.push({
+      title,
+      excerpt,
+      date,
+      image,
+      content: htmlContent,
+    });
   }
 
-  console.log("Done publishing all articles!");
+  console.log(`\n>> Sending ${articles.length} articles to backend...\n`);
+
+  await axios.post(
+    `${process.env.API_URL}/articles/sync`,
+    { articles }, // <--- kirim array
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.API_KEY}`,
+      },
+    }
+  );
+
+  console.log("🎉 Successfully published all articles!");
 }
 
 main().catch((e) => {
