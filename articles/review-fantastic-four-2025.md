@@ -21,8 +21,6 @@ dibayangkan: **Galactus**.
 
 <br>
 
-# 🖼️ Cuplikan Adegan
-
 <img width="681" height="383" alt="image" src="https://github.com/user-attachments/assets/069d32c5-76fc-4caa-a82d-e02e4bd47cca" />
 
 
