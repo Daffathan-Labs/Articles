@@ -3,13 +3,15 @@
 <!-- image: https://github.com/user-attachments/assets/069d32c5-76fc-4caa-a82d-e02e4bd47cca -->
 <!-- date: 2025-07-23 -->
 <!-- category: movie -->
+<!-- posting_date: 2025-11-21 -->
+
 # The Fantastic Four: First Step (2025)
 
 <img width="2000" height="1000" alt="image" src="https://github.com/user-attachments/assets/67bcd6d4-9f87-41d1-9886-c5ae3d7559c4" />
 
 <h1 class="ql-indent-5"><strong>"Marvel’s First Family Returns"</strong></h1>
 
-Tepat pada tanggal **17 Juli 2025**, film *Fantastic Four* akhirnya mendarat di layar lebar setelah penantian yang  
+Tepat pada tanggal **23 Juli 2025**, film *Fantastic Four* akhirnya mendarat di layar lebar setelah penantian yang  
 terasa panjang buat para fans Marvel.
 
 Versi terbaru ini benar-benar beda dari adaptasi sebelumnya.  
