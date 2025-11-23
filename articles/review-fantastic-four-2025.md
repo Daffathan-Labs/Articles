@@ -11,7 +11,7 @@
 
 <h1 class="ql-indent-5"><strong>"Marvel’s First Family Returns"</strong></h1>
 
-Tepat pada tanggal **17 Juli 2025**, film *Fantastic Four* akhirnya mendarat di layar lebar setelah penantian yang  
+Tepat pada tanggal **23 Juli 2025**, film *Fantastic Four* akhirnya mendarat di layar lebar setelah penantian yang  
 terasa panjang buat para fans Marvel.
 
 Versi terbaru ini benar-benar beda dari adaptasi sebelumnya.  
