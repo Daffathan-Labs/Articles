@@ -24,6 +24,9 @@ async function main() {
     const excerpt = getMeta("excerpt");
     const date = getMeta("date");
     const image = getMeta("image");
+    const posting_date = getMeta("posting_date");
+    const tagsStr = getMeta("tags");
+    const tags = tagsStr ? tagsStr.split(",").map(t => t.trim()) : [];
 
     // Remove metadata comments only
     let md = rawMd.replace(/<!--[\s\S]*?-->/g, "").trim();
@@ -48,6 +51,8 @@ async function main() {
       excerpt,
       date,
       image,
+      posting_date,
+      tags,
       content: html,
     });
   }
