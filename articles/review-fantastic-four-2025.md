@@ -2,7 +2,9 @@
 <!-- excerpt: Review lengkap film The Fantastic Four: First Step (2025) — debut tim ikonik Marvel versi baru yang spektakuler dan penuh momen epik. -->
 <!-- image: https://github.com/user-attachments/assets/069d32c5-76fc-4caa-a82d-e02e4bd47cca -->
 <!-- date: 2025-07-23 -->
-<!-- category: movie -->
+<!-- posting_date: 2025-07-23 -->
+<!-- tags: movie, superhero, marvel -->
+
 # The Fantastic Four: First Step (2025)
 
 <img width="2000" height="1000" alt="image" src="https://github.com/user-attachments/assets/67bcd6d4-9f87-41d1-9886-c5ae3d7559c4" />

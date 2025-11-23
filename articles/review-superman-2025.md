@@ -2,7 +2,8 @@
 <!-- excerpt: Review lengkap film Superman (2025) versi James Gunn — lebih manusiawi, emosional, penuh harapan. -->
 <!-- image: https://github.com/user-attachments/assets/4ce5b3f6-de3c-4d5f-a776-986087915218 -->
 <!-- date: 2025-07-11 -->
-<!-- category: movie -->
+<!-- posting_date: 2025-07-11 -->
+<!-- tags: movie, superhero, DC -->
 
 # Review Superman (2025)
 
