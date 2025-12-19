@@ -134,7 +134,7 @@ Rasanya berbeda. Lebih besar. Lebih berat. Tapi juga lebih bermakna.
 
 ## 🚀 Semester 7 — GitHub Classroom dan Legacy yang Ingin Kutinggalkan
 
-![WhatsApp Image 2025-12-19 at 1 22 06 PM](https://github.com/user-attachments/assets/ba269317-3abb-4f0a-a9f5-d0a9f17871ef)
+![WhatsApp Image 2025-12-19 at 3 38 53 PM](https://github.com/user-attachments/assets/5b4936bc-e73c-4208-b54d-6493faaa8544)
 
 Di semester 7, aku mengajar **dua kelas sekaligus**:
 - Web Based Programming
