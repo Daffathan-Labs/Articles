@@ -60,6 +60,7 @@ async function main() {
       console.log(`✔ Parsed [${locale.toUpperCase()}]: ${title}`);
 
       articles.push({
+        id: folder, // Common ID across locales
         title,
         excerpt,
         date,
