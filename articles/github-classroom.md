@@ -197,6 +197,8 @@ Penggunaan **GitHub Classroom** terbukti:
 - sangat relevan untuk informatika / ilmu komputer
 - menjembatani kampus dan industri
 
+Link Github Organization: https://github.com/it-ftup
+
 Harapanku sederhana:
 
 > Semoga ini menjadi **legacy kecil yang baik**,  
