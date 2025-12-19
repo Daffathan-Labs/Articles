@@ -1,13 +1,13 @@
 <!-- title: Dari Fullstack ke Ruang Kelas — Catatan Perjalanan Mengajar dan Meninggalkan Legacy -->
 <!-- excerpt: Perjalanan pribadi dari bekerja sebagai Fullstack Engineer, menjadi asisten praktikum lintas mata kuliah, hingga menemukan makna mengajar dan meninggalkan legacy melalui GitHub Classroom di Universitas Pancasila. -->
-<!-- image: https://github.com/user-attachments/assets/edu-journey-cover-placeholder -->
+<!-- image: https://github.com/user-attachments/assets/35c93317-a180-4b89-a935-57657e4cf169 -->
 <!-- date: 2025-12-19 -->
 <!-- posting_date: 2025-12-19 -->
 <!-- tags: Teaching, Education, Software Engineering, GitHub Classroom, University Life, Legacy -->
 
 # 🎓 Dari Fullstack ke Ruang Kelas — Catatan Perjalanan Mengajar dan Meninggalkan Legacy
 
-<img width="1537" height="825" alt="image" src="https://github.com/user-attachments/assets/edu-journey-cover-placeholder" />
+<img width="720" height="1280" alt="image" src="https://github.com/user-attachments/assets/35c93317-a180-4b89-a935-57657e4cf169" />
 
 Perjalanan ini tidak dimulai dari ruang kelas.  
 Ia dimulai dari **dunia kerja**.
@@ -19,6 +19,8 @@ Namun semua berubah di **tahun 2023**.
 ---
 
 ## 🌱 Semester 3 — Pertama Kali Mengajar, Pertama Kali Merasa “Ini Gue”
+
+<img width="800" height="500" alt="image" src="https://github.com/user-attachments/assets/8a09bb4e-6261-4081-baa1-081405ca8159" />
 
 Di semester 3, aku mengambil keputusan yang cukup nekat:  
 **menjadi Asisten Praktikum Algoritma & Pemrograman Dasar**.
@@ -50,6 +52,8 @@ Itu perasaan yang… jujur saja, **sulit ditandingi**.
 
 ## 🧠 Semester 4 — Struktur Data dan Tantangan Menyederhanakan yang Rumit
 
+<img width="960" height="1280" alt="image" src="https://github.com/user-attachments/assets/dd569434-0607-4bd4-99d3-1ed47727d36a" />
+
 Masuk semester 4, aku kembali mengajar. Kali ini materinya naik level:  
 **Struktur Data & Algoritma**.
 
@@ -76,6 +80,8 @@ kalau mereka lupa teorinya nanti, **logikanya masih tertinggal**.
 ---
 
 ## 🗄️ Semester 5 — Database, SQL, dan Ilmu yang Terlalu Berharga untuk Dilewatkan
+
+<img width="800" height="600" alt="image" src="https://github.com/user-attachments/assets/73f9c43b-9f88-425a-bb26-175037a0fcc2" />
 
 Semester 5, aku mengajar **Basis Data**.
 
@@ -104,6 +110,8 @@ Di kelas ini aku banyak melakukan:
 
 ## 🌉 Semester 6 — Mengajar 50 Orang, Struktur Data, dan Analoginya Kehidupan
 
+<img width="800" height="600" alt="image" src="https://github.com/user-attachments/assets/76248fb9-aac8-4a75-8292-0073b49c1f1b" />
+
 Semester 6, aku kembali ke **Struktur Data**, tapi dengan **angkatan baru** (angkatan 24).
 
 Bedanya?
@@ -125,6 +133,8 @@ Rasanya berbeda. Lebih besar. Lebih berat. Tapi juga lebih bermakna.
 ---
 
 ## 🚀 Semester 7 — GitHub Classroom dan Legacy yang Ingin Kutinggalkan
+
+![WhatsApp Image 2025-12-19 at 3 38 53 PM](https://github.com/user-attachments/assets/5b4936bc-e73c-4208-b54d-6493faaa8544)
 
 Di semester 7, aku mengajar **dua kelas sekaligus**:
 - Web Based Programming
