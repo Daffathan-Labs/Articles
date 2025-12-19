@@ -7,7 +7,7 @@
 
 # 🎓 From Fullstack to the Classroom — Notes on a Teaching Journey and Leaving a Legacy
 
-<img width="720" height="1280" alt="image" src="https://github.com/user-attachments/assets/35c93317-a180-4b89-a935-57657e4cf169" />
+<img width="720" height="1280" alt="image" src="https://github.com/user-attachments/assets/35c93317-a180-4b89-a935-57657e4cf169" />  
 
 This journey didn't start in a classroom.  
 It started in the **professional world**.
