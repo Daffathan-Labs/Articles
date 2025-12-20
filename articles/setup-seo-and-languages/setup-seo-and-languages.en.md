@@ -1,12 +1,14 @@
 <!-- title: Building an SEO-Ready Bilingual Portfolio — From Long-Term Intent to Real Execution with AI Agents -->
 <!-- excerpt: A technical and reflective write-up on building an SEO-ready bilingual (Indonesian–English) portfolio website using Next.js App Router, modern sitemap handling, and AI Agents as part of the workflow. -->
-<!-- image: https://github.com/user-attachments/assets/seo-bilingual-portfolio-cover -->
+<!-- image: https://github.com/user-attachments/assets/3e85e289-75e4-4668-94e5-c59e945d2da8 -->
 <!-- date: 2025-12-20 -->
 <!-- posting_date: 2025-12-20 -->
 <!-- tags: SEO, Bilingual Website, Next.js, Portfolio, AI Agent, Developer -->
 
 # 🌍 Building an SEO-Ready Bilingual Portfolio  
 ## From Long-Term Intent to Real Execution with AI Agents
+
+<img width="297" height="146" alt="image" src="https://github.com/user-attachments/assets/3e85e289-75e4-4668-94e5-c59e945d2da8" />
 
 From my **first, second, until my third portfolio website**, I always had the same intention:
 
@@ -124,6 +126,8 @@ Most importantly, **AI Agents help maintain consistency across languages**.
 ---
 
 ## 🔍 SEO: More Than Meta Tags
+
+<img width="348" height="139" alt="image" src="https://github.com/user-attachments/assets/c0420543-5acc-454e-81b2-f4392a09cb2a" />
 
 SEO in this project goes far beyond:
 - title
