@@ -73,18 +73,22 @@ async function main() {
     }
   }
 
-  console.log(`\n>> Sending ${articles.length} articles to backend...\n`);
-
-  await axios.post(
-    `${process.env.API_URL}/articles/sync`,
-    articles,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.API_KEY}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < articles.length; i += BATCH_SIZE) {
+    const chunk = articles.slice(i, i + BATCH_SIZE);
+    console.log(`>> Syncing batch ${Math.floor(i / BATCH_SIZE) + 1} (${chunk.length} articles)...`);
+    
+    await axios.post(
+      `${process.env.API_URL}/articles/sync`,
+      chunk,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
 
   console.log("🎉 Successfully published all articles!");
 }
