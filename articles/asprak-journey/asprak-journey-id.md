@@ -20,7 +20,7 @@ Namun semua berubah di **tahun 2023**.
 
 ## 🌱 Semester 3 — Pertama Kali Mengajar, Pertama Kali Merasa “Ini Gue”
 
-<img width="800" height="500" alt="image" src="https://github.com/user-attachments/assets/8a09bb4e-6261-4081-baa1-081405ca8159" />
+<img width="800" height="500" alt="image" src="https://github.com/user-attachments/assets/8a09bb4e-6261-4081-baa1-081405ca8159" />  
 
 Di semester 3, aku mengambil keputusan yang cukup nekat:  
 **menjadi Asisten Praktikum Algoritma & Pemrograman Dasar**.
