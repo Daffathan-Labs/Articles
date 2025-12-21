@@ -1,11 +1,13 @@
 <!-- title: Frontend Development di Era MCP — Slicing Lebih Cepat, Pemahaman Lebih Dalam -->
 <!-- excerpt: Bagaimana MCP Figma dan AI agent mengubah cara kerja Frontend Developer — bukan menggantikan, tapi mempercepat proses dengan tuntutan standar yang lebih tinggi. -->
-<!-- image: https://github.com/user-attachments/assets/figma-mcp-frontend-cover.png -->
+<!-- image: https://github.com/user-attachments/assets/5386937c-483e-4a12-a154-8a0546faee8d -->
 <!-- date: 2025-12-22 -->
 <!-- posting_date: 2025-12-22 -->
 <!-- tags: Frontend, AI, MCP, Figma, Web Development, Karier -->
 
 # ⚡ Frontend Development di Era MCP — Slicing Lebih Cepat, Pemahaman Lebih Dalam
+
+<img width="889" height="406" alt="image" src="https://github.com/user-attachments/assets/5386937c-483e-4a12-a154-8a0546faee8d" />
 
 Frontend development sudah berubah — **secara drastis**.
 
