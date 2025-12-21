@@ -7,7 +7,7 @@
 
 # ⚡ Frontend Development di Era MCP — Slicing Lebih Cepat, Pemahaman Lebih Dalam
 
-<img width="889" height="406" alt="image" src="https://github.com/user-attachments/assets/5386937c-483e-4a12-a154-8a0546faee8d" />
+<img width="889" height="406" alt="image" src="https://github.com/user-attachments/assets/5386937c-483e-4a12-a154-8a0546faee8d" />  
 
 Frontend development sudah berubah — **secara drastis**.
 
