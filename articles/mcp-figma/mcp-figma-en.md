@@ -1,11 +1,13 @@
 <!-- title: Frontend Development in the MCP Era — Faster Slicing, Deeper Understanding -->
 <!-- excerpt: How MCP Figma and AI agents are reshaping frontend development — not replacing developers, but accelerating workflows while demanding stronger fundamentals and judgment. -->
-<!-- image: https://github.com/user-attachments/assets/figma-mcp-frontend-cover.png -->
+<!-- image: https://github.com/user-attachments/assets/5386937c-483e-4a12-a154-8a0546faee8d -->
 <!-- date: 2025-12-22 -->
 <!-- posting_date: 2025-12-22 -->
 <!-- tags: Frontend, AI, MCP, Figma, Web Development, Career -->
 
 # ⚡ Frontend Development in the MCP Era — Faster Slicing, Deeper Understanding
+
+<img width="889" height="406" alt="image" src="https://github.com/user-attachments/assets/5386937c-483e-4a12-a154-8a0546faee8d" />
 
 Frontend development has changed — **dramatically**.
 
