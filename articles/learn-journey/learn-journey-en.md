@@ -1,13 +1,13 @@
 <!-- title: From Backend to Cloud — A Messy Journey That Finally Makes Sense -->
 <!-- excerpt: A non-linear career path: starting from backend, drifting into frontend, falling in love with deployment, and ultimately choosing DevOps and cloud computing in the age of AI agents. -->
-<!-- image: https://github.com/user-attachments/assets/9d2b3d61-2d7e-4e5e-b5a4-1c8c1f9b6b21 -->
+<!-- image: https://github.com/user-attachments/assets/07fb78fd-e50e-4284-95b5-56f02b690fb4 -->
 <!-- date: 2025-12-22 -->
 <!-- posting_date: 2025-12-22 -->
 <!-- tags: Backend, Frontend, DevOps, Cloud Computing, Career, AI -->
 
 # ☁️ From Backend to Cloud — A Messy Journey That Finally Makes Sense
 
-<img width="960" height="420" alt="image" src="https://github.com/user-attachments/assets/9d2b3d61-2d7e-4e5e-b5a4-1c8c1f9b6b21" />
+<img width="800" height="600" alt="image" src="https://github.com/user-attachments/assets/07fb78fd-e50e-4284-95b5-56f02b690fb4" />
 
 My career path isn’t clean.  
 It’s not linear.  
