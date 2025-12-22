@@ -1,13 +1,13 @@
 <!-- title: Dari Backend ke Cloud — Perjalanan Aneh yang Justru Membentuk Arah -->
 <!-- excerpt: Perjalanan karier yang tidak lurus: dari backend, terjebak di frontend, jatuh cinta pada deployment, hingga akhirnya memilih fokus ke DevOps dan cloud computing di era AI agent. -->
-<!-- image: https://github.com/user-attachments/assets/9d2b3d61-2d7e-4e5e-b5a4-1c8c1f9b6b21 -->
+<!-- image: https://github.com/user-attachments/assets/07fb78fd-e50e-4284-95b5-56f02b690fb4 -->
 <!-- date: 2025-12-22 -->
 <!-- posting_date: 2025-12-22 -->
 <!-- tags: Backend, Frontend, DevOps, Cloud Computing, Karier, AI -->
 
 # ☁️ Dari Backend ke Cloud — Perjalanan Aneh yang Justru Membentuk Arah
 
-<img width="960" height="420" alt="image" src="https://github.com/user-attachments/assets/9d2b3d61-2d7e-4e5e-b5a4-1c8c1f9b6b21" />
+<img width="800" height="600" alt="image" src="https://github.com/user-attachments/assets/07fb78fd-e50e-4284-95b5-56f02b690fb4" />
 
 Perjalanan karierku tidak rapi.  
 Tidak lurus.  
