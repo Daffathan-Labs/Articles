@@ -1,13 +1,13 @@
 <!-- title: Wake Up Dead Man: A Knives Out Mystery (2025) -->
 <!-- excerpt: An honest review of Wake Up Dead Man: A Knives Out Mystery (2025) — the ambition is still there, but this time it feels blunt. -->
-<!-- image: https://github.com/user-attachments/assets/wake-up-dead-man-knives-out-2025 -->
+<!-- image: https://github.com/user-attachments/assets/f4f219ef-d42f-4993-a6a2-f4c0a6848aa5 -->
 <!-- date: 2025-12-24 -->
 <!-- posting_date: 2025-12-24 -->
 <!-- tags: movie, mystery, thriller, review -->
 
 # Wake Up Dead Man: A Knives Out Mystery (2025)
 
-<img width="2000" height="1000" alt="Wake Up Dead Man Knives Out 2025" src="https://github.com/user-attachments/assets/wake-up-dead-man-knives-out-2025" />
+<img width="750" height="500" alt="image" src="https://github.com/user-attachments/assets/f4f219ef-d42f-4993-a6a2-f4c0a6848aa5" />  
 
 <h1 class="ql-indent-5"><strong>"The Ambition Is Still There, But It Feels Blunt"</strong></h1>
 
