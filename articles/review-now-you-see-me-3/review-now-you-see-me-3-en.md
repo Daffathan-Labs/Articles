@@ -1,14 +1,14 @@
 
 <!-- title: Now You See Me: Now You Don’t (2025) -->
 <!-- excerpt: An honest, personal review of Now You See Me: Now You Don’t — a nearly 10-year wait that finally pays off with emotional storytelling, smarter magic, and a new generation stealing the spotlight. -->
-<!-- image: https://github.com/user-attachments/assets/now-you-see-me-3-cover -->
+<!-- image: https://github.com/user-attachments/assets/affcd677-8fcc-4dde-a6f2-c9f3b40e4349 -->
 <!-- date: 2025-12-25 -->
 <!-- posting_date: 2025-12-25 -->
 <!-- tags: movie, thriller, magic, heist -->
 
 # Now You See Me: Now You Don’t (2025)
 
-<img width="2000" height="1000" alt="image" src="https://github.com/user-attachments/assets/now-you-see-me-3-banner" />
+<img width="850" height="385" alt="image" src="https://github.com/user-attachments/assets/affcd677-8fcc-4dde-a6f2-c9f3b40e4349" />
 
 <h1 class="ql-indent-5"><strong>"So, what’s the trick?"</strong></h1>
 
