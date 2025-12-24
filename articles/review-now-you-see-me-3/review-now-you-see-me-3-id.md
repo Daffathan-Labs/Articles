@@ -1,13 +1,13 @@
 <!-- title: Now You See Me: Now You Don’t (2025) -->
 <!-- excerpt: Review jujur dan personal Now You See Me: Now You Don’t — penantian hampir 10 tahun yang akhirnya terbayar dengan cerita emosional, sulap yang lebih matang, dan generasi baru yang mencuri panggung. -->
-<!-- image: https://github.com/user-attachments/assets/now-you-see-me-3-cover -->
+<!-- image: https://github.com/user-attachments/assets/affcd677-8fcc-4dde-a6f2-c9f3b40e4349 -->
 <!-- date: 2025-12-25 -->
 <!-- posting_date: 2025-12-25 -->
 <!-- tags: movie, action, magic, heist -->
 
 # Now You See Me: Now You Don’t (2025)
 
-<img width="2000" height="1000" alt="image" src="https://github.com/user-attachments/assets/now-you-see-me-3-banner" />
+<img width="850" height="385" alt="image" src="https://github.com/user-attachments/assets/affcd677-8fcc-4dde-a6f2-c9f3b40e4349" />
 
 <h1 class="ql-indent-5"><strong>"So, what’s the trick?"</strong></h1>
 
