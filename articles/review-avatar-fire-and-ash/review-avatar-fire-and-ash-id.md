@@ -1,13 +1,13 @@
 <!-- title: Avatar: Fire and Ash (2025) -->
 <!-- excerpt: Review jujur Avatar: Fire and Ash — visual luar biasa dengan cerita yang aman dan familiar. Terasa seperti The Way of Water Part 2, tapi tetap memanjakan mata dan emosional di beberapa momen penting. -->
-<!-- image: https://github.com/user-attachments/assets/4bb3b92e-bf65-468b-9b63-4af6b90d64ed -->
+<!-- image: https://github.com/user-attachments/assets/591deb64-78c0-42da-b599-93687a8a6c8d -->
 <!-- date: 2025-12-26 -->
 <!-- posting_date: 2025-12-26 -->
 <!-- tags: movie, sci-fi, action, fantasy -->
 
 # Avatar: Fire and Ash (2025)
 
-<img width="600" height="400" alt="image" src="https://github.com/user-attachments/assets/4bb3b92e-bf65-468b-9b63-4af6b90d64ed"  
+<img width="600" height="400" alt="image" src="https://github.com/user-attachments/assets/591deb64-78c0-42da-b599-93687a8a6c8d" />  
 
 <h1 class="ql-indent-5"><strong>"Indah, megah, tapi… terasa familiar."</strong></h1>
 
