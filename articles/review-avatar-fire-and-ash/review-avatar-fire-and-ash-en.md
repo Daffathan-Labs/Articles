@@ -1,13 +1,13 @@
 <!-- title: Avatar: Fire and Ash (2025) -->
 <!-- excerpt: An honest review of Avatar: Fire and Ash — visually stunning, but narratively safe. It feels like The Way of Water Part 2, yet still delivers strong emotional moments and breathtaking visuals. -->
-<!-- image: https://github.com/user-attachments/assets/4bb3b92e-bf65-468b-9b63-4af6b90d64ed -->
+<!-- image: https://github.com/user-attachments/assets/591deb64-78c0-42da-b599-93687a8a6c8d -->
 <!-- date: 2025-12-26 -->
 <!-- posting_date: 2025-12-26 -->
 <!-- tags: movie, sci-fi, action, fantasy -->
 
 # Avatar: Fire and Ash (2025)
 
-<img width="600" height="400" alt="image" src="https://github.com/user-attachments/assets/4bb3b92e-bf65-468b-9b63-4af6b90d64ed"  
+<img width="600" height="400" alt="image" src="https://github.com/user-attachments/assets/591deb64-78c0-42da-b599-93687a8a6c8d" />  
 
 <h1 class="ql-indent-5"><strong>"Beautiful, massive… but familiar."</strong></h1>
 
