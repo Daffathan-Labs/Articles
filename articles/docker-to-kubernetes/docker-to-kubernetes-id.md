@@ -1,12 +1,14 @@
 <!-- title: Docker ke Kubernetes — Perjalanan Pelan tapi Pasti Menuju DevOps yang Masuk Akal -->
 <!-- excerpt: Catatan reflektif dan teknis tentang perjalanan belajar Docker, Kubernetes, dan Cloud dari sudut pandang engineer yang mengalami langsung kebingungan, keterbatasan hardware, sampai akhirnya paham kenapa semuanya saling melengkapi. -->
-<!-- image: https://github.com/user-attachments/assets/placeholder-k8s-docker -->
+<!-- image: https://github.com/user-attachments/assets/4a48e0c4-0e75-4ab5-8129-9288b8fb59d8 -->
 <!-- date: 2025-12-27 -->
 <!-- posting_date: 2025-12-27 -->
 <!-- tags: Docker, Kubernetes, Cloud Computing, DevOps, Engineering Journey -->
 
 # 🐳 Docker ke ☸️ Kubernetes  
 ## Perjalanan Pelan tapi Pasti Menuju DevOps yang Masuk Akal
+
+<img width="6546" height="6676" alt="image" src="https://github.com/user-attachments/assets/4a48e0c4-0e75-4ab5-8129-9288b8fb59d8" />  
 
 Pertama kali kerja, aku **langsung ditampar realita**.
 
