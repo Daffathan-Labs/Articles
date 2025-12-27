@@ -1,12 +1,14 @@
 <!-- title: From Docker to Kubernetes — A Slow but Steady Path Toward DevOps That Makes Sense -->
 <!-- excerpt: A reflective and technical journey of learning Docker, Kubernetes, and Cloud—from real confusion and hardware limitations to finally understanding how they complete each other. -->
-<!-- image: https://github.com/user-attachments/assets/placeholder-k8s-docker -->
+<!-- image: https://github.com/user-attachments/assets/4a48e0c4-0e75-4ab5-8129-9288b8fb59d8 -->
 <!-- date: 2025-12-27 -->
 <!-- posting_date: 2025-12-27 -->
 <!-- tags: Docker, Kubernetes, Cloud Computing, DevOps, Engineering Journey -->
 
 # 🐳 From Docker to ☸️ Kubernetes  
 ## A Slow but Steady Path Toward DevOps That Makes Sense
+
+<img width="6546" height="6676" alt="image" src="https://github.com/user-attachments/assets/4a48e0c4-0e75-4ab5-8129-9288b8fb59d8" />  
 
 When I started my first job, I was **hit by reality—hard**.
 
