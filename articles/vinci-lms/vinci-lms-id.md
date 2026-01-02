@@ -1,6 +1,6 @@
 <!-- title: Dari GitHub Classroom ke Vinci LMS — Evolusi Sunyi Praktikum Pemrograman -->
 <!-- excerpt: Catatan reflektif tentang kenapa Vinci LMS lahir, berangkat dari keterbatasan GitHub Classroom, solusi pragmatis via Telegram + shell script, hingga kebutuhan sistem akademik yang benar-benar terstruktur. -->
-<!-- image: https://github.com/user-attachments/assets/vinci-lms-cover-placeholder -->
+<!-- image: https://github.com/user-attachments/assets/052dc7b5-9c16-4820-be3f-321b79017b2b -->
 <!-- date: 2026-01-02 -->
 <!-- posting_date: 2026-01-02 -->
 <!-- tags: Vinci LMS, GitHub Classroom, Education Technology, Software Engineering, Academic DevOps -->
@@ -8,7 +8,7 @@
 # 🎓 Dari GitHub Classroom ke Vinci LMS  
 ## Evolusi Sunyi Praktikum Pemrograman
 
-<img width="6546" height="3676" alt="image" src="https://github.com/user-attachments/assets/vinci-lms-cover-placeholder" />
+<img width="1865" height="767" alt="image" src="https://github.com/user-attachments/assets/052dc7b5-9c16-4820-be3f-321b79017b2b" />   
 
 Vinci LMS **tidak lahir dari ambisi besar**.  
 Ia lahir dari **masalah teknis kecil yang terus berulang setiap semester**, sampai akhirnya tidak masuk akal lagi jika diselesaikan dengan cara manual.
