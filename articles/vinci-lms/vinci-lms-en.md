@@ -1,6 +1,6 @@
 <!-- title: From GitHub Classroom to Vinci LMS — The Quiet Evolution of Programming Practicums -->
 <!-- excerpt: A reflective note on why Vinci LMS was born—starting from GitHub Classroom’s limitations, pragmatic fixes using Telegram and shell scripts, to the need for a truly structured academic system. -->
-<!-- image: https://github.com/user-attachments/assets/vinci-lms-cover-placeholder -->
+<!-- image: https://github.com/user-attachments/assets/052dc7b5-9c16-4820-be3f-321b79017b2b -->
 <!-- date: 2026-01-02 -->
 <!-- posting_date: 2026-01-02 -->
 <!-- tags: Vinci LMS, GitHub Classroom, Education Technology, Software Engineering, Academic DevOps -->
@@ -8,7 +8,7 @@
 # 🎓 From GitHub Classroom to Vinci LMS  
 ## The Quiet Evolution of Programming Practicums
 
-<img width="6546" height="3676" alt="image" src="https://github.com/user-attachments/assets/vinci-lms-cover-placeholder" />
+<img width="1865" height="767" alt="image" src="https://github.com/user-attachments/assets/052dc7b5-9c16-4820-be3f-321b79017b2b" />  
 
 Vinci LMS **was not born from grand ambition**.  
 It emerged from **small technical problems that kept repeating every semester**, until solving them manually no longer made sense.
