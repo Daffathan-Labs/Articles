@@ -1,9 +1,13 @@
 <!-- title: Davinci Agent — Membangun Sistem Berpikir yang Bisa Dipercaya -->
 <!-- excerpt: Refleksi teknis dan personal tentang beban kognitif solo engineer, keterbatasan AI konvensional, dan lahirnya Davinci Agent sebagai sistem berpikir yang konsisten dan scalable. -->
+<!-- image: https://github.com/user-attachments/assets/3686f90f-87ba-40ea-8819-e5eedee1b02a -->
 <!-- date: 2026-01-19 -->
+<!-- posting_date: 2026-01-19 -->
 <!-- tags: AI Agent, Developer Workflow, Automation, System Thinking, Productivity -->
 
 # 🧠 Davinci Agent  
+<img width="734" height="402" alt="image" src="https://github.com/user-attachments/assets/3686f90f-87ba-40ea-8819-e5eedee1b02a" />
+
 ## Membangun Sistem Berpikir yang Bisa Dipercaya
 
 🌐 Website: https://davinci.daffathan-labs.my.id  
