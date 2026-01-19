@@ -1,9 +1,13 @@
 <!-- title: Davinci Agent — Building a Thinking System You Can Trust -->
 <!-- excerpt: A technical and personal reflection on cognitive overload as a solo engineer, the limits of conventional AI, and the birth of Davinci Agent as a consistent, scalable thinking system. -->
+<!-- image: https://github.com/user-attachments/assets/3686f90f-87ba-40ea-8819-e5eedee1b02a -->
 <!-- date: 2026-01-19 -->
+<!-- posting_date: 2026-01-19 -->
 <!-- tags: AI Agent, Developer Workflow, Automation, System Thinking, Productivity -->
 
 # 🧠 Davinci Agent  
+<img width="734" height="402" alt="image" src="https://github.com/user-attachments/assets/3686f90f-87ba-40ea-8819-e5eedee1b02a" />  
+
 ## Building a Thinking System You Can Trust
 
 🌐 Website: https://davinci.daffathan-labs.my.id  
