@@ -1,6 +1,6 @@
 <!-- title: Errors Are Not the Enemy — A Mature Way to Deal with Bugs While Coding -->
 <!-- excerpt: An honest reflection on why programmers often get stuck not because the code is complex, but because they panic and refuse to read error messages properly. -->
-<!-- image: https://github.com/user-attachments/assets/9ddb5497-538d-43a0-8fe8-71sdgsdgf384fba01a -->
+<!-- image: https://github.com/user-attachments/assets/36115ec0-cc8a-4125-809d-1db32d3ff178 -->
 <!-- date: 2026-01-21 -->
 <!-- posting_date: 2026-01-21 -->
 <!-- tags: Debugging, Programming, Software Engineering, Coding, Developer Life -->
@@ -8,7 +8,7 @@
 # 🐞 Errors Are Not the Enemy  
 ## A Mature Way to Deal with Bugs While Coding
 
-<img width="585" height="427" alt="image" src="https://github.com/user-attachments/assets/9ddb5497-538d-43a0-8fe8-71f384fbsdgdgda01a" />
+<img width="1400" height="933" alt="image" src="https://github.com/user-attachments/assets/36115ec0-cc8a-4125-809d-1db32d3ff178" />  
 
 You’ve definitely been here before.
 
