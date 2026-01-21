@@ -1,6 +1,6 @@
 <!-- title: Error Itu Bukan Musuh — Cara Dewasa Menghadapi Bug Saat Ngoding -->
 <!-- excerpt: Refleksi jujur tentang kenapa programmer sering stuck bukan karena kodenya rumit, tapi karena panik dan malas membaca error message. -->
-<!-- image: https://github.com/user-attachments/assets/9ddb5497-538d-43a0-8fe8-71sdgsdgf384fba01a -->
+<!-- image: https://github.com/user-attachments/assets/36115ec0-cc8a-4125-809d-1db32d3ff178 -->
 <!-- date: 2026-01-21 -->
 <!-- posting_date: 2026-01-21 -->
 <!-- tags: Debugging, Programming, Software Engineering, Ngoding, Developer Life -->
@@ -8,7 +8,7 @@
 # 🐞 Error Itu Bukan Musuh  
 ## Cara Dewasa Menghadapi Bug Saat Ngoding
 
-<img width="585" height="427" alt="image" src="https://github.com/user-attachments/assets/9ddb5497-538d-43a0-8fe8-71f384fbsdgdgda01a" />
+<img width="1400" height="933" alt="image" src="https://github.com/user-attachments/assets/36115ec0-cc8a-4125-809d-1db32d3ff178" />  
 
 Kalian pasti pernah ngalamin ini.
 
