@@ -1,6 +1,6 @@
 <!-- title: Daffathan-Labs — Arsitektur DevOps Production-Grade -->
 <!-- excerpt: Infrastruktur microservices yang aman, otomatis, dan zero-downtime menggunakan Docker, GitHub Actions, dan arsitektur internal gateway. -->
-<!-- image: -->
+<!-- image: https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b -->
 <!-- date: 2026-02-15 -->
 <!-- posting_date: 2026-02-15 -->
 <!-- tags: Github Action, CI/CD, Docker, DevOps -->
@@ -8,7 +8,7 @@
 # 🚀 Daffathan-Labs  
 ## Arsitektur DevOps Production-Grade
 
-<img width="585" height="427" alt="Daffathan Labs DevOps Architecture" src="https://github.com/user-attachments/assets/PLACEHOLDER_IMAGE_LINK_HERE" />
+<img width="1024" height="915" alt="Gemini_Generated_Image_muw7lsmuw7lsmuw7" src="https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b" />  
 
 Daffathan-Labs adalah platform microservices yang dirancang dengan standar **production-ready**, menjadikan **keamanan, otomatisasi, dan zero-downtime deployment** sebagai prioritas utama.
 
@@ -18,21 +18,24 @@ Repository ini mendokumentasikan filosofi arsitektur dan infrastruktur yang memb
 
 # 🏗 Gambaran Arsitektur
 
-```text
-             Internet
-                 │
-             ┌───────┐
-             │ Caddy │  (Reverse Proxy Host)
-             └───────┘
-                 │
-      ┌────────────────────┐
-      │ Internal Nginx GW  │  (Docker Network)
-      └────────────────────┘
-        │        │        │
-     ┌────┐   ┌────┐   ┌────┐
-     │ UI │   │ API│   │ AI │
-     └────┘   └────┘   └────┘
-```
+<pre style="font-family: monospace; line-height: 1.4;">
+Internet
+   │
+   ▼
+┌─────────────┐
+│   Caddy     │  (Host Reverse Proxy)
+└─────────────┘
+   │
+   ▼
+┌─────────────────────┐
+│ Internal Nginx GW   │  (Docker Network)
+└─────────────────────┘
+   │        │        │
+   ▼        ▼        ▼
+┌────┐   ┌────┐   ┌────┐
+│ UI │   │ API│   │ AI │
+└────┘   └────┘   └────┘
+</pre>
 
 ### Prinsip Utama
 
