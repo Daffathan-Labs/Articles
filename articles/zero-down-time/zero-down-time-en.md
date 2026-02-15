@@ -1,6 +1,6 @@
 <!-- title: Daffathan-Labs — Production-Grade DevOps Architecture -->
 <!-- excerpt: Secure, automated, zero-downtime microservices infrastructure powered by Docker, GitHub Actions, and internal gateway architecture. -->
-<!-- image: <img width="1024" height="915" alt="Gemini_Generated_Image_muw7lsmuw7lsmuw7" src="https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b" />  -->
+<!-- image: https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b  -->
 <!-- date: 2026-02-15 -->
 <!-- posting_date: 2026-02-15 -->
 <!-- tags: Github Action, CI/CD, Docker, DevOps -->
