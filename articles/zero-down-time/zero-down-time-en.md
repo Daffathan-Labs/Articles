@@ -1,6 +1,6 @@
 <!-- title: Daffathan-Labs — Production-Grade DevOps Architecture -->
 <!-- excerpt: Secure, automated, zero-downtime microservices infrastructure powered by Docker, GitHub Actions, and internal gateway architecture. -->
-<!-- image: -->
+<!-- image: <img width="1024" height="915" alt="Gemini_Generated_Image_muw7lsmuw7lsmuw7" src="https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b" />  -->
 <!-- date: 2026-02-15 -->
 <!-- posting_date: 2026-02-15 -->
 <!-- tags: Github Action, CI/CD, Docker, DevOps -->
@@ -8,7 +8,8 @@
 # 🚀 Daffathan-Labs  
 ## Production-Grade DevOps Architecture
 
-<img width="585" height="427" alt="Daffathan Labs DevOps Architecture" src="https://github.com/user-attachments/assets/PLACEHOLDER_IMAGE_LINK_HERE" />
+<img width="1024" height="915" alt="Gemini_Generated_Image_muw7lsmuw7lsmuw7" src="https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b" />  
+
 
 Daffathan-Labs is a production-ready microservices platform designed with **security, automation, and zero-downtime deployment** as first-class priorities.
 
@@ -18,21 +19,25 @@ This repository documents the architecture and infrastructure philosophy behind 
 
 # 🏗 Architecture Overview
 
-```text
-             Internet
-                 │
-             ┌───────┐
-             │ Caddy │  (Host Reverse Proxy)
-             └───────┘
-                 │
-      ┌────────────────────┐
-      │ Internal Nginx GW  │  (Docker Network)
-      └────────────────────┘
-        │        │        │
-     ┌────┐   ┌────┐   ┌────┐
-     │ UI │   │ API│   │ AI │
-     └────┘   └────┘   └────┘
-```
+<pre style="font-family: monospace; line-height: 1.4;">
+Internet
+   │
+   ▼
+┌─────────────┐
+│   Caddy     │  (Host Reverse Proxy)
+└─────────────┘
+   │
+   ▼
+┌─────────────────────┐
+│ Internal Nginx GW   │  (Docker Network)
+└─────────────────────┘
+   │        │        │
+   ▼        ▼        ▼
+┌────┐   ┌────┐   ┌────┐
+│ UI │   │ API│   │ AI │
+└────┘   └────┘   └────┘
+</pre>
+
 
 ### Key Principles
 
