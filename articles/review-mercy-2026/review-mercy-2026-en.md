@@ -1,18 +1,20 @@
 <!-- title: Mercy (2026) — When AI Becomes the Judge -->
 <!-- excerpt: A personal reflection on Mercy (2026), exploring AI as a digital judge, high-stakes cyber investigation, and the future of justice in a data-driven world. -->
-<!-- image: https://upload.wikimedia.org/wikipedia/commons/3/3f/Futuristic_AI_justice_concept.jpg -->
+<!-- image: https://github.com/user-attachments/assets/25418cd3-a742-4fd8-864d-46f54c524b8c -->
 <!-- date: 2026-02-22 -->
 <!-- posting_date: 2026-02-22 -->
 <!-- tags: Movie Review, AI Ethics, Artificial Intelligence, Mystery, Technology, Humanity -->
 
 # ⚖️ Mercy (2026)  
-<img width="734" height="402" alt="Mercy 2026 AI Judge Concept" src="https://upload.wikimedia.org/wikipedia/commons/3/3f/Futuristic_AI_justice_concept.jpg" />
+<img width="720" height="404" alt="image" src="https://github.com/user-attachments/assets/25418cd3-a742-4fd8-864d-46f54c524b8c" />  
 
 ## When AI Becomes the Judge
 
 I don’t often say a movie truly *hits* both conceptually and emotionally.
 
 But *Mercy (2026)* did exactly that.
+
+<img width="600" height="315" alt="image" src="https://github.com/user-attachments/assets/8a67c419-401d-4b27-87f9-7fe6b65a2720" />  
 
 To me, it feels like a real-world version of a “domain expansion” concept —  
 except instead of supernatural power, we get something far more realistic:
