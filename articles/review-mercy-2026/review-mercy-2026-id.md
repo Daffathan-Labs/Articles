@@ -1,17 +1,19 @@
 <!-- title: Mercy (2026) — Ketika AI Menjadi Hakim di Dunia Nyata -->
 <!-- excerpt: Sebuah refleksi pribadi tentang film Mercy (2026), AI sebagai hakim, misteri digital yang menegangkan, dan pertanyaan besar tentang kemanusiaan di era kecerdasan buatan. -->
-<!-- image: https://upload.wikimedia.org/wikipedia/commons/3/3f/Futuristic_AI_justice_concept.jpg -->
+<!-- image: https://github.com/user-attachments/assets/25418cd3-a742-4fd8-864d-46f54c524b8c -->
 <!-- date: 2026-02-22 -->
 <!-- posting_date: 2026-02-22 -->
 <!-- tags: Movie Review, AI Ethics, Artificial Intelligence, Mystery, Technology, Humanity -->
 
 # ⚖️ Mercy (2026)  
-<img width="734" height="402" alt="Mercy 2026 AI Judge Concept" src="https://upload.wikimedia.org/wikipedia/commons/3/3f/Futuristic_AI_justice_concept.jpg" />
+<img width="720" height="404" alt="image" src="https://github.com/user-attachments/assets/25418cd3-a742-4fd8-864d-46f54c524b8c" />  
 
 ## Ketika AI Menjadi Hakim di Dunia Nyata
 
 Aku jarang bilang sebuah film itu “kena banget” secara konsep dan eksekusi.  
 Tapi *Mercy (2026)* berhasil bikin aku mikir keras.
+
+<img width="600" height="315" alt="image" src="https://github.com/user-attachments/assets/8a67c419-401d-4b27-87f9-7fe6b65a2720" />  
 
 Film ini seperti versi dunia nyata dari **domain expansion Higuruma** —  
 di mana hukum bukan lagi sekadar sistem, tapi menjadi entitas aktif yang membaca, menganalisis, dan mengadili.
