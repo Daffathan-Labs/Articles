@@ -1,12 +1,12 @@
 <!-- title: Materialist (2025) — Between Love, Logic, and the Reality of Marriage -->
 <!-- excerpt: A personal reflection on Materialist (2025), exploring love, marriage, emotional compatibility, and why the heart ultimately matters more than wealth. -->
-<!-- image: https://upload.wikimedia.org/wikipedia/commons/8/8c/Romantic_movie_silhouette_couple.jpg -->
+<!-- image: https://github.com/user-attachments/assets/cb521c29-3024-42e4-b570-e922f2a41f7e -->
 <!-- date: 2026-02-22 -->
 <!-- posting_date: 2026-02-22 -->
 <!-- tags: Movie Review, Relationship, Love, Marriage, Reflection -->
 
 # ❤️ Materialist (2025)  
-<img width="734" height="402" alt="Romantic movie couple silhouette" src="https://upload.wikimedia.org/wikipedia/commons/8/8c/Romantic_movie_silhouette_couple.jpg" />
+<img width="1400" height="788" alt="image" src="https://github.com/user-attachments/assets/cb521c29-3024-42e4-b570-e922f2a41f7e" />  
 
 ## Between Love, Logic, and the Reality of Marriage
 
