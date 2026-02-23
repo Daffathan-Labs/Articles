@@ -1,12 +1,12 @@
 <!-- title: Materialist (2025) — Antara Cinta, Logika, dan Realita Pernikahan -->
 <!-- excerpt: Refleksi pribadi setelah menonton Materialist (2025), tentang cinta, pernikahan, dan mengapa pada akhirnya hati lebih penting daripada harta. -->
-<!-- image: https://upload.wikimedia.org/wikipedia/commons/8/8c/Romantic_movie_silhouette_couple.jpg -->
+<!-- image: https://github.com/user-attachments/assets/cb521c29-3024-42e4-b570-e922f2a41f7e -->
 <!-- date: 2026-02-22 -->
 <!-- posting_date: 2026-02-22 -->
 <!-- tags: Movie Review, Relationship, Love, Marriage, Reflection -->
 
 # ❤️ Materialist (2025)  
-<img width="734" height="402" alt="Romantic movie couple silhouette" src="https://upload.wikimedia.org/wikipedia/commons/8/8c/Romantic_movie_silhouette_couple.jpg" />
+<img width="1400" height="788" alt="image" src="https://github.com/user-attachments/assets/cb521c29-3024-42e4-b570-e922f2a41f7e" />  
 
 ## Antara Cinta, Logika, dan Realita Pernikahan
 
