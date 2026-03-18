@@ -1,6 +1,6 @@
 <!-- title: Daffathan-Labs — Observability & Monitoring System -->
 <!-- excerpt: My journey building a monitoring system to eliminate blind spots in a microservices architecture and finally being able to truly “see” the system. -->
-<!-- image: https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b -->
+<!-- image: https://github.com/user-attachments/assets/ca8657a3-4425-4198-9f0a-8870687f7866 -->
 <!-- date: 2026-03-18 -->
 <!-- posting_date: 2026-03-18 -->
 <!-- tags: DevOps, Observability, Grafana, Prometheus, Loki -->
@@ -8,7 +8,7 @@
 # 🚀 Daffathan-Labs  
 ## When the System is Running… But I Can't See It
 
-<img width="1024" height="915" alt="Monitoring_Stack_Daffathan_Labs" src="https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b" />
+<img width="2752" height="1536" alt="Gemini_Generated_Image_f2ir1ff2ir1ff2ir" src="https://github.com/user-attachments/assets/ca8657a3-4425-4198-9f0a-8870687f7866" />
 
 Initially, **I thought everything was enough.**
 
@@ -74,7 +74,8 @@ I didn't want to debug by "feeling" anymore.
 
 So I built these 3 things:
 
-1. **Prometheus + cAdvisor**  
+1. **Prometheus + cAdvisor**
+   <img width="1895" height="825" alt="image" src="https://github.com/user-attachments/assets/db2b652b-7cf3-4f37-9c8d-48d6907accd3" />  
    To see:  
    - CPU  
    - RAM  
@@ -83,12 +84,12 @@ So I built these 3 things:
 
    👉 This became the system's "heartbeat."
 
-2. **Loki + Promtail**  
+3. **Loki + Promtail**  
    To collect all logs from all containers.  
 
    👉 This became the system's "voice."
 
-3. **Grafana**  
+4. **Grafana**  
    One place to see everything.  
 
    👉 This became the system's "eyes."
