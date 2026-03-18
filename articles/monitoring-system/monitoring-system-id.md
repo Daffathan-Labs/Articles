@@ -1,6 +1,6 @@
 <!-- title: Daffathan-Labs — Observability & Monitoring System -->
 <!-- excerpt: Perjalanan aku membangun sistem monitoring untuk menghilangkan blind spot dalam arsitektur microservices dan akhirnya benar-benar “melihat” sistem yang berjalan. -->
-<!-- image: https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b -->
+<!-- image: https://github.com/user-attachments/assets/ca8657a3-4425-4198-9f0a-8870687f7866 -->
 <!-- date: 2026-03-18 -->
 <!-- posting_date: 2026-03-18 -->
 <!-- tags: DevOps, Observability, Grafana, Prometheus, Loki -->
@@ -8,7 +8,8 @@
 # 🚀 Daffathan-Labs  
 ## Ketika Sistem Sudah Jalan… Tapi Aku Tidak Bisa Melihatnya
 
-<img width="1024" height="915" alt="Monitoring_Stack_Daffathan_Labs" src="https://github.com/user-attachments/assets/330f4a0b-b6a0-49d6-9a64-09a8dbf53d7b" />
+<img width="2752" height="1536" alt="Gemini_Generated_Image_f2ir1ff2ir1ff2ir" src="https://github.com/user-attachments/assets/ca8657a3-4425-4198-9f0a-8870687f7866" />
+
 
 Awalnya, **aku pikir semuanya sudah cukup.**
 
@@ -73,7 +74,9 @@ Aku tidak mau lagi debugging dengan "feeling".
 
 Jadi aku bangun 3 hal ini:
 
-1. **Prometheus + cAdvisor**  
+1. **Prometheus + cAdvisor**
+   <img width="1895" height="825" alt="image" src="https://github.com/user-attachments/assets/db2b652b-7cf3-4f37-9c8d-48d6907accd3" />  
+
    Untuk melihat:  
    - CPU  
    - RAM  
@@ -82,12 +85,12 @@ Jadi aku bangun 3 hal ini:
 
    👉 Ini jadi "denyut nadi" sistem.
 
-2. **Loki + Promtail**  
+3. **Loki + Promtail**  
    Untuk mengumpulkan semua log dari semua container.  
 
    👉 Ini jadi "suara" sistem.
 
-3. **Grafana**  
+4. **Grafana**  
    Satu tempat untuk melihat semuanya.  
 
    👉 Ini jadi "mata" sistem.
