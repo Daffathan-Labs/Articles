@@ -1,14 +1,14 @@
 <!-- title: Review Tunggu Aku Sukses Nanti -->
 <!-- excerpt: Sebuah film tentang perjuangan, validasi diri, dan arti dukungan tulus dari keluarga yang sering diremehkan. -->
-<!-- image: https://images.unsplash.com/photo-1524985069026-dd778a71c7b4 -->
+<!-- image: https://github.com/user-attachments/assets/6f226376-6835-4a30-8c9b-06a3ab31c769 -->
 <!-- date: 2026-03-24 -->
 <!-- posting_date: 2026-03-24 -->
 <!-- tags: movie, drama, keluarga, motivasi -->
 
 # Review Tunggu Aku Sukses Nanti
 
-<img width="799" height="533" alt="banner"
-  src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4" />
+<img width="507" height="744" alt="image" src="https://github.com/user-attachments/assets/6f226376-6835-4a30-8c9b-06a3ab31c769" />
+
 
 <h1 class="ql-indent-5"><strong>"Semua Orang Punya Waktunya Sendiri"</strong></h1>
 
@@ -32,8 +32,8 @@ Namun justru di situlah kekuatannya.
 
 <br>
 
-<img width="1280" height="723" alt="image"
-  src="https://images.unsplash.com/photo-1517602302552-471fe67acf66" />
+<img width="1024" height="576" alt="image" src="https://github.com/user-attachments/assets/30d6033a-28fd-4a84-a1ac-8e3f7da8a46e" />
+
 
 # 🔥 Tiga Hal Kuat dari Film Ini
 
