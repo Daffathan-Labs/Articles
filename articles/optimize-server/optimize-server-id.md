@@ -1,3 +1,10 @@
+<!-- title: Diet RAM & Migrasi Awan: Cara Aku Menyelamatkan Server dari Krisis Resource -->
+<!-- excerpt: Penjelasan lengkap tentang bagaimana aku menyelamatkan server Daffathan Labs dari krisis resource dengan melakukan optimasi dan migrasi ke Cloudflare Pages. -->
+<!-- image: https://github.com/user-attachments/assets/e768a74e-8e6d-400d-8b02-9946d227a964 -->
+<!-- date: 2026-04-21 -->
+<!-- posting_date: 2026-04-21 -->
+<!-- tags: optimize, server, cloudflare, mariadb, docker, FrankenPHP -->
+
 # Diet RAM & Migrasi Awan: Cara Aku Menyelamatkan Server dari Krisis Resource
 
 <img width="1536" height="1024" alt="Infrastruktur Optimasi" src="https://github.com/user-attachments/assets/e768a74e-8e6d-400d-8b02-9946d227a964" />

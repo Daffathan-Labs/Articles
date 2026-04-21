@@ -1,3 +1,11 @@
+<!-- title: RAM Diet & Cloud Migration: How I Saved My Server from a Resource Crisis -->
+<!-- excerpt: A complete explanation of how I saved the Daffathan Labs server from a resource crisis by optimizing and migrating to Cloudflare Pages. -->
+<!-- image: https://github.com/user-attachments/assets/e768a74e-8e6d-400d-8b02-9946d227a964 -->
+<!-- date: 2026-04-21 -->
+<!-- posting_date: 2026-04-21 -->
+<!-- tags: optimize, server, cloudflare, mariadb, docker, FrankenPHP -->
+
+
 # RAM Diet & Cloud Migration: How I Saved My Server from a Resource Crisis
 
 <img width="1536" height="1024" alt="Infrastructure Optimization" src="https://github.com/user-attachments/assets/e768a74e-8e6d-400d-8b02-9946d227a964" />
