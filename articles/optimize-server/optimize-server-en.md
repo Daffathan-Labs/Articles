@@ -20,7 +20,7 @@ I realized that if I let this slide, all services at Daffathan Labs could go dow
 
 ---
 
-<img width="1920" height="900" alt="Cloudflare Migration" src="https://github.com/user-attachments/assets/6a6d1f1b-2061-470c-86fc-02243272b478" />
+<img width="945" height="658" alt="image" src="https://github.com/user-attachments/assets/a78bd1c6-5a95-49d8-b95f-280764aa5948" />  
 
 # 🔥 Three Crucial Steps to Saving Server Resources
 
