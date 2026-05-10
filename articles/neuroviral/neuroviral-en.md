@@ -1,14 +1,14 @@
 <!-- title: NeuroViral — Neuromarketing AI Platform -->
 <!-- excerpt: My journey discovering Meta's TRIBE v2 and deciding to build NeuroViral—a platform that brings neuromarketing from research labs into the hands of digital marketers and content creators. -->
 <!-- image: https://github.com/user-attachments/assets/neuroviral-cover-placeholder -->
-<!-- date: 2026-03-18 -->
-<!-- posting_date: 2026-03-18 -->
+<!-- date: 2026-05-10 -->
+<!-- posting_date: 2026-05-10 -->
 <!-- tags: Neuromarketing, AI, Content Strategy, TRIBE Model, Marketing Science -->
 
 # 🚀 NeuroViral: Neuromarketing AI 
 ## Stop Guessing About Video Hooks, Ask the Digital Brain Instead
 
-<img width="2752" height="1536" alt="NeuroViral_Dashboard_Preview" src="https://github.com/user-attachments/assets/neuroviral-cover-placeholder" />
+<img width="1600" height="816" alt="WhatsApp Image 2026-05-10 at 4 02 27 AM" src="https://github.com/user-attachments/assets/a4adb64e-2055-4825-9666-67eb3ac9d139" />  
 
 At first, **I thought making viral content was purely about "feeling".**
 
@@ -139,6 +139,9 @@ With TRIBE model:
 This isn't just budget savings. This is **data-driven creativity**—creativity backed by science.
 
 ## 🧠 The Big Lesson
+
+<img width="1600" height="799" alt="WhatsApp Image 2026-05-10 at 4 02 27 AM (1)" src="https://github.com/user-attachments/assets/e4951cac-3903-4b31-9255-8d01354f7e26" />  
+
 From all this, I learned one crucial thing:
 Marketing without neurodata = guessing in the dark.
 
