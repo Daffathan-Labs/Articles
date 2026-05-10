@@ -1,14 +1,15 @@
 <!-- title: NeuroViral — Neuromarketing AI Platform -->
 <!-- excerpt: Perjalanan aku menemukan Meta TRIBE v2 dan memutuskan membangun NeuroViral—platform yang membawa neuromarketing dari lab penelitian ke tangan digital marketer dan content creator. -->
 <!-- image: https://github.com/user-attachments/assets/neuroviral-cover-placeholder -->
-<!-- date: 2026-03-18 -->
-<!-- posting_date: 2026-03-18 -->
+<!-- date: 2026-05-10 -->
+<!-- posting_date: 2026-05-10 -->
 <!-- tags: Neuromarketing, AI, Content Strategy, TRIBE Model, Marketing Science -->
 
 # 🚀 NeuroViral: Neuromarketing AI 
 ## Berhenti Menebak Hook Video, Mari Tanyakan Pada Otak Digital
 
-<img width="2752" height="1536" alt="NeuroViral_Dashboard_Preview" src="https://github.com/user-attachments/assets/neuroviral-cover-placeholder" />
+<img width="1600" height="816" alt="WhatsApp Image 2026-05-10 at 4 02 27 AM" src="https://github.com/user-attachments/assets/a4adb64e-2055-4825-9666-67eb3ac9d139" />  
+
 
 Awalnya, **aku pikir bikin konten viral itu murni soal "feeling".**
 
@@ -139,6 +140,9 @@ Dengan TRIBE model:
 Ini bukan hanya hemat budget. Ini adalah **data-driven creativity**—creativity yang supported oleh science.
 
 ## 🧠 Pelajaran Besar
+
+<img width="1600" height="799" alt="WhatsApp Image 2026-05-10 at 4 02 27 AM (1)" src="https://github.com/user-attachments/assets/e4951cac-3903-4b31-9255-8d01354f7e26" />  
+
 Dari semua ini, aku belajar satu hal penting:
 Marketing tanpa data neurosains = menebak dalam gelap.
 
