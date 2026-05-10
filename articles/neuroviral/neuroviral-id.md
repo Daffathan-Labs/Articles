@@ -1,6 +1,6 @@
 <!-- title: NeuroViral — Neuromarketing AI Platform -->
 <!-- excerpt: Perjalanan aku menemukan Meta TRIBE v2 dan memutuskan membangun NeuroViral—platform yang membawa neuromarketing dari lab penelitian ke tangan digital marketer dan content creator. -->
-<!-- image: https://github.com/user-attachments/assets/neuroviral-cover-placeholder -->
+<!-- image: https://github.com/user-attachments/assets/a4adb64e-2055-4825-9666-67eb3ac9d139 -->
 <!-- date: 2026-05-10 -->
 <!-- posting_date: 2026-05-10 -->
 <!-- tags: Neuromarketing, AI, Content Strategy, TRIBE Model, Marketing Science -->
