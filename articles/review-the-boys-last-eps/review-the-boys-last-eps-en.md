@@ -1,4 +1,4 @@
-<!-- title: The Boys Series Finale Review — The End of the King Maker Era, But Feels Rushed -->
+<!-- title: The Boys Series Finale Review — The End of the King Meme Era, But Feels Rushed -->
 <!-- excerpt: A review of the final episode of The Boys. A climax that brings us to the end of Butcher and Homelander's story. Cool, epic, but some aspects felt too brief. -->
 <!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-boys-last-eps/the%20boys.jpeg -->
 <!-- date: 2026-05-23 -->
@@ -6,62 +6,60 @@
 <!-- tags: Series Review, The Boys, Finale, Homelander, Butcher, Antony Starr -->
 
 # 🦸‍♂️ The Boys Series Finale Review  
-## The End of the King Maker Era, But Feels Rushed
+## The End of the King Meme Era, But Feels Rushed
 
 <img width="800" alt="The Boys Finale Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-boys-last-eps/the%20boys.jpeg" />
 
-Finally, the long, crazy, and blood-filled journey of *The Boys* has reached its peak. As a loyal viewer, having high expectations for this concluding episode is completely natural. Unfortunately (because my diary server is currently down), I'll be sharing my raw review right here.
+Finally, the long, crazy, and blood-filled journey of *The Boys* over the past 7 years has reached its peak. Considering today was quite exhausting both physically and mentally, I was hoping this final episode would be a comforting cure. Unfortunately (because my diary server is currently down), I'll be sharing my raw review right here.
 
-Overall, this series finale provides the conclusion we’ve been waiting for, but let’s discuss some important points that became the highlights of this ending.
-
----
-
-## 🚶‍♂️ 1. A Rather "Ordinary" Ending
-
-As a climax to a series known for being crazy and boundary-pushing, the ending actually felt a bit "ordinary". 
-
-While the story was wrapped up nicely, the scale of the chaos wasn't as destructive and chaotic as I had previously imagined. It felt like they held something back at the very end.
+Honestly? **The ending was just "meh"!** Very disappointing. Let's dig deeper into why this climax felt lacking in punch, even though there were a few moments that could still be enjoyed. Overall, I can only give it a score of **6/10**.
 
 ---
 
-## ⏱️ 2. Short and Rushed Fights
+## 🚶‍♂️ 1. "Meh" Ending, Not Chaotic Enough, and Wasted Potential
 
-With a duration of only 1 hour, this episode had to cover a lot of fights, the climax of the story, and Butcher's death.
+As a climax to a series known for its sheer madness over 7 years, this ending truly did not reflect the *"blood and bone"* essence typical of *The Boys*.
 
-The result? Everything became too short. The transitions between events felt very rushed, as if they ran out of screen time and had to compress everything all at once. We didn't have enough time to truly absorb the impact of each fight.
-
----
-
-## 🤔 3. Butcher's Genocide Motivation Felt Weak
-
-At the end of the story, Butcher decides to commit genocide against all supes. The reason? He has lost everyone close to him: his wife, his dog Terror, and even Ryan. Moreover, since he has already killed Homelander, he seems to have lost his direction and purpose.
-
-While logically this makes sense, the execution was unconvincing. Once again, due to the overly fast pace of the episode, this radical motivation felt weak and rushed to serve as the foundation for the final conflict.
+I was hoping the final battle would be absolutely chaotic and destructive. The reality? The main fight only happened indoors! It felt more like a cliffhanger with a ton of *wasted potential* rather than an epic climax. If the resolution was going to be this simple, why did we even need 8 episodes? It could have easily ended in season 4. Even the presence of *Gen V*, which was only used to introduce a virus, ultimately felt useless and pointless.
 
 ---
 
-## 👏 4. Big Respect to Antony Starr and the Cast
+## 💉 2. Homelander's Death: Too Easy
 
-In the end, massive respect must be given to Antony Starr and the rest of the cast. 
+One of the most disappointing points was how Homelander lost. The power of this god-like figure was merely removed by Kimiko!
 
-They are the ones who successfully made this series so exciting, iconic, and absolutely worth watching from the first season to the end. Their acting truly elevated *The Boys* to become one of the best superhero (or anti-hero) shows of the decade.
-
----
-
-## 👑 5. The End of the Homelander "King Maker" Meme Era
-
-One of the saddest things about the end of this series is the end of the Homelander meme era. Antony Starr's face and expressions as Homelander have graced the internet for years as meme royalty.
-
-While it's sad that there won't be any new templates, we can see the incredible cultural impact this character has had on meme creators around the world.
+In my opinion, it would have been much more thrilling and tense if Kimiko's experiment was shown to fail, or *at least* only succeeded right when they were desperately cornered fighting Homelander. Even though it might seem like *plot armor* and easily predictable, it would have been much more satisfying as a *plot twist* compared to the current execution.
 
 ---
 
-## 🚪 6. "Daddy's Home!" — The Most Hype Moment
+## 🗑️ 3. Most Satisfying: Butcher Trashing Homelander!
 
-Despite many flaws in terms of pacing, there was one truly epic moment: **The moment Butcher enters the White House.**
+Despite the many disappointments, there was one thing that made me very satisfied: seeing Homelander completely trashed and humiliated by Butcher in front of all of America!
 
-As soon as he drops the iconic line, *"Daddy's home"*, the hype immediately peaked. At that point, we all knew that the real battle had begun and it was ready to get bloody. So awesome!
+Out of all the flaws in this episode, this moment was the best part. Sadly, it was the only golden moment; the rest was just *meh*. 
+
+Oh, and about Butcher, his motivation to rebel really reminded me of **John Wick**. The death of his dog (Terror) seemingly acted as the main trigger for him to orchestrate this coup. Very personal and radical.
 
 ---
 
-What about you guys? Did you find the climax of The Boys satisfying?
+## 📖 4. Following the Comic Ending (With a Slight Difference)
+
+In the end, the series chose to follow the *ending* of the comic version. The main difference is just one: in the *series* version, all the characters are still alive except for Butcher and Frenchie. A conclusion that makes sense, but again, the execution lacked bite.
+
+---
+
+## 👑 5. The End of the Homelander "King Meme" Era
+
+One sad thing outside of the story is the end of the Homelander meme era. Antony Starr's face, which has dominated the internet's meme *templates* for so long, will slowly be replaced. Nevertheless, the *impact* of this character on meme creators is truly extraordinary and deserves appreciation. *Big respect* to Antony Starr and the rest of the *cast* who have accompanied us for 7 years.
+
+---
+
+## 🚪 6. "Daddy's Home!" and The Comfort of Re:Zero
+
+Even though I was disappointed overall, the moment Butcher entered with the line *"Daddy's home"* still successfully built up the *hype*. 
+
+I was so frustrated with *The Boys* ending that I ended up *yapping* endlessly on Discord discussing it with Boss Tegar. After that? I immediately watched **Re:Zero** to heal my frustration. And it turned out Re:Zero was quite interesting! Subaru finally lost his memory, awesome! I can't wait for next week to see how Subaru dies over and over again, haha.
+
+**Final Score: 6/10**
+
+For those of you who watched it together in theaters yesterday... you must be heavily disappointed too, right?
