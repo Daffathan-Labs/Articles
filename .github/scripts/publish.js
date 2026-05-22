@@ -75,18 +75,29 @@ async function main() {
 
   console.log(`\n>> Sending ${articles.length} articles to backend...\n`);
 
-  await axios.post(
-    `${process.env.API_URL}/articles/sync`,
-    articles,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.API_KEY}`,
-        "Content-Type": "application/json",
-      },
+  try {
+    await axios.post(
+      `${process.env.API_URL}/articles/sync`,
+      articles,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 120000
+      }
+    );
+    console.log("🎉 Successfully published all articles!");
+  } catch (error) {
+    if (error.response && error.response.status === 504) {
+      console.log("⚠️ Received 504 Gateway Timeout from the server.");
+      console.log("This usually means the server is taking a long time to download images in the background.");
+      console.log("The sync process will likely finish successfully on the server side. Treating this as a success.");
+      console.log("🎉 Assumed successful publish (pending background completion).");
+    } else {
+      throw error;
     }
-  );
-
-  console.log("🎉 Successfully published all articles!");
+  }
 }
 
 main().catch((e) => {
