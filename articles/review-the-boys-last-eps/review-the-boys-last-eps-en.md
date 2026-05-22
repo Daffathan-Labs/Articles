@@ -54,11 +54,11 @@ One sad thing outside of the story is the end of the Homelander meme era. Antony
 
 ---
 
-## 🚪 6. "Daddy's Home!" and The Comfort of Re:Zero
+## 🚪 6. "Daddy's Home!" and The Remaining Disappointment
 
-Even though I was disappointed overall, the moment Butcher entered with the line *"Daddy's home"* still successfully built up the *hype*. 
+Even though I was disappointed overall, the moment Butcher entered with the line *"Daddy's home"* still successfully built up the *hype* to its maximum. It was one of the few fan-service moments that was executed exceptionally well.
 
-I was so frustrated with *The Boys* ending that I ended up *yapping* endlessly on Discord discussing it with Boss Tegar. After that? I immediately watched **Re:Zero** to heal my frustration. And it turned out Re:Zero was quite interesting! Subaru finally lost his memory, awesome! I can't wait for next week to see how Subaru dies over and over again, haha.
+I was so frustrated with *The Boys* ending that I ended up *yapping* endlessly on Discord discussing every single flaw with my friends. We both agreed that a series with this much potential deserved a far grander conclusion that didn't feel so rushed.
 
 **Final Score: 6/10**
 

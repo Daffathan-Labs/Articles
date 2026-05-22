@@ -54,11 +54,11 @@ Satu hal di luar cerita yang cukup bikin sedih adalah tamatnya era *meme* Homela
 
 ---
 
-## 🚪 6. "Daddy's Home!" dan Pelipur Lara Re:Zero
+## 🚪 6. "Daddy's Home!" dan Kekecewaan yang Tersisa
 
-Meski secara keseluruhan aku kecewa, momen saat Butcher masuk dengan ucapan *"Daddy's home"* tetap sukses bikin *hype*. 
+Meski secara keseluruhan aku kecewa, momen saat Butcher masuk dengan ucapan *"Daddy's home"* tetap sukses bikin *hype* maksimal. Itu adalah salah satu dari sedikit *fan-service* yang dieksekusi dengan sangat baik.
 
-Saking keselnya sama *ending* The Boys ini, aku sampai *yapping* panjang lebar di Discord bahas ini sama Bos Tegar. Habis itu? Aku langsung nonton **Re:Zero** buat mengobati rasa kesel. Dan ternyata Re:Zero cukup menarik! Subaru akhirnya hilang ingatan, mantap! Nggak sabar nunggu minggu depan buat lihat gimana Subaru mati terus-menerus lagi, haha.
+Saking keselnya sama *ending* *The Boys* ini, aku sampai *yapping* panjang lebar di Discord membahas setiap detail kegagalannya bersama teman-temanku. Kita berdua sepakat kalau serial dengan potensi sebesar ini layak mendapatkan konklusi yang jauh lebih megah dan tidak terasa terburu-buru.
 
 **Skor Akhir: 6/10**
 
