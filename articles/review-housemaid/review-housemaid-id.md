@@ -1,16 +1,16 @@
-<!-- title: Housemaid Review — Slow Burn dengan Plot Twist yang Bikin Merinding -->
-<!-- excerpt: Review jujur Housemaid. Di balik alurnya yang lambat, tersimpan plot twist mematikan dan akhir kisah balas dendam yang sangat memuaskan! -->
+<!-- title: The Housemaid (2025) Review — Slow Burn dengan Plot Twist yang Bikin Merinding -->
+<!-- excerpt: Review jujur The Housemaid. Di balik alurnya yang lambat, tersimpan plot twist mematikan dan akhir kisah balas dendam yang sangat memuaskan! -->
 <!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-housemaid/housemaid.png -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
-<!-- tags: Movie Review, Housemaid, Thriller, Plot Twist, Drama -->
+<!-- tags: Movie Review, The Housemaid, Thriller, Plot Twist, Drama -->
 
-# 🧹 Housemaid Review
+# 🧹 The Housemaid (2025) Review
 ## Slow Burn dengan Plot Twist yang Bikin Merinding
 
 <img width="800" alt="Housemaid Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-housemaid/housemaid.png" />
 
-Film berikutnya yang mau aku bahas adalah *Housemaid*. Jujur, ini adalah tipe film *thriller/drama* yang cukup unik dan meninggalkan kesan mendalam setelah menontonnya.
+Film berikutnya yang mau aku bahas adalah *The Housemaid*. Jujur, ini adalah tipe film *thriller/drama* yang cukup unik dan meninggalkan kesan mendalam setelah menontonnya.
 
 Aku memberikan skor **7/10** untuk film ini. Di awal mungkin kalian akan merasa film ini sangat lambat, tapi justru di situlah letak kehebatannya! Yuk, kita bahas selengkapnya.
 
@@ -50,7 +50,7 @@ Balas dendam yang disajikan sangat menarik dan memang begitulah akhir yang sehar
 
 ## 🎬 Kesimpulan
 
-*Housemaid* adalah film dengan konsep *slow burn* yang dieksekusi dengan cerdas. Ia menipu penontonnya di awal hanya untuk memberikan kejutan mematikan di pertengahan hingga akhir.
+*The Housemaid* adalah film dengan konsep *slow burn* yang dieksekusi dengan cerdas. Ia menipu penontonnya di awal hanya untuk memberikan kejutan mematikan di pertengahan hingga akhir.
 
 Jika kalian suka film yang bermain dengan psikologis, misteri, dan ditutup dengan pembalasan dendam yang epik, ini sangat wajib untuk kalian tonton!
 

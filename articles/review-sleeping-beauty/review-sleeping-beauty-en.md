@@ -1,11 +1,11 @@
-<!-- title: Sleeping Beauty Review — Bland Yet Exposes the Dark Side of Humanity -->
+<!-- title: Sleeping Beauty (2011) Review — Bland Yet Exposes the Dark Side of Humanity -->
 <!-- excerpt: An honest review of Sleeping Beauty. A movie with a flat and confusing plot, yet it succeeds as a psychological horror reflecting human greed. -->
 <!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-sleeping-beauty/sleeping-beauty.png -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Sleeping Beauty, Drama, Psychological Horror, Open Ending -->
 
-# 🥀 Sleeping Beauty Review
+# 🥀 Sleeping Beauty (2011) Review
 ## Bland Yet Exposes the Dark Side of Humanity
 
 <img width="800" alt="Sleeping Beauty Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-sleeping-beauty/sleeping-beauty.png" />

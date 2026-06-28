@@ -1,11 +1,11 @@
-<!-- title: Colossal Review — CGI Keren tapi Ceritanya Bikin Bingung -->
+<!-- title: Colossal (2016) Review — CGI Keren tapi Ceritanya Bikin Bingung -->
 <!-- excerpt: Review jujur Colossal. Punya CGI monster yang oke banget dan ending memuaskan, tapi sayangnya alur cerita terasa lambat dan sangat tidak masuk logika. -->
 <!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-collosal/collosal.png -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Colossal, Monster, Drama, CGI -->
 
-# 🦖 Colossal Review
+# 🦖 Colossal (2016) Review
 ## CGI Keren tapi Ceritanya Bikin Bingung
 
 <img width="800" alt="Colossal Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-collosal/collosal.png" />

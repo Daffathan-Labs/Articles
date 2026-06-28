@@ -1,11 +1,11 @@
-<!-- title: Family Switch Review — A Family Comedy That Makes You Laugh and Cry -->
+<!-- title: Family Switch (2023) Review — A Family Comedy That Makes You Laugh and Cry -->
 <!-- excerpt: An honest review of Family Switch. A hilarious family comedy that makes you laugh from start to finish, complete with a touching message and an adorable baby! -->
 <!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-family-switch/family-switch.jpg -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Family Switch, Comedy, Family, Emma Myers -->
 
-# 👨‍👩‍👧‍👦 Family Switch Review
+# 👨‍👩‍👧‍👦 Family Switch (2023) Review
 ## A Family Comedy That Makes You Laugh and Cry
 
 <img width="800" alt="Family Switch Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-family-switch/family-switch.jpg" />

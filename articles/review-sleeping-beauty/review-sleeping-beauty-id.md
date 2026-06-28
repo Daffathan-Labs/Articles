@@ -1,11 +1,11 @@
-<!-- title: Sleeping Beauty Review — Hambar Namun Menyimpan Sisi Gelap Manusia -->
+<!-- title: Sleeping Beauty (2011) Review — Hambar Namun Menyimpan Sisi Gelap Manusia -->
 <!-- excerpt: Review jujur Sleeping Beauty. Sebuah film dengan alur yang flat dan membingungkan, namun sukses menjadi horor psikologis yang menampilkan keserakahan manusia. -->
 <!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-sleeping-beauty/sleeping-beauty.png -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Sleeping Beauty, Drama, Psychological Horror, Open Ending -->
 
-# 🥀 Sleeping Beauty Review
+# 🥀 Sleeping Beauty (2011) Review
 ## Hambar Namun Menyimpan Sisi Gelap Manusia
 
 <img width="800" alt="Sleeping Beauty Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-sleeping-beauty/sleeping-beauty.png" />
