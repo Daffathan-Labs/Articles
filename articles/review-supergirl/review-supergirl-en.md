@@ -1,6 +1,6 @@
 <!-- title: Supergirl (2026) Review — Fun Action but a Flat Story -->
 <!-- excerpt: An honest review of Supergirl. Jason Momoa steals the show as Lobo, but the story lacks emotional weight and the space vibes feel too Marvel. -->
-<!-- image: ./supergirl.webp -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-supergirl/supergirl.webp -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Supergirl, DCU, Jason Momoa, Action -->
@@ -8,7 +8,7 @@
 # 🦸‍♀️ Supergirl (2026) Review
 ## Fun Action but a Flat Story
 
-<img width="800" alt="Supergirl Banner" src="./supergirl.webp" />
+<img width="800" alt="Supergirl Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-supergirl/supergirl.webp" />
 
 We finally got to see the *Supergirl* movie adapted from the "Woman of Tomorrow" comic. Unfortunately, for me personally, the movie feels a bit lost in execution.
 

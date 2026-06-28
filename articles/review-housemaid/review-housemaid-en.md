@@ -1,6 +1,6 @@
 <!-- title: Housemaid Review — A Slow Burn with a Chilling Plot Twist -->
 <!-- excerpt: An honest review of Housemaid. Beneath its slow pacing lies a deadly plot twist and a deeply satisfying tale of revenge! -->
-<!-- image: ./housemaid.png -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-housemaid/housemaid.png -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Housemaid, Thriller, Plot Twist, Drama -->
@@ -8,7 +8,7 @@
 # 🧹 Housemaid Review
 ## A Slow Burn with a Chilling Plot Twist
 
-<img width="800" alt="Housemaid Banner" src="./housemaid.png" />
+<img width="800" alt="Housemaid Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-housemaid/housemaid.png" />
 
 The next movie I want to talk about is *Housemaid*. Honestly, this is a very unique thriller/drama that leaves a lasting impression long after the credits roll.
 

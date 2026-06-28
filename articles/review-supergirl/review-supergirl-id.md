@@ -1,6 +1,6 @@
 <!-- title: Supergirl (2026) Review — Action Seru tapi Cerita Terasa Hambar -->
 <!-- excerpt: Review jujur Supergirl. Jason Momoa tampil memukau sebagai Lobo, sayangnya cerita terasa kurang emosional dan dunia luar angkasanya mirip Marvel. -->
-<!-- image: ./supergirl.webp -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-supergirl/supergirl.webp -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Supergirl, DCU, Jason Momoa, Action -->
@@ -8,7 +8,7 @@
 # 🦸‍♀️ Supergirl (2026) Review
 ## Action Seru tapi Cerita Terasa Hambar
 
-<img width="800" alt="Supergirl Banner" src="./supergirl.webp" />
+<img width="800" alt="Supergirl Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-supergirl/supergirl.webp" />
 
 Akhirnya kita bisa melihat film *Supergirl* yang diadaptasi dari komik "Woman of Tomorrow". Sayangnya, buatku pribadi, film ini terasa seperti kehilangan arah. 
 

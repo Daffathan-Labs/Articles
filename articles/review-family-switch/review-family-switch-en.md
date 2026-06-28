@@ -1,6 +1,6 @@
 <!-- title: Family Switch Review — A Family Comedy That Makes You Laugh and Cry -->
 <!-- excerpt: An honest review of Family Switch. A hilarious family comedy that makes you laugh from start to finish, complete with a touching message and an adorable baby! -->
-<!-- image: ./family-switch.jpg -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-family-switch/family-switch.jpg -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Family Switch, Comedy, Family, Emma Myers -->
@@ -8,7 +8,7 @@
 # 👨‍👩‍👧‍👦 Family Switch Review
 ## A Family Comedy That Makes You Laugh and Cry
 
-<img width="800" alt="Family Switch Banner" src="./family-switch.jpg" />
+<img width="800" alt="Family Switch Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-family-switch/family-switch.jpg" />
 
 This time, I want to talk about a family comedy that genuinely put me on an emotional rollercoaster: *Family Switch*.
 

@@ -1,6 +1,6 @@
 <!-- title: Colossal Review — Great CGI but a Confusing Story -->
 <!-- excerpt: An honest review of Colossal. It features awesome monster CGI and a satisfying ending, but unfortunately suffers from a slow pace and illogical plot. -->
-<!-- image: ./collosal.png -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-collosal/collosal.png -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Colossal, Monster, Drama, CGI -->
@@ -8,7 +8,7 @@
 # 🦖 Colossal Review
 ## Great CGI but a Confusing Story
 
-<img width="800" alt="Colossal Banner" src="./collosal.png" />
+<img width="800" alt="Colossal Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-collosal/collosal.png" />
 
 This time around, I want to talk about a movie with a pretty unique concept: *Colossal*. To be honest, this movie left me with very mixed feelings.
 

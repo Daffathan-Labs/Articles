@@ -1,6 +1,6 @@
 <!-- title: Housemaid Review — Slow Burn dengan Plot Twist yang Bikin Merinding -->
 <!-- excerpt: Review jujur Housemaid. Di balik alurnya yang lambat, tersimpan plot twist mematikan dan akhir kisah balas dendam yang sangat memuaskan! -->
-<!-- image: ./housemaid.png -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-housemaid/housemaid.png -->
 <!-- date: 2026-06-28 -->
 <!-- posting_date: 2026-06-28 -->
 <!-- tags: Movie Review, Housemaid, Thriller, Plot Twist, Drama -->
@@ -8,7 +8,7 @@
 # 🧹 Housemaid Review
 ## Slow Burn dengan Plot Twist yang Bikin Merinding
 
-<img width="800" alt="Housemaid Banner" src="./housemaid.png" />
+<img width="800" alt="Housemaid Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-housemaid/housemaid.png" />
 
 Film berikutnya yang mau aku bahas adalah *Housemaid*. Jujur, ini adalah tipe film *thriller/drama* yang cukup unik dan meninggalkan kesan mendalam setelah menontonnya.
 

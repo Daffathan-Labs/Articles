@@ -1,6 +1,6 @@
 <!-- title: Antigravity 2.0 — When Google Set Us Free and Decoupled the AI Agent from the IDE -->
 <!-- excerpt: A reflective and technical take from Google I/O Extended on the Antigravity 2.0 release. Google has decoupled the AI Agent reasoning engine from the editor, letting us stick to VS Code as the best editor so far while they focus on building the ultimate autonomous assistant. -->
-<!-- image: ./antigravity-banner.png -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/antigravity-2.0/antigravity-banner.png -->
 <!-- date: 2026-05-20 -->
 <!-- posting_date: 2026-05-20 -->
 <!-- tags: Antigravity 2.0, Google I/O Extended, AI Agent, VS Code, Gemini, Developer Workflow -->
@@ -8,7 +8,7 @@
 # 🚀 Antigravity 2.0  
 ## When Google Set Us Free and Decoupled the AI Agent from the IDE
 
-<img width="800" alt="Antigravity 2.0 Banner" src="./antigravity-banner.png" />
+<img width="800" alt="Antigravity 2.0 Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/antigravity-2.0/antigravity-banner.png" />
 
 To be completely honest, for the past year, I’ve felt exhausted by the **IDE ecosystem cold war**.
 

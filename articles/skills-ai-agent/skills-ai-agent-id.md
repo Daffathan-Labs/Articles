@@ -1,6 +1,6 @@
 <!-- title: AI Agent Kamu Masih Gitu-Gitu Aja? Saatnya Upgrade dengan "Skills" Biar Nggak Monoton Bawaan AI! -->
 <!-- excerpt: Pengalaman pribadiku nemuin rahasia bikin AI Agent jadi super produktif dan anti-monoton. Dengan nge-plug 'Skills' dari UI/UX Pro Max dan Universal Agent Skills dari Addy Osmani, AI Agent-ku sekarang bisa nge-build web premium yang beneran estetik! -->
-<!-- image: ./skills-agent-banner.png -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/skills-ai-agent/skills-agent-banner.png -->
 <!-- date: 2026-05-29 -->
 <!-- posting_date: 2026-05-29 -->
 <!-- tags: AI Agent, Agent Skills, Developer Workflow, VS Code, productivity, UI/UX, Web Development -->
@@ -8,7 +8,7 @@
 # 🚀 AI Agent Kamu Masih Gitu-Gitu Aja?  
 ## Saatnya Upgrade dengan "Skills" Biar Nggak Monoton Bawaan AI!
 
-<img width="800" alt="AI Agent Skills Banner" src="./skills-agent-banner.png" />
+<img width="800" alt="AI Agent Skills Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/skills-ai-agent/skills-agent-banner.png" />
 
 Jujur aja ya, pernah nggak sih kalian ngerasa kalau hasil codingan AI Agent kalian itu... **monoton banget**? 
 
