@@ -1,6 +1,6 @@
 <!-- title: Is Your AI Agent Still Basic? Time to Upgrade with "Skills" to Escape the Boring AI Aesthetic! -->
 <!-- excerpt: My personal journey discovering the power of modular 'Skills' for AI Agents. By plugging in UI/UX Pro Max and Addy Osmani's Universal Agent Skills, my local coding assistant transformed from a standard autocomplete chatbot into a high-end designer and powerhouse engineer. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/skills-ai-agent/skills-agent-banner.png -->
+<!-- image: ./skills-agent-banner.png -->
 <!-- date: 2026-05-29 -->
 <!-- posting_date: 2026-05-29 -->
 <!-- tags: AI Agent, Agent Skills, Developer Workflow, VS Code, productivity, UI/UX, Web Development -->
@@ -8,7 +8,7 @@
 # 🚀 Is Your AI Agent Still Basic?  
 ## Time to Upgrade with "Skills" to Escape the Boring AI Aesthetic!
 
-<img width="800" alt="AI Agent Skills Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/skills-ai-agent/skills-agent-banner.png" />
+<img width="800" alt="AI Agent Skills Banner" src="./skills-agent-banner.png" />
 
 To be completely honest with you, have you ever felt that your AI Agent's coding outputs are... **incredibly boring**?
 

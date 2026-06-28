@@ -1,6 +1,6 @@
 <!-- title: Antigravity 2.0 — Saat Google Memilih Bebas dan Memisahkan AI Agent dari Belenggu IDE -->
 <!-- excerpt: Refleksi personal dan teknis dari Google I/O Extended tentang pembaruan Antigravity 2.0. Google akhirnya bebenah total: memisahkan lapisan kecerdasan AI Agent otonom dari editor, membiarkan kita tetap menggunakan VS Code sebagai editor terbaik sejauh ini. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/antigravity-2.0/antigravity-banner.png -->
+<!-- image: ./antigravity-banner.png -->
 <!-- date: 2026-05-20 -->
 <!-- posting_date: 2026-05-20 -->
 <!-- tags: Antigravity 2.0, Google I/O Extended, AI Agent, VS Code, Gemini, Developer Workflow -->
@@ -8,7 +8,7 @@
 # 🚀 Antigravity 2.0  
 ## Saat Google Memilih Bebas dan Memisahkan AI Agent dari Belenggu IDE
 
-<img width="800" alt="Antigravity 2.0 Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/antigravity-2.0/antigravity-banner.png" />
+<img width="800" alt="Antigravity 2.0 Banner" src="./antigravity-banner.png" />
 
 Jujur saja, selama setahun terakhir ini, aku merasa lelah dengan **perang dingin ekosistem IDE**.
 

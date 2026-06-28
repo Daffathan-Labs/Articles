@@ -1,6 +1,6 @@
 <!-- title: The Boys Series Finale Review — The End of the King Meme Era, But Feels Rushed -->
 <!-- excerpt: A review of the final episode of The Boys. A climax that brings us to the end of Butcher and Homelander's story. Cool, epic, but some aspects felt too brief. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-boys-last-eps/the%20boys.jpeg -->
+<!-- image: ./the%20boys.jpeg -->
 <!-- date: 2026-05-23 -->
 <!-- posting_date: 2026-05-23 -->
 <!-- tags: Series Review, The Boys, Finale, Homelander, Butcher, Antony Starr -->
@@ -8,7 +8,7 @@
 # 🦸‍♂️ The Boys Series Finale Review  
 ## The End of the King Meme Era, But Feels Rushed
 
-<img width="800" alt="The Boys Finale Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-boys-last-eps/the%20boys.jpeg" />
+<img width="800" alt="The Boys Finale Banner" src="./the%20boys.jpeg" />
 
 Finally, the long, crazy, and blood-filled journey of *The Boys* over the past 7 years has reached its peak. Considering today was quite exhausting both physically and mentally, I was hoping this final episode would be a comforting cure. Unfortunately (because my diary server is currently down), I'll be sharing my raw review right here.
 

@@ -1,6 +1,6 @@
 <!-- title: Review Mortal Kombat 2 (2026) — Fatality Maksimal, Cerita Minimal -->
 <!-- excerpt: Review jujur tentang film Mortal Kombat 2. Penuh dengan fatality epik dan nuansa nostalgia dari gamenya, meski dari sisi cerita masih terasa sedikit kurang. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-mortal-kombat-2-2026/mortal-kombat-2.png -->
+<!-- image: ./mortal-kombat-2.png -->
 <!-- date: 2026-05-23 -->
 <!-- posting_date: 2026-05-23 -->
 <!-- tags: Review Film, Mortal Kombat 2, Action, Nostalgia, Game Adaptation -->
@@ -8,7 +8,7 @@
 # 🐉 Review Mortal Kombat 2 (2026)  
 ## Fatality Maksimal, Cerita Minimal
 
-<img width="800" alt="Mortal Kombat 2 Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-mortal-kombat-2-2026/mortal-kombat-2.png" />
+<img width="800" alt="Mortal Kombat 2 Banner" src="./mortal-kombat-2.png" />
 
 Setelah penantian panjang dan rasa sedikit kurang puas dengan film pertamanya, **Mortal Kombat 2** akhirnya rilis. Sebagai seseorang yang setidaknya pernah memainkan gamenya—meski tidak terlalu *hardcore*—aku punya ekspektasi tersendiri.
 

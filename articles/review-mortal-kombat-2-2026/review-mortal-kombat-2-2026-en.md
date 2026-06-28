@@ -1,6 +1,6 @@
 <!-- title: Mortal Kombat 2 (2026) Review — Maximum Fatality, Minimal Story -->
 <!-- excerpt: An honest review of Mortal Kombat 2. Packed with epic fatalities and nostalgic vibes from the game, even if the story side feels a bit lacking. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-mortal-kombat-2-2026/mortal-kombat-2.png -->
+<!-- image: ./mortal-kombat-2.png -->
 <!-- date: 2026-05-23 -->
 <!-- posting_date: 2026-05-23 -->
 <!-- tags: Movie Review, Mortal Kombat 2, Action, Nostalgia, Game Adaptation -->
@@ -8,7 +8,7 @@
 # 🐉 Mortal Kombat 2 (2026) Review  
 ## Maximum Fatality, Minimal Story
 
-<img width="800" alt="Mortal Kombat 2 Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-mortal-kombat-2-2026/mortal-kombat-2.png" />
+<img width="800" alt="Mortal Kombat 2 Banner" src="./mortal-kombat-2.png" />
 
 After a long wait and feeling slightly unsatisfied with the first movie, **Mortal Kombat 2** is finally out. As someone who has at least played the game—though not too hardcore—I had my own expectations.
 

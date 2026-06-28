@@ -1,6 +1,6 @@
 <!-- title: Menjebol Tembok Database Terisolasi: Membangun Jembatan Webhook dengan n8n -->
 <!-- excerpt: Bagaimana cara sebuah aplikasi web berkomunikasi dengan database yang aksesnya dikunci rapat dan hanya boleh diakses oleh n8n? Jawabannya: Webhook. Sebuah refleksi tentang membangun arsitektur yang sedikit rumit di awal, namun sangat worth it. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/n8n-webhook-bridge/n8n-webhook-bridge-banner.png -->
+<!-- image: ./n8n-webhook-bridge-banner.png -->
 <!-- date: 2026-06-04 -->
 <!-- posting_date: 2026-06-04 -->
 <!-- tags: n8n, Webhook, Database, Architecture, Frontend, API -->
@@ -8,7 +8,7 @@
 # 🌉 Menjebol Tembok Database Terisolasi
 ## Membangun Jembatan Webhook dengan n8n
 
-<img width="800" alt="n8n Webhook Bridge Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/n8n-webhook-bridge/n8n-webhook-bridge-banner.png" />
+<img width="800" alt="n8n Webhook Bridge Banner" src="./n8n-webhook-bridge-banner.png" />
 
 Beberapa waktu lalu, aku berhadapan dengan sebuah kasus arsitektur yang cukup menarik—dan sejujurnya, sedikit bikin pusing pada awalnya.
 

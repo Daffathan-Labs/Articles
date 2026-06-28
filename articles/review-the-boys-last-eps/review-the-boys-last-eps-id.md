@@ -1,6 +1,6 @@
 <!-- title: Review The Boys Series Finale — Akhir Era Sang King Meme, Namun Terasa Terburu-buru -->
 <!-- excerpt: Review episode terakhir dari The Boys. Sebuah klimaks yang membawa kita pada akhir kisah Butcher dan Homelander. Keren, epik, namun ada beberapa hal yang terasa terlalu singkat. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-boys-last-eps/the%20boys.jpeg -->
+<!-- image: ./the%20boys.jpeg -->
 <!-- date: 2026-05-23 -->
 <!-- posting_date: 2026-05-23 -->
 <!-- tags: Review Series, The Boys, Finale, Homelander, Butcher, Antony Starr -->
@@ -8,7 +8,7 @@
 # 🦸‍♂️ Review The Boys Series Finale  
 ## Akhir Era Sang King Meme, Namun Terasa Terburu-buru
 
-<img width="800" alt="The Boys Finale Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-boys-last-eps/the%20boys.jpeg" />
+<img width="800" alt="The Boys Finale Banner" src="./the%20boys.jpeg" />
 
 Akhirnya, perjalanan panjang, gila, dan penuh darah dari serial *The Boys* selama 7 tahun mencapai puncaknya. Mengingat hari ini cukup melelahkan secara fisik maupun mental, aku berharap episode terakhir ini bisa jadi pelipur lara. Sayangnya (karena server *diary*-ku lagi *error*), aku akan membagikan ulasanku di sini apa adanya.
 

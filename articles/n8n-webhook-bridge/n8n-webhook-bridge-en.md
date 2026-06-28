@@ -1,6 +1,6 @@
 <!-- title: Breaching the Isolated Database: Building a Webhook Bridge with n8n -->
 <!-- excerpt: How does a web app communicate with a database whose access is tightly locked down and only accessible by n8n? The answer: Webhooks. A reflection on building an architecture that is slightly complex upfront, but incredibly worth it. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/n8n-webhook-bridge/n8n-webhook-bridge-banner.png -->
+<!-- image: ./n8n-webhook-bridge-banner.png -->
 <!-- date: 2026-06-04 -->
 <!-- posting_date: 2026-06-04 -->
 <!-- tags: n8n, Webhook, Database, Architecture, Frontend, API -->
@@ -8,7 +8,7 @@
 # 🌉 Breaching the Isolated Database
 ## Building a Webhook Bridge with n8n
 
-<img width="800" alt="n8n Webhook Bridge Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/n8n-webhook-bridge/n8n-webhook-bridge-banner.png" />
+<img width="800" alt="n8n Webhook Bridge Banner" src="./n8n-webhook-bridge-banner.png" />
 
 A while ago, I was faced with a rather interesting architectural case—and to be honest, a bit of a headache at first.
 
