@@ -1,13 +1,13 @@
 <!-- title: Igniting the Curiosity of Future Developers! 🚀 -->
 <!-- excerpt: An exciting experience being an interviewee for UNPAM students discussing Web Security, complete with a funny fiber optic cable incident in Depok. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/jadi-narasumber-interview/dummy.png -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/jadi-narasumber-interview/images.jpeg -->
 <!-- date: 2026-06-30 -->
 <!-- posting_date: 2026-06-30 -->
 <!-- tags: Software Engineering, Web Security, Mentorship, Tech Community, Universitas Pamulang, Universitas Pancasila -->
 
 # 🚀 Igniting the Curiosity of Future Developers!
 
-<img width="800" alt="Interview Session Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/jadi-narasumber-interview/dummy.png" />
+<img width="800" alt="Interview Session Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/jadi-narasumber-interview/images.jpeg" />
 
 Recently, I had the opportunity to be a guest speaker and interviewee for an in-depth sharing session with the batch '22 students from [Universitas Pamulang](https://www.linkedin.com/school/universitas-pamulang/). This session happened thanks to a referral from my colleague, [Ziddan Arya Nugraha](https://www.linkedin.com/in/aryaziddan/), who entrusted me with this exploration task.
 

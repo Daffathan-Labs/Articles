@@ -1,13 +1,13 @@
 <!-- title: Menyalakan Rasa Ingin Tahu Developer Masa Depan! 🚀 -->
 <!-- excerpt: Pengalaman seru menjadi narasumber interview untuk mahasiswa UNPAM seputar Web Security, lengkap dengan kejadian unik putus kabel fiber optik di Depok. -->
-<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/jadi-narasumber-interview/dummy.png -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/jadi-narasumber-interview/images.jpeg -->
 <!-- date: 2026-06-30 -->
 <!-- posting_date: 2026-06-30 -->
 <!-- tags: Software Engineering, Web Security, Mentorship, Tech Community, Universitas Pamulang, Universitas Pancasila -->
 
 # 🚀 Menyalakan Rasa Ingin Tahu Developer Masa Depan!
 
-<img width="800" alt="Interview Session Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/jadi-narasumber-interview/dummy.png" />
+<img width="800" alt="Interview Session Banner" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/jadi-narasumber-interview/images.jpeg" />
 
 Baru-baru ini aku berkesempatan menjadi narasumber dalam sesi *sharing* dan *interview* mendalam bersama teman-teman mahasiswa Angkatan '22 dari [Universitas Pamulang](https://www.linkedin.com/school/universitas-pamulang/). Sesi ini bisa berjalan berkat referensi dari rekanku, [Ziddan Arya Nugraha](https://www.linkedin.com/in/aryaziddan/), yang mempercayakan tugas eksplorasi ini kepadaku.
 
