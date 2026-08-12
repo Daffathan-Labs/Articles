@@ -349,25 +349,13 @@ N('Gemini gambar', '@n8n/n8n-nodes-langchain.googleGemini', 1, [1480, 460], {
   waitBetweenTries: 5000,
   onError: 'continueRegularOutput',
 });
-// Artikel yang punya foto sendiri melewati generasi gambar sama sekali. Bukan
-// penghematan kosmetik: 45 dari 46 artikel punya gambar, dan model gambar TIDAK BISA
-// menggambar subjeknya (karakter berhak cipta, wajah orang nyata) — jadi lima gambar
-// yang digenerate untuk artikel bergambar selalu kalah nyambung dibanding foto
-// artikelnya sendiri, sambil tetap membakar kuota. Kuota itu yang habis 2026-08-13
-// dan membuat seluruh carousel terbit tanpa satu pun latar.
-N('Perlu gambar Gemini?', 'n8n-nodes-base.if', 2.2, [1480, 300], {
-  // Diperbandingkan sebagai ANGKA, bukan boolean, supaya bentuknya persis sama dengan
-  // `Ada artikel baru?` yang sudah terbukti jalan di instance ini. `cover` bisa berupa
-  // null, dan typeValidation:'strict' rewel terhadap null di operator string.
-  conditions: kondisi(
-    "={{ $('Siapkan brief').first().json.cover ? 1 : 0 }}",
-    { type: 'number', operation: 'equals' },
-    0
-  ),
-  options: {},
-});
-hubung('Pecah slide', 'Perlu gambar Gemini?');
-hubung('Perlu gambar Gemini?', 'Gemini gambar', 0);
+// Gambar digenerate untuk SEMUA slide, termasuk artikel yang punya foto sendiri.
+// Sempat ada gerbang yang melewati cabang ini kalau cover ada — hemat kuota, tapi
+// hasilnya satu foto yang sama di kelima slide, dan seberapa pun cropnya digeser itu
+// terbaca sebagai satu gambar diulang lima kali. Slide 2+ punya teksnya sendiri, jadi
+// gambarnya juga harus dibuat dari teks itu. Foto artikel tetap dipakai di slide 1 dan
+// jadi jaring pengaman slide 2+ di `Rakit slide`.
+hubung('Pecah slide', 'Gemini gambar');
 
 // PNG mentah dari Gemini ~2 MB/slide; base64 lima slide menembus batas body 8 MB
 // render-svc dan gagal 413. Konversi ke JPEG di sini yang mencegahnya.
@@ -388,10 +376,6 @@ N('Rakit slide', 'n8n-nodes-base.code', 2, [1920, 460], {
   jsCode: baca('rakit-slide.js').replace('{{LOGO}}', dataUri('icons/icon-192.png', 'image/png')),
 });
 hubung('Jadi JPEG', 'Rakit slide');
-// Cabang "punya foto": langsung ke Rakit slide, melompati Gemini gambar dan Jadi JPEG.
-// `rakit-slide.js` menjaga dirinya dengan $('Jadi JPEG').isExecuted — tanpa itu
-// ekspresinya melempar "Referenced node is unexecuted" dan carousel-nya mati total.
-hubung('Perlu gambar Gemini?', 'Rakit slide', 1);
 
 N('Render', 'n8n-nodes-base.httpRequest', 4.2, [2140, 460], http({
   method: 'POST',

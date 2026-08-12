@@ -13,10 +13,7 @@ const ronde = $runIndex;
 const brief = $('Siapkan brief').first().json;
 const copy = $('Gemini copy').first().json.output;
 const meta = $('Pecah slide').all().map((i) => i.json);
-// Artikel yang punya foto sendiri melewati `Gemini gambar` sama sekali — cabang itu
-// tidak dieksekusi, jadi node-nya harus ditanya dulu sebelum dibaca. Tanpa penjaga
-// ini ekspresinya melempar "Referenced node is unexecuted" dan seluruh carousel mati.
-const jpeg = $('Jadi JPEG').isExecuted ? $('Jadi JPEG').all() : [];
+const jpeg = $('Jadi JPEG').all();
 
 if (jpeg.length && jpeg.length !== meta.length) {
   throw new Error(
@@ -45,31 +42,31 @@ const coverB64 = (unduhan && unduhan.binary && unduhan.binary.data && unduhan.bi
 // dan menuliskannya sebagai image/jpeg bikin Chromium menolak merender gambarnya.
 const coverMime = (unduhan && unduhan.binary && unduhan.binary.data && unduhan.binary.data.mimeType) || 'image/jpeg';
 
-// Foto artikel dipakai di SEMUA slide, bukan cuma slide 1.
+// Slide 1 memakai foto artikel; slide 2+ memakai gambar Gemini-nya masing-masing.
 //
-// Alasannya bukan kerapian: model gambar menolak menggambar karakter berhak cipta dan
-// wajah orang nyata, jadi "Spider-Man" atau "Sadie Sink" tidak akan pernah keluar dari
-// Gemini. Satu-satunya foto yang benar-benar menampilkan subjek artikel adalah foto
-// artikel itu sendiri. Lima gambar abstrak yang tidak menyinggung subjeknya kalah
-// nyambung dibanding satu foto asli yang dipotong lima cara.
+// Foto artikel adalah satu-satunya gambar yang benar-benar menampilkan subjeknya —
+// model gambar menolak menggambar karakter berhak cipta dan wajah orang nyata, jadi
+// "Spider-Man" atau "Sadie Sink" tidak akan pernah keluar dari Gemini. Tapi memasang
+// foto yang sama di kelima slide membuat carousel-nya terbaca sebagai satu gambar
+// diulang lima kali, seberapa pun cropnya digeser. Slide 2+ punya teks sendiri, jadi
+// gambarnya dibuat dari teks itu.
 //
-// Konsekuensi yang disengaja: artikel bergambar tidak memanggil Gemini gambar sama
-// sekali — 45 dari 46 artikel punya gambar, jadi kuota gambar praktis berhenti terpakai.
-// Diturunkan dari `meta`, BUKAN dari `bg`: cabang "punya cover" melewati Gemini, jadi
-// `bg` kosong di situ dan memetakannya menghasilkan nol latar untuk semua slide.
+// Cover tetap jadi jaring pengaman slide 2+: begitu Gemini gagal (kuota habis, seperti
+// 2026-08-13) slide itu jatuh ke foto artikel dengan crop berbeda, bukan jadi lubang.
+const pakaiCover = meta.map((_, i) => !!coverB64 && (i === 0 || !bg[i]));
 const latar = meta.map((_, i) =>
-  coverB64
+  pakaiCover[i]
     ? `data:${coverMime};base64,${coverB64}`
     : bg[i] ? `data:image/jpeg;base64,${bg[i]}` : null
 );
 
 /**
- * Titik potong per slide. Satu foto yang sama akan terlihat seperti satu gambar
- * diulang lima kali kalau dipasang identik; menggeser fokus dan sedikit zoom bikin
- * kelimanya terbaca sebagai satu seri, bukan pengulangan.
+ * Titik potong per slide, dipakai HANYA untuk slide yang memakai foto artikel.
+ * Foto yang sama dipasang identik terbaca sebagai pengulangan; menggeser fokus dan
+ * sedikit zoom bikin slide 1 dan slide yang jatuh ke cadangan tetap terlihat beda.
  *
- * Cuma dipakai kalau fotonya memang satu dan sama. Raster Gemini sudah berbeda-beda
- * per slide, jadi menggesernya malah membuang bagian yang sengaja dikomposisikan.
+ * Raster Gemini tidak digeser: tiap slide sudah punya gambarnya sendiri, dan
+ * menggesernya malah membuang bagian yang sengaja dikomposisikan di tengah frame.
  */
 const CROP = [
   { pos: '50% 30%', zoom: 1 },
@@ -78,7 +75,7 @@ const CROP = [
   { pos: '50% 72%', zoom: 1.06 },
   { pos: '50% 50%', zoom: 1.18 },
 ];
-const potong = (i) => (coverB64 ? CROP[i % CROP.length] : { pos: '50% 50%', zoom: 1 });
+const potong = (i) => (pakaiCover[i] ? CROP[i % CROP.length] : { pos: '50% 50%', zoom: 1 });
 
 // Ronde 0 pakai ukuran penuh; tiap ronde berikutnya mengecil sampai lantai 70%.
 // Digabung dengan pemangkasan kata di bawah, ronde 8 praktis mustahil meluber.

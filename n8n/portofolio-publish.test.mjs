@@ -339,9 +339,6 @@ function rakit({
   hashtags = ["#a"],
   accent = "#1B4FA8",
   layout = "blok-bawah",
-  // Artikel yang punya cover melewati cabang Gemini gambar sama sekali, jadi
-  // `Jadi JPEG` tidak pernah dieksekusi di jalur itu.
-  jpegJalan = true,
   // null = artikel tanpa gambar, atau unduhan cover yang gagal. Dua-duanya jalur
   // yang sama dari sisi Rakit slide.
   cover = null,
@@ -378,15 +375,16 @@ function rakit({
       : { json: {} },
   };
   const $ = (n) => ({
-    // Artikel bergambar melewati `Gemini gambar`, jadi `Jadi JPEG` tidak dieksekusi.
-    // Bendera ini yang dibaca rakit-slide.js sebelum berani membacanya.
-    isExecuted: n === "Jadi JPEG" ? jpegJalan : true,
+    isExecuted: true,
     first: () => palsu[n],
     all: () =>
       n === "Pecah slide"
         ? Array.from({ length: 5 }, () => ({ json: slide }))
-        : Array.from({ length: 5 }, (_, i) => ({
-            binary: i < gambar ? { data: { data: "QUJD" } } : undefined,
+        : // Raster diberi nomor per slide. Kalau semuanya string yang sama, test tidak
+          // bisa membedakan "tiap slide punya gambarnya sendiri" dari "satu gambar
+          // dipasang lima kali" — dan itu persis keluhan yang memicu perubahan ini.
+          Array.from({ length: 5 }, (_, i) => ({
+            binary: i < gambar ? { data: { data: `QUJD${i}` } } : undefined,
           })),
   });
   const fn = new Function("$runIndex", "$", byName["Rakit slide"].parameters.jsCode);
@@ -433,28 +431,48 @@ test("logo hexagon tertanam di tiap slide", () => {
 // -- gambar artikel: satu identitas untuk website, LinkedIn, dan slide 1 ----------
 const COVER = { b64: "Q09WRVI=", mime: "image/webp" };
 
-test("punya cover: foto artikel dipakai KELIMA slide, dengan crop berbeda", () => {
-  // Model gambar menolak menggambar karakter berhak cipta dan wajah orang nyata, jadi
-  // "Spider-Man" atau "Sadie Sink" tidak akan pernah keluar dari Gemini. Satu-satunya
-  // foto yang benar-benar menampilkan subjek artikel adalah foto artikel itu sendiri.
-  const { slides } = rakit({ cover: COVER, jpegJalan: false });
-  const posisi = [];
-  for (const [i, s] of slides.entries()) {
-    // mimeType dibaca dari unduhan, bukan diasumsikan jpeg: API menyajikan WebP, dan
-    // menuliskannya sebagai image/jpeg bikin Chromium menolak merendernya.
-    assert.match(s, /src="data:image\/webp;base64,Q09WRVI="/, `slide ${i + 1} bukan cover`);
-    assert.ok(!s.includes("QUJD"), `slide ${i + 1}: raster Gemini ikut terpakai`);
-    posisi.push(s.match(/object-position:([^;]+);/)[1]);
+test("punya cover: slide 1 foto artikel, slide 2+ gambarnya masing-masing", () => {
+  // Foto artikel adalah satu-satunya gambar yang benar-benar menampilkan subjeknya —
+  // model gambar menolak karakter berhak cipta dan wajah orang nyata. Tapi dipasang di
+  // kelima slide, hasilnya terbaca sebagai satu gambar diulang lima kali, dan itu yang
+  // dikeluhkan. Slide 2+ punya teks sendiri, jadi gambarnya juga sendiri.
+  const { slides } = rakit({ cover: COVER });
+
+  // mimeType dibaca dari unduhan, bukan diasumsikan jpeg: API menyajikan WebP, dan
+  // menuliskannya sebagai image/jpeg bikin Chromium menolak merendernya.
+  assert.match(slides[0], /src="data:image\/webp;base64,Q09WRVI="/, "slide 1 bukan cover");
+
+  const sisa = [];
+  for (const i of [1, 2, 3, 4]) {
+    assert.ok(!slides[i].includes("Q09WRVI="), `slide ${i + 1} masih memakai cover`);
+    // Diambil dari <img class="bg">, bukan base64 pertama yang ketemu: tiap slide juga
+    // membawa logo sebagai data URI, dan itu memang sama di kelimanya.
+    sisa.push(slides[i].match(/<img class="bg"[^>]*src="([^"]+)"/)[1]);
   }
-  // Foto yang sama dipasang identik lima kali terbaca sebagai pengulangan, bukan seri.
-  assert.equal(new Set(posisi).size, 5, `crop tidak berbeda: ${posisi.join(" | ")}`);
+  assert.equal(new Set(sisa).size, 4, `slide 2-5 memakai gambar yang sama: ${sisa.join(" | ")}`);
 });
 
-test("tanpa cover: raster Gemini TIDAK ikut digeser", () => {
-  // Raster Gemini sudah berbeda-beda per slide dan sudah dikomposisikan; menggesernya
+test("raster Gemini TIDAK ikut digeser", () => {
+  // Tiap slide sudah punya gambarnya sendiri dan sudah dikomposisikan; menggesernya
   // malah membuang bagian yang sengaja ditempatkan di tengah frame.
-  const posisi = rakit().slides.map((s) => s.match(/object-position:([^;]+);/)[1]);
-  assert.equal(new Set(posisi).size, 1, "raster Gemini ikut di-crop berbeda");
+  for (const opsi of [{}, { cover: COVER }]) {
+    const posisi = rakit(opsi).slides.slice(1).map((s) => s.match(/object-position:([^;]+);/)[1]);
+    assert.equal(new Set(posisi).size, 1, "raster Gemini ikut di-crop berbeda");
+  }
+});
+
+test("cover jadi jaring pengaman saat semua gambar Gemini gagal", () => {
+  // Ini yang terjadi 2026-08-13: kuota gambar habis, kelima panggilan dibalas error,
+  // dan carousel terbit tanpa satu pun latar. Sekarang jatuhnya ke foto artikel —
+  // dengan crop berbeda, supaya tetap terbaca seri dan bukan satu gambar diulang.
+  const { slides, gambar_gagal } = rakit({ cover: COVER, gambar: 0 });
+  assert.equal(gambar_gagal, 5);
+  const posisi = [];
+  for (const [i, s] of slides.entries()) {
+    assert.match(s, /base64,Q09WRVI="/, `slide ${i + 1} kosong padahal cover ada`);
+    posisi.push(s.match(/object-position:([^;]+);/)[1]);
+  }
+  assert.equal(new Set(posisi).size, 5, `crop tidak berbeda: ${posisi.join(" | ")}`);
 });
 
 test("punya cover: tidak ada hero yang digenerate", () => {
@@ -464,10 +482,10 @@ test("punya cover: tidak ada hero yang digenerate", () => {
 
 test("tanpa cover: slide 1 dari Gemini, dan hero dibuat", () => {
   const { slides, hero } = rakit();
-  assert.match(slides[0], /src="data:image\/jpeg;base64,QUJD"/);
+  assert.match(slides[0], /src="data:image\/jpeg;base64,QUJD0"/);
   assert.ok(hero, "hero tidak dibuat padahal artikel tidak punya gambar");
   assert.match(hero, /width:1200px;height:630px/, "hero bukan lanskap 1200x630");
-  assert.match(hero, /src="data:image\/jpeg;base64,QUJD"/, "hero tidak memakai raster slide 1");
+  assert.match(hero, /src="data:image\/jpeg;base64,QUJD0"/, "hero tidak memakai raster slide 1");
 });
 
 test("hero adalah foto polos — nol teks, nol logo, nol veil", () => {
@@ -1442,29 +1460,25 @@ test("chip kategori diambil dari tag artikel, bukan dikarang model", () => {
   assert.match(rakit().slides[4], /<span class="kicker">Baca selengkapnya<\/span>/);
 });
 
-test("artikel bergambar melewati Gemini gambar sepenuhnya", () => {
-  // 45 dari 46 artikel punya gambar, dan model gambar tidak bisa menggambar subjeknya
-  // (karakter berhak cipta, wajah orang nyata). Jadi lima gambar yang digenerate untuk
-  // artikel bergambar selalu kalah nyambung dibanding foto artikelnya sendiri, sambil
-  // tetap membakar kuota — kuota yang habis 2026-08-13 dan bikin seluruh carousel
-  // terbit tanpa satu pun latar.
-  const gerbang = byName["Perlu gambar Gemini?"];
-  assert.ok(gerbang, "gerbang tidak ada");
-  assert.match(
-    gerbang.parameters.conditions.conditions[0].leftValue,
-    /Siapkan brief'\)\.first\(\)\.json\.cover/,
-    "gerbang tidak melihat cover"
+test("tiap slide selalu lewat Gemini gambar, tanpa gerbang yang melompatinya", () => {
+  // Pernah ada gerbang yang melewati cabang ini kalau artikel punya cover. Hemat kuota,
+  // tapi hasilnya foto yang sama di kelima slide. Gerbang itu yang tidak boleh balik.
+  assert.equal(byName["Perlu gambar Gemini?"], undefined, "gerbang lama hidup lagi");
+  assert.deepEqual(
+    wf.connections["Pecah slide"].main[0].map((c) => c.node),
+    ["Gemini gambar"],
+    "Pecah slide tidak langsung ke Gemini gambar"
+  );
+  assert.deepEqual(
+    wf.connections["Jadi JPEG"].main[0].map((c) => c.node),
+    ["Rakit slide"],
+    "raster tidak sampai ke Rakit slide"
   );
 
-  const keluar = (idx) =>
-    (wf.connections["Perlu gambar Gemini?"].main[idx] ?? []).map((c) => c.node);
-  assert.deepEqual(keluar(0), ["Gemini gambar"], "cabang 'perlu' salah tujuan");
-  assert.deepEqual(keluar(1), ["Rakit slide"], "cabang 'punya foto' tidak melompat ke Rakit slide");
-
-  // Melompati Jadi JPEG berarti node itu tidak dieksekusi. Membacanya tanpa penjaga
-  // melempar "Referenced node is unexecuted" dan mematikan seluruh carousel.
-  const kode = byName["Rakit slide"].parameters.jsCode;
-  assert.match(kode, /\$\('Jadi JPEG'\)\.isExecuted/, "Jadi JPEG dibaca tanpa penjaga");
+  // Prompt slide 2+ harus meminta adegan yang BERBEDA. Tanpa ini, "same visual series"
+  // saja menghasilkan lima frame yang nyaris identik — keluhan yang memulai ini.
+  const pecah = byName["Pecah slide"].parameters.jsCode;
+  assert.match(pecah, /clearly different scene/, "slide 2+ tidak diminta beda adegan");
 });
 
 test("cover relatif dari API diberi prefiks, bukan diteruskan mentah", () => {
@@ -1503,7 +1517,9 @@ test("apa pun yang di-scale harus dipotong pembungkusnya", () => {
   // 422 "overflow" di SETIAP artikel — dan loop penyusutan tidak pernah menyembuhkannya
   // karena penyebabnya bukan teks. Ketahuan cuma dengan benar-benar merender.
   for (const layout of LAYOUT) {
-    const s = rakit({ cover: COVER, jpegJalan: false, layout }).slides[1];
+    // Semua gambar Gemini gagal + cover ada = kelima slide jatuh ke foto artikel,
+    // dan slide 2 dapat zoom 1.12. Itu kombinasi yang memicu 422-nya.
+    const s = rakit({ cover: COVER, gambar: 0, layout }).slides[1];
     const css = gaya(s);
     assert.match(s, /transform:scale\(/, "zoom hilang — variasi crop ikut mati");
     assert.match(s, /<div class="fotolayer"><img class="bg"/, `${layout}: foto tanpa pembungkus`);

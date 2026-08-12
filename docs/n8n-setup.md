@@ -309,22 +309,35 @@ yang kurang:
 Sekarang foto tampil `opacity: 1` dan tidak ada lapisan yang menutup sekanvas selain
 `.redup` `.22`. Kontras dijaga **lokal** — hanya di belakang teks.
 
-### Fotonya foto artikel itu sendiri, di kelima slide
+### Slide 1 foto artikel, slide 2+ gambarnya masing-masing
 
 Model gambar **menolak menggambar karakter berhak cipta dan wajah orang nyata**, jadi
 "Spider-Man" atau "Sadie Sink sebagai Jean Grey" tidak akan pernah keluar dari Gemini.
-Satu-satunya foto yang benar-benar menampilkan subjek artikel adalah foto artikelnya.
-Jadi foto itu dipakai di **kelima** slide, dengan **titik potong berbeda** per slide —
-foto yang sama dipasang identik lima kali terbaca sebagai pengulangan, bukan seri.
+Satu-satunya foto yang benar-benar menampilkan subjek artikel adalah foto artikelnya —
+jadi foto itu memegang **slide 1**.
 
-Konsekuensinya disengaja: **artikel bergambar tidak memanggil `Gemini gambar` sama
-sekali.** Gerbang `Perlu gambar Gemini?` melompatkannya langsung ke `Rakit slide`.
-45 dari 46 artikel punya gambar, jadi kuota gambar praktis berhenti terpakai — kuota itu
-yang habis 2026-08-13 dan bikin seluruh carousel terbit tanpa satu pun latar.
+Sempat dipakai di **kelima** slide dengan titik potong berbeda, dan hasilnya ditolak:
+foto yang sama tetap terbaca sebagai satu gambar diulang lima kali, seberapa pun
+cropnya digeser. Slide 2+ punya teksnya sendiri, jadi gambarnya juga dibuat dari teks
+itu lewat `Gemini gambar`.
 
-Melompati `Jadi JPEG` berarti node itu tidak dieksekusi, jadi `rakit-slide.js` menjaga
-dirinya dengan `$('Jadi JPEG').isExecuted`. Tanpa penjaga itu ekspresinya melempar
-*"Referenced node is unexecuted"* dan carousel-nya mati total.
+Yang mengikat kelimanya jadi satu seri ada di `pecah-slide.js`: slide 2+ diminta
+memakai **cahaya dan warna yang sama** tapi **adegan, subjek, dan sudut kamera yang
+jelas berbeda**. Baris itu dulu mengunci `same location` juga — dan itu yang membuat
+lima frame keluar nyaris identik.
+
+Titik potong (`CROP`) sekarang cuma berlaku untuk slide yang memakai foto artikel:
+slide 1, dan slide mana pun yang gambar Gemini-nya gagal. Raster Gemini tidak digeser,
+karena tiap frame sudah dikomposisikan.
+
+**Kalau semua gambar Gemini gagal** (kuota habis, seperti 2026-08-13), kelima slide
+jatuh ke foto artikel dengan crop berbeda — bukan kanvas kosong. Artikel tanpa foto
+**dan** tanpa gambar Gemini baru jatuh ke kartu warna aksen.
+
+> Konsekuensi kuota: tiap artikel memanggil `Gemini gambar` 5x lagi, dan gambar slide 1
+> tidak terpakai kalau artikelnya punya cover. Menyaringnya butuh node Filter plus
+> aritmetika offset indeks antara `Pecah slide` dan `Jadi JPEG` — hemat 20% dengan
+> risiko pasangan indeks meleset. Belum sepadan.
 
 > **Bug yang ini menutup:** API mengembalikan `image` sebagai path **relatif**
 > (`/uploads/articles/<md5>.webp`). Diteruskan apa adanya, `Ambil cover` menolaknya

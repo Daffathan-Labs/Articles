@@ -48,11 +48,14 @@ const CADANGAN = {
 return slides.map((s, i) => {
   const mode = CADANGAN[s.image_mode] ? s.image_mode : 'konseptual';
   const inti = String(s.image_prompt || '').trim() || CADANGAN[mode];
-  // Slide 2+ diikat ke slide pertama supaya carousel-nya terbaca satu seri,
-  // bukan lima gambar acak yang kebetulan bersebelahan.
+  // Slide 2+ diikat ke seri yang sama supaya carousel-nya tidak terbaca sebagai lima
+  // gambar acak yang kebetulan bersebelahan. Yang diikat cuma cahaya dan warnanya —
+  // dulu baris ini juga mengunci "same location", dan hasilnya lima frame yang nyaris
+  // sama persis. Tiap slide punya teksnya sendiri, jadi adegannya harus ikut berbeda.
   const lanjutan = i === 0
     ? ''
-    : ' Same visual series, same location and lighting as the first image in this set.';
+    : ' Same visual series, same lighting and colour treatment as the other images in ' +
+      'this set, but a clearly different scene, subject and camera angle.';
 
   return {
     json: {
