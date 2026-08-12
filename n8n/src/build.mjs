@@ -336,14 +336,21 @@ hubung('Gemini copy', 'Pecah slide');
 
 N('Gemini gambar', '@n8n/n8n-nodes-langchain.googleGemini', 1, [1480, 460], {
   resource: 'image',
-  modelId: { __rl: true, value: 'models/gemini-3-pro-image-preview', mode: 'id' },
+  // gemini-3-pro-image-preview membalas "The service is receiving too many requests
+  // from you" untuk KELIMA slide, berhari-hari berturut-turut — kuota preview-nya
+  // memang kecil. Kuota di Gemini dihitung per model, jadi pindah model adalah
+  // perbaikan satu baris; `-image` yang stabil punya jatah jauh lebih besar.
+  modelId: { __rl: true, value: 'models/gemini-2.5-flash-image', mode: 'id' },
   prompt: '={{ $json.image_prompt }}',
   options: {},
 }, {
   credentials: GEMINI_CRED,
-  // 5 adalah maksimum maxTries n8n. Slide yang tetap gagal setelah itu tidak
-  // menahan pipeline: `Rakit slide` meminjam latar tetangga, dan kalau nol gambar
-  // pun slide-nya tetap terbit dengan latar polos.
+  // onError:continueRegularOutput menangkap kegagalan PER ITEM — node-nya sendiri tidak
+  // pernah dianggap gagal, jadi retryOnFail praktis tidak pernah kepakai di sini. Itu
+  // terbukti di eksekusi 4212: kelima item membawa `{"error": "…too many requests…"}`
+  // sementara node-nya tercatat 1 run tanpa error. Dibiarkan karena menghapus onError
+  // berarti satu gambar gagal mematikan seluruh carousel; yang tidak boleh adalah
+  // mengira retry ini yang menjaga kuota.
   retryOnFail: true,
   maxTries: 5,
   waitBetweenTries: 5000,

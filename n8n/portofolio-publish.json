@@ -420,7 +420,7 @@
         "resource": "image",
         "modelId": {
           "__rl": true,
-          "value": "models/gemini-3-pro-image-preview",
+          "value": "models/gemini-2.5-flash-image",
           "mode": "id"
         },
         "prompt": "={{ $json.image_prompt }}",
