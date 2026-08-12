@@ -348,10 +348,29 @@ bulan penuh untuk menyadarinya.
 
 1. n8n → **Settings → n8n API → Create an API key**. Salin kuncinya.
 2. Buka workflow publish di n8n, ambil ID-nya dari URL: `/workflow/<id>`
-3. Import **`n8n/refresh-ig-token.local.json`**
+3. **Overview → Create Workflow** dulu, baru **Import from File** di halaman kosong itu →
+   `n8n/refresh-ig-token.local.json`
 4. Buka node `Kredensial` di workflow baru itu, isi `n8n_api_key` dan `workflow_id`
 5. **Aktifkan** workflow-nya (toggle Active) — Schedule Trigger tidak jalan kalau tidak aktif
 6. Klik **Execute workflow** sekali untuk membuktikannya jalan, jangan tunggu tanggal 1
+
+> ⚠️ **Jangan import saat workflow publish sedang terbuka.** "Import from File" itu
+> menempel ke kanvas yang sedang aktif, bukan membuat workflow baru. Kalau tertimpa,
+> gejalanya: satu workflow berisi 49 node, nama workflow ikut ketimpa jadi nama file
+> yang di-import, dan node `Kredensial` bawaan refresh berubah nama jadi `Kredensial1`
+> karena bentrok. Yang berbahaya adalah yang terakhir — semua node refresh memanggil
+> `$('Kredensial')`, dan setelah ditabrak namanya, panggilan itu nyasar ke `Kredensial`
+> milik workflow publish yang tidak punya `n8n_api_key`. Tidak ada error saat import;
+> baru ketahuan saat jadwalnya jalan.
+>
+> Kalau terlanjur: hapus 9 node refresh (`Tiap bulan`, `Kredensial1`, `Ambil workflow`,
+> `Ambil token lama`, `Refresh token`, `Susun workflow baru`, `Simpan workflow`,
+> `Cek token`, `Lapor token`), kembalikan nama workflow ke `Portofolio Publish`, lalu
+> ulangi dari langkah 3.
+
+Diverifikasi 2026-08-12 langsung ke instance produksi: rantai lengkap GET → refresh →
+PUT jalan, 40 node sebelum dan sesudah, satu-satunya node yang berubah `Kredensial`,
+workflow tetap aktif, dan token ter-refresh sampai **2026-10-11**.
 
 Kunci API n8n bisa mengubah **semua** workflow di instance-mu — perlakukan seperti
 password, dan jangan pernah menaruhnya di berkas yang ter-commit. `refresh-ig-token.json`
