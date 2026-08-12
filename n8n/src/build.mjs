@@ -262,6 +262,28 @@ N('Ambil cover', 'n8n-nodes-base.httpRequest', 4.2, [1040, 240], {
 }, { onError: 'continueRegularOutput' });
 hubung('Siapkan brief', 'Ambil cover');
 
+// Instance ini menyimpan binary di FILESYSTEM (N8N_DEFAULT_BINARY_DATA_MODE=filesystem),
+// jadi `binary.data.data` berisi string literal "filesystem-v2" — bukan base64. Berkas
+// aslinya ada di disk, ditunjuk `binary.data.id`. Dipasang apa adanya ke
+// <img src="data:image/webp;base64,…">, yang keluar adalah ikon gambar rusak, dan itu
+// yang terjadi di SETIAP slide selama ini (eksekusi 4212, slide 1). Node ini yang
+// membaca berkasnya dari disk dan menaruh base64 sungguhan di `json.b64`.
+//
+// Perhatikan: node ini MENGGANTI json, bukan menambah. Aman di sini karena
+// prompt-copy.txt cuma membaca $('Siapkan brief'), tidak pernah $json.
+const KE_B64 = {
+  operation: 'binaryToPropery',
+  binaryPropertyName: 'data',
+  destinationKey: 'b64',
+  options: {},
+};
+N('Cover base64', 'n8n-nodes-base.extractFromFile', 1, [1260, 240], KE_B64, {
+  // Artikel tanpa gambar bikin `Ambil cover` gagal, jadi node ini menerima item tanpa
+  // binary dan ikut gagal. Itu jalur normal, bukan alasan menghentikan pipeline.
+  onError: 'continueRegularOutput',
+});
+hubung('Ambil cover', 'Cover base64');
+
 // ─────────────────────────────────────────────── 3. caption + slide
 N('Gemini copy', '@n8n/n8n-nodes-langchain.chainLlm', 1.7, [1040, 460], {
   promptType: 'define',
@@ -270,7 +292,7 @@ N('Gemini copy', '@n8n/n8n-nodes-langchain.chainLlm', 1.7, [1040, 460], {
   text: '=' + baca('prompt-copy.txt').replace('{{VOICE}}', bacaRoot('docs/voice.md')),
   hasOutputParser: true,
 }, { retryOnFail: true, maxTries: 5, waitBetweenTries: 5000 });
-hubung('Ambil cover', 'Gemini copy');
+hubung('Cover base64', 'Gemini copy');
 
 N('Gemini Flash', '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 1, [1000, 680], {
   modelName: 'models/gemini-3-flash-preview',
@@ -375,6 +397,14 @@ N('Jadi JPEG', 'n8n-nodes-base.editImage', 1, [1700, 460], {
 }, { onError: 'continueRegularOutput' });
 hubung('Gemini gambar', 'Jadi JPEG');
 
+// Sama seperti `Cover base64`: tanpa ini `Rakit slide` memasang string "filesystem-v2"
+// sebagai isi gambar. Slide yang gambarnya gagal masuk ke sini tanpa binary dan keluar
+// tanpa `b64` — urutan itemnya tetap, dan itu yang menjaga pasangan per-indeks.
+N('Slide base64', 'n8n-nodes-base.extractFromFile', 1, [1810, 620], KE_B64, {
+  onError: 'continueRegularOutput',
+});
+hubung('Jadi JPEG', 'Slide base64');
+
 // Logo disisipkan saat build sebagai data URI, bukan URL: render-svc memakai
 // waitUntil:'networkidle0', jadi satu URL lambat menggantung render 30 detik.
 // Varian 192 dipilih, bukan 512 — tampil di 112px jadi 192 sudah 1,7x, sementara
@@ -382,7 +412,7 @@ hubung('Gemini gambar', 'Jadi JPEG');
 N('Rakit slide', 'n8n-nodes-base.code', 2, [1920, 460], {
   jsCode: baca('rakit-slide.js').replace('{{LOGO}}', dataUri('icons/icon-192.png', 'image/png')),
 });
-hubung('Jadi JPEG', 'Rakit slide');
+hubung('Slide base64', 'Rakit slide');
 
 N('Render', 'n8n-nodes-base.httpRequest', 4.2, [2140, 460], http({
   method: 'POST',

@@ -309,6 +309,37 @@ yang kurang:
 Sekarang foto tampil `opacity: 1` dan tidak ada lapisan yang menutup sekanvas selain
 `.redup` `.22`. Kontras dijaga **lokal** — hanya di belakang teks.
 
+### Binary di instance ini ada di DISK, bukan di dalam item
+
+Kalau suatu saat semua slide keluar dengan ikon gambar rusak, **ini penyebabnya**, dan
+tidak ada satu pun error yang menunjukkannya.
+
+Instance ini jalan dengan `N8N_DEFAULT_BINARY_DATA_MODE=filesystem`. Konsekuensinya:
+
+```
+binary.data.data     = "filesystem-v2"     ← string biasa, BUKAN base64
+binary.data.id       = "filesystem-v2:workflows/…/binary_data/<uuid>"
+binary.data.mimeType = "image/webp"        ← metadata lain tetap utuh
+```
+
+Jadi `binary.data.data` yang dipasang ke `<img src="data:image/webp;base64,…">`
+menghasilkan `…base64,filesystem-v2` — gambar rusak, di setiap slide, sementara n8n
+melaporkan sukses dan render-svc membalas 200.
+
+Yang membacanya dari disk adalah node **`Extract From File`** (`binaryToPropery`,
+`destinationKey: b64`), dipasang di dua tempat: `Cover base64` setelah `Ambil cover`,
+dan `Slide base64` setelah `Jadi JPEG`. Sesudahnya base64 sungguhan ada di `json.b64`.
+
+Dua hal yang gampang kelewat:
+
+- Node itu **mengganti** `json`, tidak menambah. Aman di jalur cover karena
+  `prompt-copy.txt` cuma membaca `$('Siapkan brief')`.
+- `mimeType` ikut hilang dari `json`, jadi `rakit-slide.js` tetap membacanya dari
+  `$('Ambil cover').first().binary.data.mimeType`. Yang rusak cuma `.data`.
+
+Fixture test meniru mode ini: `binary.data.data` diisi `"filesystem-v2"`, dan ada test
+yang gagal begitu string itu muncul di HTML mana pun.
+
 ### Slide 1 foto artikel, slide 2+ gambarnya masing-masing
 
 Model gambar **menolak menggambar karakter berhak cipta dan wajah orang nyata**, jadi

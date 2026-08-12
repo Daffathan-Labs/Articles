@@ -331,6 +331,10 @@ test("Wait node punya webhookId dan batas waktu", () => {
 // yang menyesuaikan satu baris, bukan berburu angka telanjang di beberapa assert.
 const H1_RONDE0 = 74;
 
+// Isi `binary.data.data` di instance yang menyimpan binary di filesystem. Bukan base64,
+// dan bukan kebetulan: berkas aslinya di disk, ditunjuk `binary.data.id`.
+const RUJUKAN = "filesystem-v2";
+
 function rakit({
   ronde = 0,
   gambar = 5,
@@ -369,10 +373,16 @@ function rakit({
         },
       },
     },
-    // Node HTTP responseFormat:file — json kosong, muatannya di binary.
+    // Node HTTP responseFormat:file. Instance ini menyimpan binary di FILESYSTEM, jadi
+    // `binary.data.data` berisi string literal "filesystem-v2" — bukan base64. Ditiru
+    // apa adanya di sini: kode yang membaca `.data` akan menghasilkan
+    // <img src="data:…;base64,filesystem-v2"> dan test di bawah menangkapnya.
+    // mimeType tetap utuh di binary; yang jadi rujukan cuma `.data`.
     "Ambil cover": cover
-      ? { json: {}, binary: { data: { data: cover.b64, mimeType: cover.mime } } }
+      ? { json: {}, binary: { data: { data: RUJUKAN, mimeType: cover.mime, id: "filesystem-v2:…" } } }
       : { json: {} },
+    // Hasil `Extract From File`: json DIGANTI, cuma berisi b64. Tanpa binary sama sekali.
+    "Cover base64": cover ? { json: { b64: cover.b64 } } : { json: {} },
   };
   const $ = (n) => ({
     isExecuted: true,
@@ -384,7 +394,8 @@ function rakit({
           // bisa membedakan "tiap slide punya gambarnya sendiri" dari "satu gambar
           // dipasang lima kali" — dan itu persis keluhan yang memicu perubahan ini.
           Array.from({ length: 5 }, (_, i) => ({
-            binary: i < gambar ? { data: { data: `QUJD${i}` } } : undefined,
+            json: i < gambar ? { b64: `QUJD${i}` } : {},
+            binary: i < gambar ? { data: { data: RUJUKAN } } : undefined,
           })),
   });
   const fn = new Function("$runIndex", "$", byName["Rakit slide"].parameters.jsCode);
@@ -430,6 +441,36 @@ test("logo hexagon tertanam di tiap slide", () => {
 
 // -- gambar artikel: satu identitas untuk website, LinkedIn, dan slide 1 ----------
 const COVER = { b64: "Q09WRVI=", mime: "image/webp" };
+
+test("nol slide memasang rujukan filesystem sebagai isi gambar", () => {
+  // Bug yang paling lama hidup di pipeline ini, dan paling sunyi: instance menyimpan
+  // binary di disk, jadi `binary.data.data` = "filesystem-v2". Dipasang ke
+  // <img src="data:image/webp;base64,filesystem-v2"> hasilnya ikon gambar rusak — di
+  // SETIAP slide, tanpa satu pun error di n8n, tanpa satu pun test merah. Ketahuan cuma
+  // dengan mengunduh JPEG hasil render dan melihatnya.
+  for (const opsi of [{}, { cover: COVER }, { cover: COVER, gambar: 0 }]) {
+    for (const [i, s] of rakit(opsi).slides.entries()) {
+      assert.ok(!s.includes(RUJUKAN), `slide ${i + 1}: rujukan filesystem masuk ke HTML`);
+    }
+  }
+});
+
+test("node pengubah binary ke base64 terpasang di dua jalur gambar", () => {
+  for (const [dari, node, ke] of [
+    ["Ambil cover", "Cover base64", "Gemini copy"],
+    ["Jadi JPEG", "Slide base64", "Rakit slide"],
+  ]) {
+    const n = byName[node];
+    assert.ok(n, `${node} tidak ada`);
+    assert.equal(n.parameters.operation, "binaryToPropery", `${node}: operasi salah`);
+    assert.equal(n.parameters.destinationKey, "b64", `${node}: kunci tujuan salah`);
+    // Artikel tanpa gambar bikin item masuk tanpa binary. Tanpa ini, satu gambar gagal
+    // menghentikan seluruh pipeline.
+    assert.equal(n.onError, "continueRegularOutput", `${node}: tanpa onError`);
+    assert.deepEqual(wf.connections[dari].main[0].map((c) => c.node), [node], `${dari} -> ${node}`);
+    assert.deepEqual(wf.connections[node].main[0].map((c) => c.node), [ke], `${node} -> ${ke}`);
+  }
+});
 
 test("punya cover: slide 1 foto artikel, slide 2+ gambarnya masing-masing", () => {
   // Foto artikel adalah satu-satunya gambar yang benar-benar menampilkan subjeknya —
@@ -1470,7 +1511,7 @@ test("tiap slide selalu lewat Gemini gambar, tanpa gerbang yang melompatinya", (
     "Pecah slide tidak langsung ke Gemini gambar"
   );
   assert.deepEqual(
-    wf.connections["Jadi JPEG"].main[0].map((c) => c.node),
+    wf.connections["Slide base64"].main[0].map((c) => c.node),
     ["Rakit slide"],
     "raster tidak sampai ke Rakit slide"
   );
