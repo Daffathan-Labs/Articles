@@ -84,6 +84,19 @@ const esc = (s) =>
   );
 
 /**
+ * Buang penekanan markdown.
+ *
+ * Model rutin menulis `*cameo*`, `*time skip*`, `**penting**`. Tidak satu pun tempat
+ * tujuannya merender markdown: slide itu GAMBAR, dan caption Instagram/Facebook/LinkedIn
+ * menampilkan teks apa adanya. Jadi yang terbaca justru bintangnya. Sudah terbit sekali
+ * di render Spider-Man — tiga slide sekaligus.
+ *
+ * Garis bawah sengaja TIDAK ikut dibuang: `snake_case` itu hal biasa di artikel teknis,
+ * dan merusaknya lebih mahal daripada membiarkan satu italic gaya `_begini_` lolos.
+ */
+const polos = (s) => String(s == null ? '' : s).replace(/\*+/g, '').replace(/`/g, '');
+
+/**
  * Rapikan hashtag jadi bentuk yang benar-benar jadi tautan di Instagram.
  *
  * Prompt sudah meminta hashtag, tapi model rutin mengembalikan kata telanjang
@@ -257,8 +270,8 @@ const slides = meta.map((m, i) => {
   // Slide terakhir memakai teks tetap; apa pun yang ditulis model untuk slide itu dibuang.
   const sumber = akhir ? CTA_AKHIR : m;
 
-  const heading = maksKata(sumber.heading, Math.max(5, 8 - Math.floor(ronde / 2)));
-  const body = maksKata(sumber.body, Math.max(10, 25 - ronde * 2));
+  const heading = maksKata(polos(sumber.heading), Math.max(5, 8 - Math.floor(ronde / 2)));
+  const body = maksKata(polos(sumber.body), Math.max(10, 25 - ronde * 2));
 
   const teks =
     `<div class="teks">` +
@@ -310,13 +323,13 @@ return [{
     // Diteruskan supaya cabang commit balik tidak perlu membaca `Siapkan brief` lagi.
     repo: brief.repo,
     berkas_md: brief.berkas_md,
-    linkedin_caption: copy.linkedin_caption,
+    linkedin_caption: polos(copy.linkedin_caption),
     // Dipotong keras di kode, bukan cuma diminta di prompt: model rutin melewati
     // batas yang hanya disebut dalam instruksi.
-    ig_caption: [copy.ig_caption, tagar(copy.hashtags)].filter(Boolean).join('\n\n'),
+    ig_caption: [polos(copy.ig_caption), tagar(copy.hashtags)].filter(Boolean).join('\n\n'),
     // Tanpa hashtag: di Facebook hashtag tidak menambah jangkauan, cuma bikin
     // tulisannya terlihat seperti hasil bot.
-    fb_caption: copy.fb_caption,
+    fb_caption: polos(copy.fb_caption),
     slides,
   },
 }];

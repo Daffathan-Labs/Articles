@@ -652,6 +652,28 @@ test("brief diteruskan ke cabang commit: repo dan nama berkas .md", () => {
   assert.deepEqual(r.berkas_md, ["artikel-uji-id.md", "artikel-uji-en.md"]);
 });
 
+test("penekanan markdown dibuang dari slide DAN dari ketiga caption", () => {
+  // Slide itu gambar, dan caption Instagram/Facebook/LinkedIn menampilkan teks apa
+  // adanya — tidak satu pun merender markdown. Model rutin menulis *cameo* dan
+  // *time skip*, dan itu terbit sekali di tiga slide Spider-Man sekaligus.
+  const r = rakit({
+    heading: "Aksi *berayun* yang persis seperti di game",
+    body: "Gerakan *finishing move* dan **jaring** organik terasa `sangat` nyata.",
+  });
+  for (const [i, s] of r.slides.entries()) {
+    // <style> dibuang dulu: CSS punya selector `*` dan komentar berbacktick, dan
+    // dua-duanya tidak pernah sampai ke mata.
+    const teks = s.replace(/<style>[\s\S]*?<\/style>/, "").replace(/src="data:[^"]*"/g, "");
+    assert.doesNotMatch(teks, /\*|`/, `slide ${i + 1}: penanda markdown ikut kerender`);
+  }
+  // Isinya harus tetap utuh, cuma penandanya yang hilang. Huruf besarnya dari CSS
+  // text-transform, jadi di HTML kata-katanya masih huruf kecil.
+  assert.match(r.slides[0], />Aksi berayun yang/, "kata di dalam penekanan ikut terbuang");
+
+  // Garis bawah TIDAK ikut dibuang: snake_case itu hal biasa di artikel teknis.
+  assert.match(rakit({ heading: "Pakai user_id bukan email" }).slides[0], /user_id/);
+});
+
 test("hashtag dipotong 5 walau model mengirim lebih", () => {
   const r = rakit({ hashtags: ["#a", "#b", "#c", "#d", "#e", "#f", "#g"] });
   const tag = r.ig_caption.split("\n\n").pop().split(" ");
