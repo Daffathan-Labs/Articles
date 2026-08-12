@@ -366,18 +366,62 @@ memakai **cahaya dan warna yang sama** tapi **adegan, subjek, dan sudut kamera y
 jelas berbeda**. Baris itu dulu mengunci `same location` juga — dan itu yang membuat
 lima frame keluar nyaris identik.
 
-Titik potong (`CROP`) sekarang cuma berlaku untuk slide yang memakai foto artikel:
-slide 1, dan slide mana pun yang gambar Gemini-nya gagal. Raster Gemini tidak digeser,
-karena tiap frame sudah dikomposisikan.
+### Satu aturan: slide cuma boleh memakai gambarnya sendiri
 
-**Kalau semua gambar Gemini gagal** (kuota habis, seperti 2026-08-13), kelima slide
-jatuh ke foto artikel dengan crop berbeda — bukan kanvas kosong. Artikel tanpa foto
-**dan** tanpa gambar Gemini baru jatuh ke kartu warna aksen.
+Tidak ada slide yang meminjam gambar slide lain, dan foto artikel **berhenti di slide 1**.
 
-> Konsekuensi kuota: tiap artikel memanggil `Gemini gambar` 5x lagi, dan gambar slide 1
-> tidak terpakai kalau artikelnya punya cover. Menyaringnya butuh node Filter plus
-> aritmetika offset indeks antara `Pecah slide` dan `Jadi JPEG` — hemat 20% dengan
-> risiko pasangan indeks meleset. Belum sepadan.
+Dulu ada dua jalur pengulangan, dan dua-duanya menghasilkan keluhan yang sama —
+"gambarnya sama semua":
+
+```js
+const bg = raster.map((r) => r || adaRaster[0] || null);                   // pinjam tetangga
+const pakaiCover = meta.map((_, i) => !!coverB64 && (i === 0 || !bg[i]));  // jatuh ke cover
+```
+
+Baris pertama bikin tiga slide yang gagal memakai gambar slide 1 yang sama. Baris kedua
+bikin kelimanya memakai foto artikel saat semua gambar gagal. Variasi crop dibuat untuk
+menyamarkan itu, dan tidak menyamarkan apa pun — jadi `CROP` ikut dibuang. Yang tersisa
+cuma satu titik fokus tetap untuk foto artikel di slide 1 (`50% 30%`, karena subjek foto
+banner hampir selalu di atas tengah dan blok teks memakan sepertiga bawah).
+
+Slide tanpa gambar jadi **kartu berpola**, bukan lubang dan bukan foto ulangan. Empat
+pola dipilih dari nomor slide (`k0`–`k3`): gradien diagonal, pendar radial dari kanan
+atas, gradien naik dari kiri bawah, dan garis miring berulang. Satu gradien yang sama di
+empat slide cuma memindahkan keluhannya dari foto ke latar belakang, jadi test menuntut
+keempat `background`-nya benar-benar berbeda.
+
+### Kuota gambar Gemini: API key-nya di tier gratis
+
+Kalau `gambar_gagal: 5` terus-menerus, **jangan tunggu kuotanya reset** — baca error
+mentahnya. Pesan yang ditampilkan n8n dipangkas jadi satu kalimat
+(*"The service is receiving too many requests from you"*) yang menyesatkan: kelihatan
+seperti batas per menit, padahal bukan.
+
+Badan error yang sebenarnya:
+
+```
+Quota exceeded for metric: …/generate_content_free_tier_requests, limit: 0,
+model: gemini-2.5-flash-preview-image
+```
+
+**`free_tier`, `limit: 0`.** API key di kredensial `googlePalmApi` milik project **tanpa
+billing**. Generasi gambar bukan dibatasi pelan-pelan di tier gratis — jatahnya nol, jadi
+tiap panggilan gagal seketika dan menunggu tidak pernah menolong. `GET /v1beta/models`
+dengan key yang sama tetap membalas 200 dan menampilkan sembilan model gambar
+(`gemini-3-pro-image`, `gemini-3.1-flash-image`, `imagen-4.0-*`) — key-nya bisa *melihat*
+semuanya, cuma tidak bisa memanggilnya.
+
+**Perbaikannya bukan kode**: ganti API key di kredensial n8n dengan key dari project yang
+billing-nya aktif.
+
+Cara membacanya lagi kalau perlu: workflow sekali pakai berisi HTTP Request dengan
+`authentication: predefinedCredentialType` + `nodeCredentialType: googlePalmApi` (jadi
+key-nya tidak perlu keluar dari n8n) dan `options.response.response.neverError: true`
+supaya badan 429-nya utuh, bukan dilempar sebagai exception.
+
+> Catatan: `retryOnFail` di `Gemini gambar` **tidak pernah jalan**.
+> `onError: continueRegularOutput` menangkap kegagalan per item, jadi node-nya tidak
+> pernah dianggap gagal. Eksekusi 4212: lima item ber-error, satu run, nol node error.
 
 > **Bug yang ini menutup:** API mengembalikan `image` sebagai path **relatif**
 > (`/uploads/articles/<md5>.webp`). Diteruskan apa adanya, `Ambil cover` menolaknya

@@ -35,11 +35,8 @@ if (jpeg.length !== meta.length) {
 const raster = jpeg.map((it) => (it.json && it.json.b64) || null);
 const adaRaster = raster.filter(Boolean);
 // Nol gambar bukan kegagalan yang menahan pipeline: slide tanpa raster jatuh ke kartu
-// warna, dan artikel yang punya foto sendiri memang tidak memanggil Gemini sama sekali.
+// warna, bukan ke gambar milik slide lain.
 const gambarGagal = raster.filter((r) => !r).length;
-// Slide yang gagal meminjam raster tetangga — satu latar berulang jauh lebih baik
-// daripada satu slide kosong di tengah carousel.
-const bg = raster.map((r) => r || adaRaster[0] || null);
 
 // Gambar artikel, kalau ada. `Ambil cover` memakai onError:continueRegularOutput,
 // jadi artikel tanpa gambar dan unduhan yang gagal sama-sama berakhir null di sini —
@@ -50,40 +47,27 @@ const coverB64 = unduhan.b64 || null;
 // dan menuliskannya sebagai image/jpeg bikin Chromium menolak merender gambarnya.
 const coverMime = unduhan.mime || 'image/jpeg';
 
-// Slide 1 memakai foto artikel; slide 2+ memakai gambar Gemini-nya masing-masing.
-//
-// Foto artikel adalah satu-satunya gambar yang benar-benar menampilkan subjeknya —
-// model gambar menolak menggambar karakter berhak cipta dan wajah orang nyata, jadi
-// "Spider-Man" atau "Sadie Sink" tidak akan pernah keluar dari Gemini. Tapi memasang
-// foto yang sama di kelima slide membuat carousel-nya terbaca sebagai satu gambar
-// diulang lima kali, seberapa pun cropnya digeser. Slide 2+ punya teks sendiri, jadi
-// gambarnya dibuat dari teks itu.
-//
-// Cover tetap jadi jaring pengaman slide 2+: begitu Gemini gagal (kuota habis, seperti
-// 2026-08-13) slide itu jatuh ke foto artikel dengan crop berbeda, bukan jadi lubang.
-const pakaiCover = meta.map((_, i) => !!coverB64 && (i === 0 || !bg[i]));
-const latar = meta.map((_, i) =>
-  pakaiCover[i]
-    ? `data:${coverMime};base64,${coverB64}`
-    : bg[i] ? `data:image/jpeg;base64,${bg[i]}` : null
-);
-
 /**
- * Titik potong per slide, dipakai HANYA untuk slide yang memakai foto artikel.
- * Foto yang sama dipasang identik terbaca sebagai pengulangan; menggeser fokus dan
- * sedikit zoom bikin slide 1 dan slide yang jatuh ke cadangan tetap terlihat beda.
+ * SATU ATURAN: sebuah slide cuma boleh memakai gambarnya sendiri.
  *
- * Raster Gemini tidak digeser: tiap slide sudah punya gambarnya sendiri, dan
- * menggesernya malah membuang bagian yang sengaja dikomposisikan di tengah frame.
+ * Tidak ada slide yang meminjam gambar slide lain, dan foto artikel berhenti di slide 1.
+ * Sebelumnya ada dua jalur pengulangan — slide gagal meminjam raster tetangga, lalu
+ * kalau semua gagal kelimanya jatuh ke foto artikel dengan crop berbeda. Hasilnya satu
+ * foto yang sama di lima slide, dan crop yang digeser tidak menyamarkan apa pun.
+ *
+ * Foto artikel tetap memegang slide 1 karena dia satu-satunya gambar yang benar-benar
+ * menampilkan subjeknya: model gambar menolak menggambar karakter berhak cipta dan
+ * wajah orang nyata, jadi "Spider-Man" atau "Sadie Sink" tidak akan pernah keluar dari
+ * Gemini. Slide 2+ punya teksnya sendiri, jadi gambarnya dibuat dari teks itu.
+ *
+ * Slide tanpa gambar jatuh ke kartu berpola di bawah — bukan lubang, dan bukan foto
+ * ulangan. Itu satu-satunya bentuk yang bikin lima slide mustahil terlihat sama.
  */
-const CROP = [
-  { pos: '50% 30%', zoom: 1 },
-  { pos: '22% 45%', zoom: 1.12 },
-  { pos: '78% 45%', zoom: 1.12 },
-  { pos: '50% 72%', zoom: 1.06 },
-  { pos: '50% 50%', zoom: 1.18 },
-];
-const potong = (i) => (pakaiCover[i] ? CROP[i % CROP.length] : { pos: '50% 50%', zoom: 1 });
+const latar = raster.map((b64, i) =>
+  i === 0 && coverB64
+    ? `data:${coverMime};base64,${coverB64}`
+    : b64 ? `data:image/jpeg;base64,${b64}` : null
+);
 
 // Ronde 0 pakai ukuran penuh; tiap ronde berikutnya mengecil sampai lantai 70%.
 // Digabung dengan pemangkasan kata di bawah, ronde 8 praktis mustahil meluber.
@@ -209,10 +193,14 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0B0F14;c
 /* Pembungkus foto memotong dirinya sendiri — lihat catatan di atas blok CSS. */
 .fotolayer{position:absolute;inset:0;overflow:hidden}
 .bg{position:absolute;inset:0;width:1080px;height:1350px;object-fit:cover}
-/* Tanpa raster: kartu warna solid dari aksen, bukan kanvas kosong. Begitu foto jadi
-   bintangnya, kelima gambar yang gagal menghasilkan lubang — ini yang menutupnya
-   dengan sesuatu yang terlihat seperti pilihan desain. */
-.kartu{position:absolute;inset:0;background:linear-gradient(155deg,${aksen} 0%,#0B0F14 78%)}
+/* Tanpa gambar: kartu aksen, bukan kanvas kosong dan bukan foto slide lain.
+   EMPAT pola, dipilih dari nomor slide. Satu gradien yang sama di empat slide cuma
+   memindahkan keluhan "gambarnya sama semua" dari foto ke latar belakang. */
+.kartu{position:absolute;inset:0;background:#0B0F14}
+.k0{background:linear-gradient(155deg,${aksen} 0%,#0B0F14 72%)}
+.k1{background:radial-gradient(88% 68% at 82% 16%,${aksen} 0%,#0B0F14 66%)}
+.k2{background:linear-gradient(200deg,#0B0F14 34%,${aksen} 100%)}
+.k3{background:repeating-linear-gradient(45deg,${aksen}66 0 ${px(4)}px,rgba(0,0,0,0) ${px(4)}px ${px(30)}px),linear-gradient(160deg,#131A22 0%,#0B0F14 100%)}
 /* Redup tipis sekanvas, cuma untuk menahan foto yang benar-benar putih. .22 masih
    menyisakan 78% foto — bandingkan dengan veil lama yang menyisakan 4–16%. */
 .redup{position:absolute;inset:0;background:rgba(11,15,20,.22)}
@@ -282,8 +270,10 @@ const slides = meta.map((m, i) => {
   return `<!doctype html>
 <html lang="id" class="${KELAS[layout]}"><head><meta charset="utf-8"><style>${CSS}</style></head><body>
 ${latar[i]
-      ? `<div class="fotolayer"><img class="bg" style="object-position:${potong(i).pos};transform:scale(${potong(i).zoom})" src="${latar[i]}"></div>`
-      : '<div class="kartu"></div>'}
+      // Foto artikel di slide 1 diturunkan sedikit titik fokusnya: subjek foto banner
+      // hampir selalu duduk di atas tengah, dan blok teks memakan sepertiga bawah.
+      ? `<div class="fotolayer"><img class="bg" style="object-position:${i === 0 && coverB64 ? '50% 30%' : '50% 50%'}" src="${latar[i]}"></div>`
+      : `<div class="kartu k${i % 4}"></div>`}
 ${latar[i] ? '<div class="redup"></div>' : ''}
 <div class="wrap">
   <div class="atas">

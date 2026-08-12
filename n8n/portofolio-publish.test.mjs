@@ -535,34 +535,61 @@ test("gambar gagal tetap punya slot sendiri — bukan digeser ke slide lain", ()
   assert.match(slides[1], /base64,QUJD1/, "slide 2 bukan gambarnya sendiri");
 });
 
-test("punya cover: slide 1 foto artikel, slide 2+ gambarnya masing-masing", () => {
-  // Foto artikel adalah satu-satunya gambar yang benar-benar menampilkan subjeknya —
-  // model gambar menolak karakter berhak cipta dan wajah orang nyata. Tapi dipasang di
-  // kelima slide, hasilnya terbaca sebagai satu gambar diulang lima kali, dan itu yang
-  // dikeluhkan. Slide 2+ punya teks sendiri, jadi gambarnya juga sendiri.
-  const { slides } = rakit({ cover: COVER });
+// Semua `<img class="bg">` di satu carousel. Diambil dari kelasnya, bukan dari base64
+// pertama yang ketemu: tiap slide juga membawa logo sebagai data URI, dan logo memang
+// sama di kelimanya.
+const fotoSlide = (slides) =>
+  slides.map((s) => (s.match(/<img class="bg"[^>]*src="([^"]+)"/) || [, null])[1]);
 
-  // mimeType dibaca dari unduhan, bukan diasumsikan jpeg: API menyajikan WebP, dan
-  // menuliskannya sebagai image/jpeg bikin Chromium menolak merendernya.
-  assert.match(slides[0], /src="data:image\/webp;base64,Q09WRVI="/, "slide 1 bukan cover");
-
-  const sisa = [];
-  for (const i of [1, 2, 3, 4]) {
-    assert.ok(!slides[i].includes("Q09WRVI="), `slide ${i + 1} masih memakai cover`);
-    // Diambil dari <img class="bg">, bukan base64 pertama yang ketemu: tiap slide juga
-    // membawa logo sebagai data URI, dan itu memang sama di kelimanya.
-    sisa.push(slides[i].match(/<img class="bg"[^>]*src="([^"]+)"/)[1]);
+test("NOL gambar dipakai dua kali di satu carousel", () => {
+  // Ini test intinya. Keluhan yang memulai semuanya: slide 2-5 memakai foto yang sama
+  // persis dengan slide 1. Dulu ada dua jalur pengulangan — slide gagal meminjam raster
+  // tetangga, dan kalau semua gagal kelimanya jatuh ke foto artikel. Dua-duanya mati di
+  // sini, di tiga kondisi sekaligus.
+  for (const opsi of [
+    { cover: COVER },              // semua gambar berhasil
+    { cover: COVER, gambar: 2 },   // 2 dari 5 berhasil — dulu 3 slide meminjam gambar slide 1
+    { cover: COVER, gambar: 0 },   // kuota habis — dulu kelimanya jadi foto artikel
+    { gambar: 2 },                 // tanpa cover
+  ]) {
+    const foto = fotoSlide(rakit(opsi).slides).filter(Boolean);
+    assert.equal(
+      new Set(foto).size,
+      foto.length,
+      `gambar dipakai ulang (${JSON.stringify(opsi)}): ${foto.map((f) => f.slice(-6)).join(" | ")}`
+    );
   }
-  assert.equal(new Set(sisa).size, 4, `slide 2-5 memakai gambar yang sama: ${sisa.join(" | ")}`);
 });
 
-test("raster Gemini TIDAK ikut digeser", () => {
-  // Tiap slide sudah punya gambarnya sendiri dan sudah dikomposisikan; menggesernya
-  // malah membuang bagian yang sengaja ditempatkan di tengah frame.
-  for (const opsi of [{}, { cover: COVER }]) {
-    const posisi = rakit(opsi).slides.slice(1).map((s) => s.match(/object-position:([^;]+);/)[1]);
-    assert.equal(new Set(posisi).size, 1, "raster Gemini ikut di-crop berbeda");
+test("foto artikel berhenti di slide 1", () => {
+  // mimeType dibaca dari unduhan, bukan diasumsikan jpeg: API menyajikan WebP, dan
+  // menuliskannya sebagai image/jpeg bikin Chromium menolak merendernya.
+  for (const gambar of [5, 2, 0]) {
+    const { slides } = rakit({ cover: COVER, gambar });
+    assert.match(slides[0], /src="data:image\/webp;base64,Q09WRVI="/, `gambar=${gambar}: slide 1 bukan cover`);
+    for (const i of [1, 2, 3, 4]) {
+      assert.ok(!slides[i].includes("Q09WRVI="), `gambar=${gambar}: slide ${i + 1} memakai foto artikel`);
+    }
   }
+});
+
+test("slide tanpa gambar jadi kartu berpola, dan pola-polanya berbeda", () => {
+  // Satu gradien yang sama di empat slide cuma memindahkan keluhan "sama semua" dari
+  // foto ke latar belakang.
+  const { slides } = rakit({ cover: COVER, gambar: 0 });
+  const kelas = [];
+  for (const i of [1, 2, 3, 4]) {
+    const m = slides[i].match(/<div class="kartu (k\d)"><\/div>/);
+    assert.ok(m, `slide ${i + 1} tanpa kartu — kemungkinan kanvas kosong`);
+    kelas.push(m[1]);
+  }
+  assert.equal(new Set(kelas).size, 4, `kartu memakai pola yang sama: ${kelas.join(" ")}`);
+
+  // Kelasnya harus benar-benar punya latar sendiri di CSS, bukan cuma nama kelas kosong.
+  const css = gaya(slides[1]);
+  const latar = kelas.map((k) => (css.match(new RegExp(`\\.${k}\\{background:([^}]+)\\}`)) || [, null])[1]);
+  assert.ok(latar.every(Boolean), `ada kelas kartu tanpa background di CSS: ${kelas.join(" ")}`);
+  assert.equal(new Set(latar).size, 4, "latar kartu ternyata sama walau kelasnya beda");
 });
 
 test("nol gambar lolos: tetap 5 slide, bukan crash pasangan indeks", () => {
@@ -576,18 +603,17 @@ test("nol gambar lolos: tetap 5 slide, bukan crash pasangan indeks", () => {
   }
 });
 
-test("cover jadi jaring pengaman saat semua gambar Gemini gagal", () => {
-  // Ini yang terjadi 2026-08-13: kuota gambar habis, kelima panggilan dibalas error,
-  // dan carousel terbit tanpa satu pun latar. Sekarang jatuhnya ke foto artikel —
-  // dengan crop berbeda, supaya tetap terbaca seri dan bukan satu gambar diulang.
+test("kuota habis: slide 1 tetap berfoto, sisanya kartu — bukan lima foto sama", () => {
+  // Ini yang terjadi 2026-08-13 dan seterusnya: kuota gambar habis, kelima panggilan
+  // dibalas error. Dulu kelima slide jatuh ke foto artikel dengan crop berbeda, dan
+  // itu yang dikeluhkan: satu gambar diulang lima kali.
   const { slides, gambar_gagal } = rakit({ cover: COVER, gambar: 0 });
   assert.equal(gambar_gagal, 5);
-  const posisi = [];
-  for (const [i, s] of slides.entries()) {
-    assert.match(s, /base64,Q09WRVI="/, `slide ${i + 1} kosong padahal cover ada`);
-    posisi.push(s.match(/object-position:([^;]+);/)[1]);
+  assert.match(slides[0], /base64,Q09WRVI="/, "slide 1 kehilangan foto artikel");
+  for (const i of [1, 2, 3, 4]) {
+    assert.doesNotMatch(slides[i], /<img class="bg"/, `slide ${i + 1} masih memasang foto`);
+    assert.match(slides[i], /<div class="kartu k\d">/, `slide ${i + 1} jadi kanvas kosong`);
   }
-  assert.equal(new Set(posisi).size, 5, `crop tidak berbeda: ${posisi.join(" | ")}`);
 });
 
 test("punya cover: tidak ada hero yang digenerate", () => {
@@ -660,10 +686,17 @@ test("Rakit slide: nol gambar tetap terbit, tidak melempar", () => {
   assert.match(r.slides[0], /<img class="logo"/, "logo tetap harus ada");
 });
 
-test("Rakit slide: sebagian gambar gagal meminjam latar tetangga", () => {
+test("Rakit slide: sebagian gambar gagal — yang gagal TIDAK meminjam tetangga", () => {
+  // Perilaku lama: slide gagal memakai raster slide pertama. Tiga slide meminjam gambar
+  // yang sama, dan carousel-nya terbaca sebagai satu gambar diulang — persis keluhannya.
   const r = rakit({ gambar: 2 });
   assert.equal(r.gambar_gagal, 3);
-  for (const s of r.slides) assert.match(s, /<img class="bg"[^>]*src="data:image\/jpeg;base64,/);
+  for (const i of [0, 1]) {
+    assert.match(r.slides[i], new RegExp(`<img class="bg"[^>]*src="data:image/jpeg;base64,QUJD${i}"`));
+  }
+  for (const i of [2, 3, 4]) {
+    assert.doesNotMatch(r.slides[i], /<img class="bg"/, `slide ${i + 1} meminjam gambar slide lain`);
+  }
 });
 
 test("Pecah URL slide membaca hasil Render, bukan $input", () => {
@@ -1542,12 +1575,12 @@ test("nol raster jatuh ke kartu warna, bukan kanvas kosong", () => {
   assert.equal(r.slides.length, 5);
   for (const [i, s] of r.slides.entries()) {
     assert.doesNotMatch(s, /<img class="bg"/, `slide ${i + 1}: bg kosong tetap dipasang`);
-    assert.match(s, /<div class="kartu">/, `slide ${i + 1}: tanpa kartu warna`);
-    assert.match(gaya(s), /\.kartu\{[^}]*#1B4FA8/, `slide ${i + 1}: kartu tidak memakai aksen`);
+    assert.match(s, /<div class="kartu k\d">/, `slide ${i + 1}: tanpa kartu warna`);
+    assert.match(gaya(s), new RegExp(`\\.k${i % 4}\\{background:[^}]*#1B4FA8`), `slide ${i + 1}: kartu tidak memakai aksen`);
     assert.match(s, /<img class="logo"/, `slide ${i + 1}: logo hilang`);
   }
   // Ada raster -> kartu tidak dipasang, supaya tidak menutupi fotonya.
-  assert.doesNotMatch(rakit().slides[0], /<div class="kartu">/);
+  assert.doesNotMatch(rakit().slides[0], /<div class="kartu/);
 });
 
 test("pagar lama tetap berdiri di ketiga layout", () => {
@@ -1626,17 +1659,18 @@ test("cover relatif dari API diberi prefiks, bukan diteruskan mentah", () => {
   assert.equal(jalankanBrief(null), null, "tanpa gambar tetap null, bukan URL kosong");
 });
 
-test("apa pun yang di-scale harus dipotong pembungkusnya", () => {
+test("lapisan foto dipotong pembungkusnya, lapisan teks tidak", () => {
   // transform:scale tidak mengubah layout tapi TETAP menambah scrollable overflow.
   // Zoom 1.12 pada foto setinggi kanvas bikin render-svc mengukur 1431px dan membalas
   // 422 "overflow" di SETIAP artikel — dan loop penyusutan tidak pernah menyembuhkannya
   // karena penyebabnya bukan teks. Ketahuan cuma dengan benar-benar merender.
+  //
+  // Zoom-nya sendiri sudah dibuang bersama variasi crop, tapi pembungkusnya tetap:
+  // biayanya satu baris CSS, dan tanpa dia setiap artikel gagal render kalau suatu saat
+  // ada yang menambah transform lagi.
   for (const layout of LAYOUT) {
-    // Semua gambar Gemini gagal + cover ada = kelima slide jatuh ke foto artikel,
-    // dan slide 2 dapat zoom 1.12. Itu kombinasi yang memicu 422-nya.
-    const s = rakit({ cover: COVER, gambar: 0, layout }).slides[1];
+    const s = rakit({ cover: COVER, gambar: 0, layout }).slides[0];
     const css = gaya(s);
-    assert.match(s, /transform:scale\(/, "zoom hilang — variasi crop ikut mati");
     assert.match(s, /<div class="fotolayer"><img class="bg"/, `${layout}: foto tanpa pembungkus`);
     assert.match(
       css.match(/\.fotolayer\{([^}]*)\}/)[1],
