@@ -260,7 +260,7 @@ test("Wait node punya webhookId dan batas waktu", () => {
 
 // ── Menjalankan sumber Code node "Rakit slide" apa adanya dari JSON, dengan
 // global n8n yang dipalsukan. Tidak ada salinan template di file test ini.
-function rakit({ ronde = 0, gambar = 5, heading, body } = {}) {
+function rakit({ ronde = 0, gambar = 5, heading, body, hashtags = ["#a"] } = {}) {
   const slide = {
     heading: heading ?? "Satu dua tiga empat lima enam tujuh delapan",
     body: body ?? Array.from({ length: 25 }, (_, i) => `kata${i}`).join(" "),
@@ -273,7 +273,7 @@ function rakit({ ronde = 0, gambar = 5, heading, body } = {}) {
       url_en: "https://daffathan-labs.my.id/en/articles/uji",
       dilewat: [],
     },
-    "Gemini copy": { output: { linkedin_caption: "LI", ig_caption: "IG", hashtags: ["#a"] } },
+    "Gemini copy": { output: { linkedin_caption: "LI", ig_caption: "IG", hashtags } },
   };
   const $ = (n) => ({
     first: () => ({ json: palsu[n] }),
@@ -295,8 +295,40 @@ test("Rakit slide: ronde 0 menghasilkan 5 slide dengan teks penuh", () => {
   assert.equal(r.gambar_gagal, 0);
   assert.match(r.slides[0], /font-size:78px/, "ronde 0 pakai ukuran penuh");
   assert.doesNotMatch(r.slides[0], /…/, "ronde 0 tidak memangkas kata");
-  // Slide terakhir wajib mencetak URL: tautan di caption IG tidak bisa diklik.
-  assert.match(r.slides[4], /daffathan-labs\.my\.id\/id\/articles\/uji/);
+});
+
+test("tidak satu slide pun memuat URL", () => {
+  // URL di gambar Instagram tidak bisa diklik, dan yang panjang justru terpotong
+  // elipsis seperti di render pertama. Alamat hidup di caption saja.
+  for (const [i, s] of rakit().slides.entries()) {
+    const isi = s.replace(/src="data:[^"]*"/g, ""); // base64 boleh memuat apa saja
+    assert.doesNotMatch(isi, /https?:|daffathan-labs\.my\.id|…/, `slide ${i + 1}`);
+  }
+});
+
+test("slide terakhir memakai CTA tetap, slide lain tidak", () => {
+  const r = rakit();
+  assert.match(r.slides[4], /link bio/i, "slide 5 harus mengajak ke bio");
+  for (const i of [0, 1, 2, 3]) {
+    assert.doesNotMatch(r.slides[i], /link bio/i, `slide ${i + 1} tidak boleh membawa CTA`);
+  }
+  // Teks model untuk slide terakhir memang dibuang; ini yang menguncinya.
+  assert.doesNotMatch(r.slides[4], /Satu dua tiga empat/, "teks model harus ditimpa");
+});
+
+test("logo hexagon tertanam di tiap slide", () => {
+  for (const [i, s] of rakit().slides.entries()) {
+    const m = s.match(/<img class="logo" src="data:image\/png;base64,([^"]*)"/);
+    assert.ok(m, `slide ${i + 1} tanpa logo`);
+    // Placeholder {{LOGO}} yang gagal terisi menghasilkan src kosong dan lolos diam-diam.
+    assert.ok(m[1].length > 1000, `slide ${i + 1}: base64 logo cuma ${m[1].length} char`);
+  }
+});
+
+test("hashtag dipotong 5 walau model mengirim lebih", () => {
+  const r = rakit({ hashtags: ["#a", "#b", "#c", "#d", "#e", "#f", "#g"] });
+  const tag = r.ig_caption.split("\n\n").pop().split(" ");
+  assert.deepEqual(tag, ["#a", "#b", "#c", "#d", "#e"]);
 });
 
 test("Rakit slide: tiap ronde benar-benar mengecil, dan berhenti di lantai", () => {
@@ -322,7 +354,9 @@ test("Rakit slide: nol gambar tetap terbit, tidak melempar", () => {
   const r = rakit({ gambar: 0 });
   assert.equal(r.slides.length, 5);
   assert.equal(r.gambar_gagal, 5);
-  assert.doesNotMatch(r.slides[0], /<img/, "tanpa raster tidak boleh ada <img> kosong");
+  // Logo tetap ada; yang tidak boleh muncul adalah <img class="bg"> tanpa isi.
+  assert.doesNotMatch(r.slides[0], /<img class="bg"/, "tanpa raster tidak boleh ada bg kosong");
+  assert.match(r.slides[0], /<img class="logo"/, "logo tetap harus ada");
 });
 
 test("Rakit slide: sebagian gambar gagal meminjam latar tetangga", () => {
@@ -346,6 +380,23 @@ test("Pecah URL slide membaca hasil Render, bukan $input", () => {
   // urls[] kosong harus gagal berisik, bukan menerbitkan carousel bolong.
   const kosong = (n) => ({ first: () => ({ json: n === "Render" ? {} : {} }) });
   assert.throws(() => new Function("$", kode)(kosong), /tidak mengembalikan urls/);
+});
+
+test("voice tersisip ke prompt, bukan tertinggal placeholder", () => {
+  const prompt = byName["Gemini copy"].parameters.text;
+  // Placeholder yang gagal terisi tidak bikin build gagal — model cuma menerima
+  // teks "{{VOICE}}" mentah dan mengarang voice-nya sendiri. Ini yang menangkapnya.
+  assert.doesNotMatch(prompt, /\{\{VOICE\}\}/, "placeholder tidak terisi");
+  assert.match(prompt, /"aku", tidak pernah "saya"/);
+  assert.match(prompt, /Sufiks `-ku`/, "isi docs/voice.md harus benar-benar masuk");
+});
+
+test("prompt melarang URL di slide dan membatasi hashtag 5", () => {
+  const prompt = byName["Gemini copy"].parameters.text;
+  assert.match(prompt, /DILARANG menulis URL/);
+  assert.match(prompt, /MAKSIMAL 5 hashtag/);
+  // Teks slide terakhir diisi sistem; model tidak boleh diminta menulisnya.
+  assert.match(prompt, /SLIDE 5: heading dan body-nya DIISI SISTEM/);
 });
 
 test("gambar dikonversi JPEG sebelum masuk render", () => {

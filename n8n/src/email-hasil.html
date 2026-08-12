@@ -1,0 +1,9 @@
+=<div style="font-family:system-ui,sans-serif;max-width:640px;line-height:1.55">
+<h2 style="margin:0 0 16px">{{ $('Rakit slide').first().json.folder }} &mdash; selesai</h2>
+<ul style="padding-left:20px;margin:0 0 20px">
+  <li>Website: <a href="{{ $('Rakit slide').first().json.url_id }}">ID</a> &middot; <a href="{{ $('Rakit slide').first().json.url_en }}">EN</a></li>
+  <li>LinkedIn: {{ $('LinkedIn post').first().json.id ? 'terbit (' + $('LinkedIn post').first().json.id + ')' : '<b style="color:#B00020">GAGAL</b> &mdash; ' + JSON.stringify($('LinkedIn post').first().json).slice(0, 300) }}</li>
+  <li>Instagram: {{ $('IG permalink').first().json.permalink ? '<a href="' + $('IG permalink').first().json.permalink + '">' + $('IG permalink').first().json.permalink + '</a>' : '<b style="color:#B00020">GAGAL</b> &mdash; ' + JSON.stringify($('IG permalink').first().json).slice(0, 300) }}</li>
+</ul>
+<p style="font-size:13px;color:#888;margin:0">Slide: <a href="{{ $('Render').first().json.previewUrl }}">{{ $('Render').first().json.previewUrl }}</a></p>
+</div>

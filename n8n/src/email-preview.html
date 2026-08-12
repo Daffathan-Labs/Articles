@@ -1,0 +1,32 @@
+=<div style="font-family:system-ui,sans-serif;max-width:640px;line-height:1.55">
+<h2 style="margin:0 0 4px">{{ $('Siapkan brief').first().json.folder }}</h2>
+<p style="margin:0 0 20px;color:#666">Artikel sudah tayang di website. Tinggal sosmed.</p>
+
+<p style="margin:0 0 10px">
+  <a href="{{ $execution.resumeUrl }}?action=approve"
+     style="background:#0B7A4B;color:#fff;padding:13px 22px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
+    Approve &mdash; posting ke LinkedIn + Instagram</a>
+</p>
+<p style="margin:0 0 24px">
+  <a href="{{ $execution.resumeUrl }}?action=skip" style="color:#888;font-size:14px">Skip, jangan posting</a>
+  <span style="color:#bbb;font-size:14px"> &middot; kedaluwarsa 48 jam</span>
+</p>
+
+<p style="margin:0 0 24px">
+  <a href="{{ $json.previewUrl }}" style="font-weight:600">Lihat 5 slide carousel &rarr;</a>
+  {{ $('Rakit slide').first().json.gambar_gagal > 0 ? '<br><span style="color:#B4530A">⚠ ' + $('Rakit slide').first().json.gambar_gagal + ' gambar gagal digenerate dan meminjam latar slide lain.</span>' : '' }}
+  {{ $('Rakit slide').first().json.ronde > 1 ? '<br><span style="color:#B4530A">⚠ Render baru berhasil di percobaan ke-' + $('Rakit slide').first().json.ronde + '; teks slide sudah diperkecil supaya muat.</span>' : '' }}
+</p>
+
+<h3 style="margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666">LinkedIn (EN)</h3>
+<pre style="white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px">{{ $('Rakit slide').first().json.linkedin_caption }}</pre>
+
+<h3 style="margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666">Instagram (ID)</h3>
+<pre style="white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px">{{ $('Rakit slide').first().json.ig_caption }}</pre>
+
+<p style="font-size:13px;color:#888;margin:0">
+  {{ $('Rakit slide').first().json.url_en }}<br>
+  {{ $('Rakit slide').first().json.url_id }}
+  {{ $('Rakit slide').first().json.dilewat.length ? '<br><br><b>Tidak diproses run ini:</b> ' + $('Rakit slide').first().json.dilewat.join(', ') + '. Satu eksekusi menangani satu artikel — push ulang atau jalankan manual untuk sisanya.' : '' }}
+</p>
+</div>

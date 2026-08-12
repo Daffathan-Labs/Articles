@@ -233,6 +233,29 @@ e-mail preview**. Ini yang menahan artikel lama dari ter-posting berulang kali.
 
 ## Mengubah workflow
 
-Edit di UI n8n, lalu **Download** dan timpa `n8n/portofolio-publish.json`, dan
-jalankan lagi `node --test n8n/portofolio-publish.test.mjs` sebelum commit —
-test itu yang menangkap referensi node yang putus setelah rename.
+`n8n/portofolio-publish.json` adalah **hasil build**, bukan sumber. Sumbernya di
+`n8n/src/`: `build.mjs` plus tiap Code node sebagai berkas `.js` sendiri, prompt, dan
+badan e-mail. Menyunting JSON-nya langsung akan tertimpa pada build berikutnya.
+
+```bash
+node n8n/src/build.mjs n8n/portofolio-publish.json
+node --test n8n/portofolio-publish.test.mjs
+```
+
+Build menghasilkan dua berkas (versi placeholder dan `.local.json`) dan menyisipkan dua
+hal dari luar `n8n/src/`:
+
+| Disisipkan | Dari | Ke |
+|---|---|---|
+| Profil voice | `docs/voice.md` | placeholder `{{VOICE}}` di `prompt-copy.txt` |
+| Logo hexagon | `icons/icon-192.png` | placeholder `{{LOGO}}` di `rakit-slide.js`, sebagai data URI |
+
+Keduanya disisipkan saat build supaya tidak ada salinan kedua yang diam-diam berbeda.
+Ubah `docs/voice.md`, jalankan build, prompt ikut berubah.
+
+Catatan soal `docs/voice.md`: **seluruh isinya** dikirim ke model. Tulis sebagai aturan
+yang bisa diikuti, jangan sebagai catatan tentang berkasnya sendiri — dan jangan menulis
+literal `{{VOICE}}` di dalamnya, karena itu menyisipkan ulang placeholder-nya.
+
+Kalau workflow diubah lewat UI n8n, salin balik perubahannya ke `n8n/src/` — jangan cuma
+men-download JSON-nya.
