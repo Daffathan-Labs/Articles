@@ -396,8 +396,8 @@
       "name": "Gemini Flash",
       "credentials": {
         "googlePalmApi": {
-          "id": "PfgTbWO9gTZ5Se4l",
-          "name": "Google Gemini(PaLM) Api account 2"
+          "id": "tpUqnrdzmryxe2ps",
+          "name": "Google Gemini(PaLM) Api account"
         }
       }
     },
@@ -449,8 +449,8 @@
       "name": "Gemini gambar",
       "credentials": {
         "googlePalmApi": {
-          "id": "PfgTbWO9gTZ5Se4l",
-          "name": "Google Gemini(PaLM) Api account 2"
+          "id": "tpUqnrdzmryxe2ps",
+          "name": "Google Gemini(PaLM) Api account"
         }
       },
       "retryOnFail": true,

@@ -25,8 +25,16 @@ const dataUri = (f, mime) =>
  * di-import, `Gemini Flash` mati dengan "Credential with ID ... does not exist" di
  * tengah eksekusi, setelah artikelnya sudah terbit ke website.
  */
+/*
+ * Yang INI, bukan "…account 2". Account 2 milik orang lain dan project-nya tanpa
+ * billing: `GET /v1beta/models` tetap membalas 200 dan menampilkan sembilan model
+ * gambar, tapi memanggilnya dibalas 429 `generate_content_free_tier_requests,
+ * limit: 0` — jatah gambar di tier gratis bukan kecil, tapi NOL. Yang terlihat di n8n
+ * cuma "The service is receiving too many requests from you", yang menyesatkan karena
+ * kedengaran seperti batas per menit. Key ini dibuktikan membalas 200 dengan PNG utuh.
+ */
 const GEMINI_CRED = {
-  googlePalmApi: { id: 'PfgTbWO9gTZ5Se4l', name: 'Google Gemini(PaLM) Api account 2' },
+  googlePalmApi: { id: 'tpUqnrdzmryxe2ps', name: 'Google Gemini(PaLM) Api account' },
 };
 const GMAIL_CRED = { gmailOAuth2: { id: '2oer50BZ7t1Mfj85', name: 'Gmail account' } };
 

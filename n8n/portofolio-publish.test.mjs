@@ -1451,6 +1451,16 @@ test("ID kredensial node terisi nilai asli, bukan placeholder", () => {
           /^ISI_/,
           `${w.name} / ${n.name} / ${tipe}: id kredensial masih placeholder`
         );
+        // "…account 2" (PfgTbWO9gTZ5Se4l) milik orang lain dan project-nya tanpa
+        // billing. Teks dan skema tetap jalan dengan key itu, jadi kegagalannya cuma
+        // muncul di generasi gambar: 429 `free_tier_requests, limit: 0`, yang dilaporkan
+        // n8n sebagai "receiving too many requests" — kelihatan seperti masalah sesaat,
+        // padahal jatahnya nol dan tidak akan berubah sendiri.
+        assert.notEqual(
+          c.id,
+          'PfgTbWO9gTZ5Se4l',
+          `${w.name} / ${n.name}: kredensial Gemini tanpa billing terpasang lagi`
+        );
       }
     }
   }
