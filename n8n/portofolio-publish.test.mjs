@@ -714,29 +714,6 @@ test("gambar dikonversi JPEG sebelum masuk render", () => {
   assert.equal(n.parameters.height, 1350, "harus setinggi kanvas render");
 });
 
-test("kredensial: Gmail terpasang, sisanya placeholder yang jelas", () => {
-  const belum = [];
-  for (const n of wf.nodes.filter((x) => x.credentials)) {
-    for (const [jenis, c] of Object.entries(n.credentials)) {
-      assert.ok(c.id, `${n.name}/${jenis} tanpa id kredensial`);
-      if (c.id.startsWith("ISI_ID_CREDENTIAL_")) belum.push(`${n.name}/${jenis}`);
-    }
-  }
-  // Daftar ini adalah sisa pekerjaan setup. Kalau berubah tanpa sengaja,
-  // docs/n8n-setup.md ikut ketinggalan — makanya dikunci di sini.
-  assert.deepEqual([...new Set(belum)].sort(), [
-    "Gemini Flash/googlePalmApi",
-    "Gemini gambar/googlePalmApi",
-  ]);
-  // Workflow refresh cuma butuh Gmail; API key n8n lewat node Kredensial, bukan
-  // credential n8n — supaya tetap satu tempat edit seperti kredensial lainnya.
-  for (const n of rf.nodes.filter((x) => x.credentials)) {
-    for (const [jenis, c] of Object.entries(n.credentials)) {
-      assert.doesNotMatch(c.id, /^ISI_ID_CREDENTIAL_/, `refresh: ${n.name}/${jenis} belum diisi`);
-    }
-  }
-});
-
 test("semua e-mail lewat node Gmail, bukan SMTP", () => {
   const email = wf.nodes.filter((n) => /gmail|emailSend/.test(n.type));
   // Kirim preview, Email hasil, Lapor render gagal, Lapor dilewati, Lapor commit.
@@ -1260,5 +1237,24 @@ test("e-mail workflow ulang cuma menawarkan dan melaporkan platform yang ada", (
   assert.doesNotMatch(hasil, /<li>LinkedIn:/);
   for (const p of ["Instagram", "Facebook"]) {
     assert.match(hasil, new RegExp(`<li>${p}:`), `${p} tidak dilaporkan`);
+  }
+});
+
+test("ID kredensial node terisi nilai asli, bukan placeholder", () => {
+  // `tulis()` cuma menyulih node `Kredensial`; blok `credentials` di node tidak
+  // ikut. Jadi placeholder di sini tetap placeholder bahkan di berkas .local.json,
+  // dan matinya baru terasa di tengah eksekusi — setelah artikelnya terlanjur
+  // terbit ke website. ID kredensial bukan rahasia (isinya tetap tinggal di n8n),
+  // jadi tidak ada alasan menyamarkannya.
+  for (const w of [wf, ul, rf]) {
+    for (const n of w.nodes.filter((x) => x.credentials)) {
+      for (const [tipe, c] of Object.entries(n.credentials)) {
+        assert.doesNotMatch(
+          c.id,
+          /^ISI_/,
+          `${w.name} / ${n.name} / ${tipe}: id kredensial masih placeholder`
+        );
+      }
+    }
   }
 });

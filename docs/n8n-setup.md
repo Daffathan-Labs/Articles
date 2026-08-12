@@ -49,15 +49,23 @@ n8n → **Workflows → Import from File** → **`n8n/portofolio-publish.local.j
 Workflow-nya sudah membawa `webhookId` yang sama dengan webhook yang sudah kamu buat,
 jadi path `/webhook/portofolio` tidak berubah.
 
-### Kredensial yang harus diisi
+### Kredensial node — semuanya sudah terisi
 
-Semua id kredensial di file ini sengaja placeholder (`ISI_ID_CREDENTIAL_*`) supaya
-tidak ada rahasia ikut ter-commit. Setelah import, buka tiap node bertanda merah:
-
-| Node | Jenis kredensial | Isi |
+| Node | Jenis kredensial | Kredensial n8n |
 |---|---|---|
-| `Gemini Flash`, `Gemini gambar` | Google Gemini (`googlePalmApi`) | API key dari <https://aistudio.google.com/apikey> |
-| `Kirim preview`, `Email hasil`, `Lapor render gagal`, `Lapor dilewati` | Gmail OAuth2 | **sudah terisi** — kredensial `Gmail account` |
+| `Gemini Flash`, `Gemini gambar` | Google Gemini (`googlePalmApi`) | `Google Gemini(PaLM) Api account 2` |
+| `Kirim preview`, `Email hasil`, `Lapor render gagal`, `Lapor dilewati`, `Lapor commit` | Gmail OAuth2 | `Gmail account` |
+
+**ID kredensial di berkas ini nilai asli, dan itu disengaja.** ID-nya bukan rahasia —
+cuma nomor rekaman di instance n8n; isinya (API key, token OAuth) tetap tinggal di n8n
+dan tidak pernah ikut ter-ekspor.
+
+ID Gemini sempat ditulis sebagai placeholder `ISI_ID_CREDENTIAL_GEMINI`, dan itu keliru:
+`tulis()` di `build.mjs` cuma menyulih node `Kredensial`, blok `credentials` di node
+tidak ikut. Jadi berkas `.local.json` pun membawa placeholder, dan matinya baru terasa
+**di tengah eksekusi** — `Gemini Flash` gagal dengan *"Credential with ID … does not
+exist"* setelah artikelnya terlanjur terbit ke website. Ada test yang menolak ID
+kredensial berbentuk placeholder di ketiga workflow.
 
 Keempat node e-mail memakai node Gmail, yang mengirim **dari akun Gmail yang
 terautentikasi**. Tidak ada alamat pengirim yang bisa diatur; `NOTIFY_EMAIL` hanya

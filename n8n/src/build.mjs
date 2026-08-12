@@ -14,7 +14,20 @@ const bacaRoot = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8').trimEnd();
 const dataUri = (f, mime) =>
   `data:${mime};base64,${fs.readFileSync(path.join(ROOT, f)).toString('base64')}`;
 
-const GEMINI_CRED = { googlePalmApi: { id: 'ISI_ID_CREDENTIAL_GEMINI', name: 'Gemini — Daffathan' } };
+/**
+ * ID kredensial n8n. Ini BUKAN rahasia — cuma nomor rekaman di instance-nya; isinya
+ * (API key, token OAuth) tetap tinggal di n8n dan tidak pernah ikut ter-ekspor. Jadi
+ * aman ter-commit, dan HARUS nilai asli.
+ *
+ * Sempat ditulis `ISI_ID_CREDENTIAL_GEMINI` seperti placeholder rahasia lain, dan itu
+ * salah: node `credentials` tidak ikut disulih `tulis()` — yang disulih cuma node
+ * `Kredensial`. Akibatnya berkas .local.json pun membawa placeholder, dan sekali
+ * di-import, `Gemini Flash` mati dengan "Credential with ID ... does not exist" di
+ * tengah eksekusi, setelah artikelnya sudah terbit ke website.
+ */
+const GEMINI_CRED = {
+  googlePalmApi: { id: 'PfgTbWO9gTZ5Se4l', name: 'Google Gemini(PaLM) Api account 2' },
+};
 const GMAIL_CRED = { gmailOAuth2: { id: '2oer50BZ7t1Mfj85', name: 'Gmail account' } };
 
 /**
