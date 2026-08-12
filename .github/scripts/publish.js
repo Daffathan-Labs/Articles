@@ -1,106 +1,212 @@
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 const axios = require("axios");
 const { marked } = require("marked");
 
-async function main() {
-  const dir = path.join(process.cwd(), "articles");
-  const articles = [];
+const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const HEADERS = {
+  "X-Portofolio-Token": process.env.WEBHOOK_TOKEN || "",
+  "Content-Type": "application/json",
+};
 
-  const folders = fs.readdirSync(dir).filter(f => fs.statSync(path.join(dir, f)).isDirectory());
+function parseArticle(dir, folder, file) {
+  const rawMd = fs.readFileSync(path.join(dir, folder, file), "utf8");
 
-  for (const folder of folders) {
-    const folderPath = path.join(dir, folder);
-    const files = fs.readdirSync(folderPath).filter(f => f.endsWith(".md"));
-
-    for (const file of files) {
-      const fullPath = path.join(folderPath, file);
-      const rawMd = fs.readFileSync(fullPath, "utf8");
-
-      // Extract locale from filename (e.g. "readme.en.md" or "readme-en.md" -> "en")
-      let locale = "id"; // default
-      const lowerFile = file.toLowerCase();
-      if (lowerFile.endsWith(".en.md") || lowerFile.endsWith("-en.md")) {
-        locale = "en";
-      } else if (lowerFile.endsWith(".id.md") || lowerFile.endsWith("-id.md")) {
-        locale = "id";
-      }
-
-      // Extract metadata
-      const getMeta = (key) => {
-        const regex = new RegExp(`<!--\\s*${key}:\\s*(.*?)\\s*-->`, "i");
-        const match = rawMd.match(regex);
-        return match ? match[1].trim() : null;
-      };
-
-      const title = getMeta("title");
-      const excerpt = getMeta("excerpt");
-      const date = getMeta("date");
-      const image = getMeta("image");
-      const posting_date = getMeta("posting_date");
-      const tagsStr = getMeta("tags");
-      const tags = tagsStr ? tagsStr.split(",").map(t => t.trim()) : [];
-
-      // Remove metadata comments only
-      let md = rawMd.replace(/<!--[\s\S]*?-->/g, "").trim();
-
-      // Fix list formatting (very important)
-      md = md.replace(/([^\n])\n(\s*[-*]\s)/g, "$1\n\n$2");
-
-      // Convert Markdown → HTML
-      let html = marked(md);
-
-      // Clean unwanted HTML wrappers
-      html = html
-        .replace(/<\/?html[^>]*>/gi, "")
-        .replace(/<\/?head[^>]*>/gi, "")
-        .replace(/<\/?body[^>]*>/gi, "")
-        .trim();
-
-      console.log(`✔ Parsed [${locale.toUpperCase()}]: ${title}`);
-
-      articles.push({
-        id: folder, // Common ID across locales
-        title,
-        excerpt,
-        date,
-        image,
-        posting_date,
-        tags,
-        content: html,
-        locale: locale,
-      });
-    }
+  // Extract locale from filename (e.g. "readme.en.md" or "readme-en.md" -> "en")
+  let locale = "id"; // default
+  const lowerFile = file.toLowerCase();
+  if (lowerFile.endsWith(".en.md") || lowerFile.endsWith("-en.md")) {
+    locale = "en";
+  } else if (lowerFile.endsWith(".id.md") || lowerFile.endsWith("-id.md")) {
+    locale = "id";
   }
 
-  console.log(`\n>> Sending ${articles.length} articles to backend...\n`);
+  // Extract metadata
+  const getMeta = (key) => {
+    const regex = new RegExp(`<!--\\s*${key}:\\s*(.*?)\\s*-->`, "i");
+    const match = rawMd.match(regex);
+    return match ? match[1].trim() : null;
+  };
 
-  try {
-    await axios.post(
-      `${process.env.API_URL}/articles/sync`,
-      articles,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 120000
-      }
+  const title = getMeta("title");
+  const excerpt = getMeta("excerpt");
+  const date = getMeta("date");
+  const image = getMeta("image");
+  const posting_date = getMeta("posting_date");
+  const tagsStr = getMeta("tags");
+  const tags = tagsStr ? tagsStr.split(",").map((t) => t.trim()) : [];
+
+  // Gagal di sini lebih jelas daripada 400 dari ValidationPipe di server.
+  if (!title || !excerpt || !date) {
+    throw new Error(
+      `${folder}/${file}: metadata wajib tidak lengkap (title/excerpt/date). ` +
+        `Cek komentar <!-- title: ... --> di baris atas file.`
     );
-    console.log("🎉 Successfully published all articles!");
-  } catch (error) {
-    if (error.response && error.response.status === 504) {
-      console.log("⚠️ Received 504 Gateway Timeout from the server.");
-      console.log("This usually means the server is taking a long time to download images in the background.");
-      console.log("The sync process will likely finish successfully on the server side. Treating this as a success.");
-      console.log("🎉 Assumed successful publish (pending background completion).");
-    } else {
-      throw error;
-    }
   }
+
+  // Remove metadata comments only
+  let md = rawMd.replace(/<!--[\s\S]*?-->/g, "").trim();
+
+  // Fix list formatting (very important)
+  md = md.replace(/([^\n])\n(\s*[-*]\s)/g, "$1\n\n$2");
+
+  // Convert Markdown → HTML
+  let html = marked(md);
+
+  // Clean unwanted HTML wrappers
+  html = html
+    .replace(/<\/?html[^>]*>/gi, "")
+    .replace(/<\/?head[^>]*>/gi, "")
+    .replace(/<\/?body[^>]*>/gi, "")
+    .trim();
+
+  console.log(`✔ Parsed [${locale.toUpperCase()}]: ${title}`);
+
+  return {
+    id: folder, // Common ID across locales
+    title,
+    excerpt,
+    date,
+    image,
+    posting_date,
+    tags,
+    content: html,
+    locale,
+  };
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+/**
+ * Baca output `git diff --name-status` jadi:
+ *   folders  — semua folder yang tersentuh, dipakai untuk memilih apa yang di-publish
+ *   addedMd  — folder -> Set nama file .md yang statusnya A (baru dibuat)
+ *
+ * Dipisah dari changedFolders() supaya bisa diuji tanpa repo git.
+ */
+function classifyDiff(out) {
+  const folders = new Set();
+  const addedMd = new Map();
+
+  for (const line of out.split("\n")) {
+    const parts = line.trim().split("\t");
+    if (parts.length < 2) continue;
+
+    const status = parts[0][0]; // "R100" -> "R"
+    const file = parts[parts.length - 1]; // rename: pakai path tujuan
+    const match = file.match(/^articles\/([^/]+)\/(.+)$/);
+    if (!match) continue;
+
+    const [, folder, name] = match;
+    // Granularitas folder, bukan file: commit yang cuma ganti gambar tetap
+    // memicu re-publish kedua locale-nya supaya thumbnail ikut ter-refresh.
+    folders.add(folder);
+
+    // Hanya "A" yang dihitung baru. Rename (R) sengaja tidak — memindahkan artikel
+    // lama ke folder lain bukan alasan untuk mem-posting ulang ke sosmed.
+    if (name.toLowerCase().endsWith(".md") && status === "A") {
+      if (!addedMd.has(folder)) addedMd.set(folder, new Set());
+      addedMd.get(folder).add(name);
+    }
+  }
+  return { folders, addedMd };
+}
+
+/**
+ * Folder artikel yang berubah sejak commit sebelumnya.
+ * Return null = harus full sync (workflow_dispatch, branch baru, force push,
+ * atau shallow clone yang tidak punya commit pembanding).
+ */
+function changedFolders() {
+  const before = process.env.BEFORE_SHA;
+  const sha = process.env.SHA || "HEAD";
+
+  if (!before || /^0+$/.test(before)) return null;
+
+  let out;
+  try {
+    out = execSync(`git diff --name-status ${before} ${sha} -- articles/`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch {
+    console.log("⚠️ git diff gagal (shallow clone / force push) → full sync.");
+    return null;
+  }
+
+  return classifyDiff(out);
+}
+
+async function main() {
+  if (!WEBHOOK_URL) {
+    throw new Error("WEBHOOK_URL kosong. Set secret N8N_WEBHOOK_URL di repo.");
+  }
+
+  const dir = path.join(process.cwd(), "articles");
+  const only = changedFolders();
+
+  const folders = fs
+    .readdirSync(dir)
+    .filter((f) => fs.statSync(path.join(dir, f)).isDirectory())
+    .filter((f) => !only || only.folders.has(f));
+
+  if (only && folders.length === 0) {
+    console.log("Tidak ada artikel yang berubah — tidak ada yang dikirim.");
+    return;
+  }
+
+  const articles = [];
+  const newFolders = [];
+
+  for (const folder of folders) {
+    const files = fs
+      .readdirSync(path.join(dir, folder))
+      .filter((f) => f.endsWith(".md"));
+    for (const file of files) {
+      articles.push(parseArticle(dir, folder, file));
+    }
+
+    // Folder dianggap baru hanya kalau SEMUA file .md yang ada sekarang berstatus A.
+    // Menambah terjemahan EN ke artikel lama karena itu tidak menghitung ulang sebagai
+    // baru — file ID-nya tidak muncul di diff, jadi `every` gagal dan sosmed dilewati.
+    const added = only && only.addedMd.get(folder);
+    if (added && files.length > 0 && files.every((f) => added.has(f))) {
+      newFolders.push(folder);
+    }
+  }
+
+  const payload = {
+    mode: only ? "delta" : "sync",
+    sha: process.env.SHA || "HEAD",
+    repo: process.env.REPO || "",
+    new_folders: newFolders,
+    // Bentuknya persis CreateArticleDto — n8n meneruskan array ini apa adanya ke
+    // API. Jangan tambah field di sini: /articles pakai forbidNonWhitelisted,
+    // satu field asing = 400. Metadata pipeline hidup di level atas payload.
+    articles,
+  };
+
+  console.log(
+    `\n>> ${payload.mode}: ${articles.length} artikel dari ${folders.length} folder` +
+      `${newFolders.length ? `, ${newFolders.length} folder baru → sosmed` : ""}\n`
+  );
+
+  const res = await axios.post(WEBHOOK_URL, payload, {
+    headers: HEADERS,
+    // Di atas timeout /articles/sync (300s) di sisi n8n, supaya yang menyerah
+    // duluan selalu n8n dengan pesan error jelas — bukan axios dengan ECONNABORTED.
+    timeout: 310000,
+  });
+
+  console.log(`🎉 n8n balas ${res.status}: ${JSON.stringify(res.data)}`);
+}
+
+if (require.main === module) {
+  main().catch((e) => {
+    // Response body dari n8n jauh lebih berguna daripada "Request failed with 500".
+    if (e.response) console.error(`HTTP ${e.response.status}:`, e.response.data);
+    console.error(e.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { parseArticle, classifyDiff, changedFolders };

@@ -1,0 +1,1377 @@
+{
+  "name": "Portofolio Publish",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portofolio",
+        "responseMode": "responseNode",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -720,
+        300
+      ],
+      "id": "Webhook",
+      "name": "Webhook",
+      "webhookId": "7df7abbe-8eb6-43b7-9b47-5061592604aa",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ISI_ID_CREDENTIAL_WEBHOOK",
+          "name": "Portofolio webhook token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "article_api_url",
+              "name": "article_api_url",
+              "value": "https://api.daffathan-labs.my.id",
+              "type": "string"
+            },
+            {
+              "id": "article_api_key",
+              "name": "article_api_key",
+              "value": "ISI_ARTICLE_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "site_url",
+              "name": "site_url",
+              "value": "https://daffathan-labs.my.id",
+              "type": "string"
+            },
+            {
+              "id": "render_url",
+              "name": "render_url",
+              "value": "ISI_RENDER_URL",
+              "type": "string"
+            },
+            {
+              "id": "render_token",
+              "name": "render_token",
+              "value": "ISI_RENDER_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "linkedin_token",
+              "name": "linkedin_token",
+              "value": "ISI_LINKEDIN_ACCESS_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "linkedin_urn",
+              "name": "linkedin_urn",
+              "value": "urn:li:person:B1oVXChp7v",
+              "type": "string"
+            },
+            {
+              "id": "linkedin_version",
+              "name": "linkedin_version",
+              "value": "202607",
+              "type": "string"
+            },
+            {
+              "id": "ig_user_id",
+              "name": "ig_user_id",
+              "value": "ISI_IG_USER_ID",
+              "type": "string"
+            },
+            {
+              "id": "ig_token",
+              "name": "ig_token",
+              "value": "ISI_IG_ACCESS_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "notify_email",
+              "name": "notify_email",
+              "value": "ISI_EMAIL_TUJUAN",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -500,
+        300
+      ],
+      "id": "Kredensial",
+      "name": "Kredensial"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.mode }}",
+              "rightValue": "sync",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -280,
+        300
+      ],
+      "id": "Mode sync?",
+      "name": "Mode sync?"
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 300000
+        },
+        "method": "POST",
+        "url": "={{ $('Kredensial').first().json.article_api_url }}/articles/sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Kredensial').first().json.article_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body.articles) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -280,
+        120
+      ],
+      "id": "Sync ke API",
+      "name": "Sync ke API",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mempertahankan perilaku publish.js yang lama: 504 dari /articles/sync dianggap\n// sukses karena server masih mengunduh gambar di latar dan sync-nya tetap selesai.\n// Error lain tetap gagal keras — jangan sampai sync yang benar-benar ditolak\n// terlihat hijau di GitHub Actions.\nconst j = $input.first().json;\nif (!j.error) return [{ json: { ok: true, mode: 'sync' } }];\n\nconst status = j.error.status ?? j.error.httpCode ?? j.error.code ?? null;\nif (String(status) === '504') {\n  return [{ json: { ok: true, mode: 'sync', note: '504 dari API — dianggap sukses' } }];\n}\nthrow new Error(`Sync gagal (${status}): ${JSON.stringify(j.error).slice(0, 500)}`);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        120
+      ],
+      "id": "Cek sync",
+      "name": "Cek sync"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        120
+      ],
+      "id": "Respond sync",
+      "name": "Respond sync"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.articles",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -280,
+        460
+      ],
+      "id": "Pecah artikel",
+      "name": "Pecah artikel"
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 120000
+        },
+        "method": "POST",
+        "url": "={{ $('Kredensial').first().json.article_api_url }}/articles",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Kredensial').first().json.article_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -60,
+        460
+      ],
+      "id": "Publish artikel",
+      "name": "Publish artikel"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Satu item ringkasan untuk dikembalikan ke GitHub Actions. Berjalan setelah semua\n// POST /articles selesai, jadi kalau ada yang gagal alurnya sudah berhenti sebelum\n// sampai sini dan webhook membalas 500.\nconst body = $('Webhook').first().json.body;\nconst hasil = $input.all();\n\nreturn [{\n  json: {\n    ok: true,\n    mode: 'delta',\n    sha: body.sha,\n    published: hasil.length,\n    new_folders: body.new_folders || [],\n    slugs: hasil.map((r) => r.json?.data?.slug).filter(Boolean),\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        460
+      ],
+      "id": "Ringkas hasil",
+      "name": "Ringkas hasil"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        380,
+        460
+      ],
+      "id": "Respond delta",
+      "name": "Respond delta"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ ($('Webhook').first().json.body.new_folders || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        600,
+        460
+      ],
+      "id": "Ada artikel baru?",
+      "name": "Ada artikel baru?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun brief untuk satu artikel baru. Menghasilkan TEPAT satu item — seluruh\n// cabang sosmed di bawah ini (fan-out gambar, render, carousel IG) mengasumsikan\n// satu artikel per eksekusi, dan satu approval e-mail memang cuma bisa mewakili satu.\n//\n// Kalau satu push membawa lebih dari satu artikel baru, sisanya masuk `dilewat` dan\n// disebut namanya di e-mail approval. Sengaja tidak dibuang diam-diam.\nconst body = $('Webhook').first().json.body;\nconst baru = body.new_folders || [];\nif (!baru.length) return [];\n\n// Slug diambil dari respons API, bukan di-slugify sendiri. Server yang membuatnya\n// dari `title` (slugify strict), dan hasilnya sering beda dari tebakan.\nconst slugs = {};\nfor (const r of $('Publish artikel').all()) {\n  const d = r.json && r.json.data;\n  if (d && d.id) slugs[`${d.id}|${d.locale}`] = d.slug;\n}\n\nconst SITE = String($('Kredensial').first().json.site_url || '').replace(/\\/+$/, '');\nif (!SITE) throw new Error('site_url kosong — isi di node \"Kredensial\".');\n\nconst folder = baru[0];\nconst arts = (body.articles || []).filter((a) => a.id === folder);\nconst id = arts.find((a) => a.locale === 'id');\nconst en = arts.find((a) => a.locale === 'en');\nconst utama = id || en;\nif (!utama) throw new Error(`${folder}: tidak ada artikel di payload untuk folder ini.`);\n\nconst url = (a) => {\n  const s = a && slugs[`${a.id}|${a.locale}`];\n  return s ? `${SITE}/${a.locale}/articles/${s}` : null;\n};\n\n// LinkedIn pakai versi EN, Instagram pakai versi ID. Kalau salah satu locale tidak\n// ada, dua-duanya jatuh ke yang tersedia — posting dengan bahasa yang kurang pas\n// masih jauh lebih baik daripada menautkan URL yang 404.\nconst urlEn = url(en) || url(id);\nconst urlId = url(id) || url(en);\nif (!urlEn || !urlId) {\n  throw new Error(\n    `${folder}: slug tidak ada di respons API. Cek keluaran node \"Publish artikel\" — ` +\n      'tanpa slug, tautan yang di-posting pasti salah.'\n  );\n}\n\n// Teks polos dari HTML: cukup sebagai bahan brief dan jauh lebih hemat token\n// daripada mengirim markup Tailwind hasil autoCleanHtml.\nconst teks = String(utama.content || '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .slice(0, 4000);\n\nreturn [{\n  json: {\n    folder,\n    // Masuk ke path filesystem render-svc, harus lolos /^[A-Za-z0-9_-]{1,64}$/.\n    code: folder.replace(/[^A-Za-z0-9_-]+/g, '-').slice(0, 64),\n    title_id: (id && id.title) || null,\n    title_en: (en && en.title) || null,\n    excerpt: utama.excerpt,\n    tags: (utama.tags || []).join(', '),\n    teks,\n    url_en: urlEn,\n    url_id: urlId,\n    dilewat: baru.slice(1),\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        460
+      ],
+      "id": "Siapkan brief",
+      "name": "Siapkan brief"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Kamu menulis materi promosi untuk satu artikel di portofolio pribadi Daffa (Daffathan Labs).\nArtikelnya sudah terbit. Tugasmu bukan menulis ulang artikel, tapi membuat orang mengkliknya.\n\nVOICE\nEngineer yang menulis dari pengalaman langsung, bukan marketer. Konkret, tenang, tanpa hype.\nDilarang: \"revolusioner\", \"game-changer\", \"mind-blowing\", \"unlock\", \"supercharge\", emoji roket,\npertanyaan retoris pembuka (\"Pernahkah kamu...\"), dan klaim angka yang tidak ada di artikel.\nJangan mengarang detail apa pun yang tidak tertulis di ISI ARTIKEL di bawah.\n\nBAHAN\nJudul ID  : {{ $json.title_id }}\nJudul EN  : {{ $json.title_en }}\nRingkasan : {{ $json.excerpt }}\nTag       : {{ $json.tags }}\nURL (EN)  : {{ $json.url_en }}\nURL (ID)  : {{ $json.url_id }}\nISI ARTIKEL:\n{{ $json.teks }}\n\nYANG HARUS DIHASILKAN\n\n1. linkedin_caption — BAHASA INGGRIS, 120-200 kata.\n   Baris pertama adalah hook berdiri sendiri, maksimal 12 kata, tanpa hashtag.\n   Lalu 2-4 paragraf pendek (maksimal 3 kalimat masing-masing), dipisah baris kosong.\n   Isinya satu sudut pandang atau satu pelajaran nyata dari artikel — bukan ringkasan daftar isi.\n   Tutup dengan baris berisi persis: {{ $json.url_en }}\n   Tanpa hashtag di linkedin_caption. Tanpa \"link in comments\".\n\n2. ig_caption — BAHASA INDONESIA, 80-150 kata.\n   Lebih santai dari LinkedIn, tetap tanpa hype. Dipisah baris kosong tiap 1-2 kalimat.\n   Tutup dengan baris persis: Baca lengkapnya: {{ $json.url_id }}\n   Ingat tautan di caption Instagram TIDAK bisa diklik, jadi tulis URL-nya utuh dan apa adanya.\n\n3. hashtags — 5 sampai 8 hashtag, huruf kecil semua, relevan dengan tag artikel.\n   Tanpa hashtag generik sampah seperti #viral #fyp #followforfollow.\n\n4. slides — TEPAT 5 slide untuk carousel Instagram 1080x1350.\n   Alurnya: [1] hook yang bikin berhenti scroll, [2][3][4] tiga poin konkret dari artikel,\n   [5] ajakan membaca artikel lengkap.\n   - heading: MAKSIMAL 8 KATA. Bahasa Indonesia. Kalimat, bukan judul bab.\n   - body: MAKSIMAL 25 KATA. Bahasa Indonesia. Boleh kosong untuk slide 1.\n     Batas kata ini keras — teksnya di-render ke kanvas tetap dan kelebihan akan terpotong.\n   - heading slide 5 harus mengajak membaca, misal \"Selengkapnya di artikel penuh\".\n     Jangan tulis URL di heading atau body, URL-nya sudah dicetak otomatis di slide itu.\n   - image_prompt: bahasa INGGRIS, 1-2 kalimat. Deskripsi FOTO latar belakang saja:\n     subjek, lokasi, cahaya. Ini jadi latar gelap di belakang teks putih, jadi pilih\n     komposisi yang lapang dan tidak ramai di bagian tengah.\n   - image_mode: salah satu dari konseptual, tekstur, dokumenter, tempat, properti.\n\n5. image_series — satu kalimat bahasa Inggris yang mengikat kelima gambar jadi satu seri\n   (subjek, lokasi, dan gaya cahaya yang sama). Dipakai sebagai jangkar konsistensi.\n\nATURAN GAMBAR — KERAS\nDILARANG meminta teks, tulisan, angka, huruf, label, logo, atau elemen antarmuka\nDI DALAM gambar. Semua kata hidup di HTML, nol di raster. Model gambar menulis teks\ndengan buruk dan hasilnya selalu terlihat palsu.\n\nBalas hanya JSON sesuai skema.",
+        "hasOutputParser": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1040,
+        460
+      ],
+      "id": "Gemini copy",
+      "name": "Gemini copy",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        680
+      ],
+      "id": "Gemini Flash",
+      "name": "Gemini Flash",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ISI_ID_CREDENTIAL_GEMINI",
+          "name": "Gemini — Daffathan"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"required\": [\n    \"linkedin_caption\",\n    \"ig_caption\",\n    \"hashtags\",\n    \"slides\",\n    \"image_series\"\n  ],\n  \"properties\": {\n    \"linkedin_caption\": {\n      \"type\": \"string\",\n      \"description\": \"Bahasa Inggris, 120-200 kata, diakhiri URL EN\"\n    },\n    \"ig_caption\": {\n      \"type\": \"string\",\n      \"description\": \"Bahasa Indonesia, 80-150 kata, diakhiri \\\"Baca lengkapnya: <URL ID>\\\"\"\n    },\n    \"hashtags\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"5-8 hashtag huruf kecil\"\n    },\n    \"image_series\": {\n      \"type\": \"string\",\n      \"description\": \"Satu kalimat Inggris pengikat kelima gambar\"\n    },\n    \"slides\": {\n      \"type\": \"array\",\n      \"description\": \"Tepat 5 slide: hook, 3 poin, CTA\",\n      \"items\": {\n        \"type\": \"object\",\n        \"required\": [\n          \"heading\",\n          \"body\",\n          \"image_prompt\",\n          \"image_mode\"\n        ],\n        \"properties\": {\n          \"heading\": {\n            \"type\": \"string\",\n            \"description\": \"Bahasa Indonesia, MAKSIMAL 8 kata\"\n          },\n          \"body\": {\n            \"type\": \"string\",\n            \"description\": \"Bahasa Indonesia, MAKSIMAL 25 kata, boleh kosong di slide 1\"\n          },\n          \"image_prompt\": {\n            \"type\": \"string\",\n            \"description\": \"Inggris, 1-2 kalimat, foto latar saja, dilarang ada teks di gambar\"\n          },\n          \"image_mode\": {\n            \"type\": \"string\",\n            \"enum\": [\n              \"konseptual\",\n              \"tekstur\",\n              \"dokumenter\",\n              \"tempat\",\n              \"properti\"\n            ]\n          }\n        }\n      }\n    }\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1180,
+        680
+      ],
+      "id": "Skema copy",
+      "name": "Skema copy"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fan-out satu item per slide. Node `Gemini gambar` memproses satu item per\n// panggilan, jadi ini yang membuat carousel 5 slide menghasilkan 5 gambar;\n// `Rakit slide` menggabungnya kembali jadi satu item.\nconst brief = $('Siapkan brief').first().json;\nconst c = $input.first().json.output;\n\nif (!c || !Array.isArray(c.slides) || !c.slides.length) {\n  throw new Error(\n    'Gemini copy tidak mengembalikan slides[]. Ini beda dari \"model menolak\": ' +\n      `output yang diterima = ${JSON.stringify(c).slice(0, 300)}`\n  );\n}\n\n// Rentang aman IG carousel adalah 2-10 item. Prompt meminta 5; potong di 10 kalau\n// model kebablasan, dan gagal keras kalau cuma 1 supaya tidak diam-diam jadi post biasa.\nconst slides = c.slides.slice(0, 10);\nif (slides.length < 2) {\n  throw new Error(`Cuma ${slides.length} slide — IG carousel butuh minimal 2.`);\n}\n\n// Sufiks dikunci di kode, bukan di prompt: ini syarat teknis yang tidak boleh\n// dinegosiasikan model. Semua teks hidup di HTML, nol di raster.\nconst SUFIKS =\n  'Photographic, natural available light, shallow depth of field, muted desaturated ' +\n  'palette, dark moody background suitable as a full-bleed backdrop behind white text. ' +\n  'Absolutely no text, letters, numbers, watermarks, logos or user interface anywhere.';\n\nconst CADANGAN = {\n  konseptual: 'An abstract minimal still life suggesting an idea taking shape',\n  tekstur: 'An extreme close-up of a raw material surface',\n  dokumenter: 'A candid over-the-shoulder shot of someone working at a desk',\n  tempat: 'A quiet architectural interior with strong directional light',\n  properti: 'A single everyday object isolated on a plain surface',\n};\n\nreturn slides.map((s, i) => {\n  const mode = CADANGAN[s.image_mode] ? s.image_mode : 'konseptual';\n  const inti = String(s.image_prompt || '').trim() || CADANGAN[mode];\n  // Slide 2+ diikat ke slide pertama supaya carousel-nya terbaca satu seri,\n  // bukan lima gambar acak yang kebetulan bersebelahan.\n  const lanjutan = i === 0\n    ? ''\n    : ' Same visual series, same location and lighting as the first image in this set.';\n\n  return {\n    json: {\n      code: brief.code,\n      idx: i,\n      total: slides.length,\n      name: String(i + 1).padStart(2, '0'),\n      heading: String(s.heading || '').trim(),\n      body: String(s.body || '').trim(),\n      image_prompt: `${c.image_series || ''} ${inti}.${lanjutan} ${SUFIKS}`.trim(),\n    },\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        460
+      ],
+      "id": "Pecah slide",
+      "name": "Pecah slide"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3-pro-image-preview",
+          "mode": "id"
+        },
+        "prompt": "={{ $json.image_prompt }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        460
+      ],
+      "id": "Gemini gambar",
+      "name": "Gemini gambar",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ISI_ID_CREDENTIAL_GEMINI",
+          "name": "Gemini — Daffathan"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "resize",
+        "width": 1080,
+        "height": 1350,
+        "resizeOption": "onlyIfLarger",
+        "options": {
+          "format": "jpeg",
+          "quality": 85
+        }
+      },
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        460
+      ],
+      "id": "Jadi JPEG",
+      "name": "Jadi JPEG",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gabung N item slide jadi SATU item berisi slides[] HTML siap render.\n//\n// Node ini adalah titik masuk loop retry: `Render` yang gagal kembali ke sini, bukan\n// ke `Gemini gambar`. Karena itu semua data dibaca lewat referensi node bernama,\n// tidak lewat $input — saat dipanggil ulang, $input berisi keluaran node retry,\n// bukan JPEG hasil konversi.\n// Gambar juga sengaja tidak digenerate ulang: penyebab 422 adalah teks yang meluber,\n// bukan gambarnya, dan regenerasi lima gambar tiap ronde itu bakar kuota percuma.\n//\n// Tiap ronde teksnya DIPERKECIL. Retry yang mengirim input identik ke render-svc\n// deterministik akan gagal identik 8 kali — yang membuatnya konvergen adalah ini.\nconst ronde = $runIndex;\nconst brief = $('Siapkan brief').first().json;\nconst copy = $('Gemini copy').first().json.output;\nconst meta = $('Pecah slide').all().map((i) => i.json);\nconst jpeg = $('Jadi JPEG').all();\n\nif (jpeg.length !== meta.length) {\n  throw new Error(\n    `Slide masuk ${jpeg.length} tapi metadata ${meta.length}. Pasangan per-indeks ` +\n      'tidak bisa dipercaya — kemungkinan Gemini gambar men-drop item.'\n  );\n}\n\n// Raster per slide. Node gambar memakai onError:continueRegularOutput, jadi slide\n// yang gagal tetap mengirim item tapi tanpa binary.\nconst raster = jpeg.map((it) => (it.binary && it.binary.data && it.binary.data.data) || null);\nconst adaRaster = raster.filter(Boolean);\n// Nol gambar tidak dianggap kegagalan: latar cuma dekorasi di balik veil gelap,\n// dan slide tanpa latar tetap terbaca penuh. Lebih baik terbit polos daripada\n// menahan seluruh pipeline karena hiasan.\nconst gambarGagal = raster.filter((r) => !r).length;\n// Slide yang gagal meminjam raster tetangga — satu latar berulang jauh lebih baik\n// daripada satu slide kosong di tengah carousel.\nconst bg = raster.map((r) => r || adaRaster[0] || null);\n\n// Ronde 0 pakai ukuran penuh; tiap ronde berikutnya mengecil sampai lantai 70%.\n// Digabung dengan pemangkasan kata di bawah, ronde 8 praktis mustahil meluber.\nconst skala = Math.max(0.7, 1 - ronde * 0.06);\nconst px = (n) => Math.round(n * skala);\nconst maksKata = (s, n) => {\n  const kata = String(s == null ? '' : s).trim().split(/\\s+/).filter(Boolean);\n  return kata.length <= n ? kata.join(' ') : kata.slice(0, n).join(' ') + '…';\n};\n\nconst esc = (s) =>\n  String(s == null ? '' : s).replace(/[&<>\"]/g, (c) =>\n    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c])\n  );\n\nconst CSS = `\n*{margin:0;padding:0;box-sizing:border-box}\nhtml,body{width:1080px;height:1350px;overflow:hidden}\nbody{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0B0F14;color:#F5F7FA;position:relative}\n.bg{position:absolute;inset:0;width:1080px;height:1350px;object-fit:cover;opacity:.42}\n.veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,15,20,.50) 0%,rgba(11,15,20,.80) 52%,rgba(11,15,20,.96) 100%)}\n.wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:${px(92)}px ${px(84)}px}\n.kicker{font-size:${px(25)}px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#5EC8FF}\nh1{font-size:${px(78)}px;line-height:1.07;font-weight:800;letter-spacing:-.02em}\nh1.cta{font-size:${px(62)}px}\np{font-size:${px(36)}px;line-height:1.44;font-weight:400;color:#C3CCD6;margin-top:${px(26)}px}\n.foot{display:flex;justify-content:space-between;align-items:baseline;gap:24px;font-size:${px(23)}px;font-weight:500;color:#8A97A6}\n.foot .url{color:#5EC8FF;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:740px}\n`.trim();\n\nconst slides = meta.map((m, i) => {\n  const akhir = i === meta.length - 1;\n  // Slide terakhir selalu membawa URL artikel, apa pun yang ditulis model: tautan di\n  // caption Instagram tidak bisa diklik, jadi carousel-nya sendiri harus menyebut alamat.\n  const kiri = akhir\n    ? `<span class=\"url\">${esc(brief.url_id.replace(/^https?:\\/\\//, ''))}</span>`\n    : '<span>daffathan-labs.my.id</span>';\n\n  const heading = maksKata(m.heading, Math.max(5, 8 - Math.floor(ronde / 2)));\n  const body = maksKata(m.body, Math.max(10, 25 - ronde * 2));\n\n  return `<!doctype html>\n<html lang=\"id\"><head><meta charset=\"utf-8\"><style>${CSS}</style></head><body>\n${bg[i] ? `<img class=\"bg\" src=\"data:image/jpeg;base64,${bg[i]}\">` : ''}\n<div class=\"veil\"></div>\n<div class=\"wrap\">\n  <div class=\"kicker\">Daffathan Labs</div>\n  <div>\n    <h1${akhir ? ' class=\"cta\"' : ''}>${esc(heading)}</h1>\n    ${body ? `<p>${esc(body)}</p>` : ''}\n  </div>\n  <div class=\"foot\">${kiri}<span>${i + 1} / ${meta.length}</span></div>\n</div>\n</body></html>`;\n});\n\nreturn [{\n  json: {\n    code: brief.code,\n    folder: brief.folder,\n    url_id: brief.url_id,\n    url_en: brief.url_en,\n    dilewat: brief.dilewat,\n    gambar_gagal: gambarGagal,\n    ronde: ronde + 1,\n    linkedin_caption: copy.linkedin_caption,\n    ig_caption: [copy.ig_caption, (copy.hashtags || []).join(' ')]\n      .filter(Boolean)\n      .join('\\n\\n'),\n    slides,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        460
+      ],
+      "id": "Rakit slide",
+      "name": "Rakit slide"
+    },
+    {
+      "parameters": {
+        "options": {
+          "timeout": 60000
+        },
+        "method": "POST",
+        "url": "={{ $('Kredensial').first().json.render_url }}/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Kredensial').first().json.render_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ brand: 'portofolio', code: $json.code, caption: $json.ig_caption, images: $json.slides.map((h, i) => ({ name: String(i + 1).padStart(2, '0'), html: h })) }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2140,
+        460
+      ],
+      "id": "Render",
+      "name": "Render",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
+        "subject": "=[Portofolio] Siap posting: {{ $('Siapkan brief').first().json.folder }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family:system-ui,sans-serif;max-width:640px;line-height:1.55\">\n<h2 style=\"margin:0 0 4px\">{{ $('Siapkan brief').first().json.folder }}</h2>\n<p style=\"margin:0 0 20px;color:#666\">Artikel sudah tayang di website. Tinggal sosmed.</p>\n\n<p style=\"margin:0 0 10px\">\n  <a href=\"{{ $execution.resumeUrl }}?action=approve\"\n     style=\"background:#0B7A4B;color:#fff;padding:13px 22px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block\">\n    Approve &mdash; posting ke LinkedIn + Instagram</a>\n</p>\n<p style=\"margin:0 0 24px\">\n  <a href=\"{{ $execution.resumeUrl }}?action=skip\" style=\"color:#888;font-size:14px\">Skip, jangan posting</a>\n  <span style=\"color:#bbb;font-size:14px\"> &middot; kedaluwarsa 48 jam</span>\n</p>\n\n<p style=\"margin:0 0 24px\">\n  <a href=\"{{ $json.previewUrl }}\" style=\"font-weight:600\">Lihat 5 slide carousel &rarr;</a>\n  {{ $('Rakit slide').first().json.gambar_gagal > 0 ? '<br><span style=\"color:#B4530A\">⚠ ' + $('Rakit slide').first().json.gambar_gagal + ' gambar gagal digenerate dan meminjam latar slide lain.</span>' : '' }}\n  {{ $('Rakit slide').first().json.ronde > 1 ? '<br><span style=\"color:#B4530A\">⚠ Render baru berhasil di percobaan ke-' + $('Rakit slide').first().json.ronde + '; teks slide sudah diperkecil supaya muat.</span>' : '' }}\n</p>\n\n<h3 style=\"margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666\">LinkedIn (EN)</h3>\n<pre style=\"white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px\">{{ $('Rakit slide').first().json.linkedin_caption }}</pre>\n\n<h3 style=\"margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666\">Instagram (ID)</h3>\n<pre style=\"white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px\">{{ $('Rakit slide').first().json.ig_caption }}</pre>\n\n<p style=\"font-size:13px;color:#888;margin:0\">\n  {{ $('Rakit slide').first().json.url_en }}<br>\n  {{ $('Rakit slide').first().json.url_id }}\n  {{ $('Rakit slide').first().json.dilewat.length ? '<br><br><b>Tidak diproses run ini:</b> ' + $('Rakit slide').first().json.dilewat.join(', ') + '. Satu eksekusi menangani satu artikel — push ulang atau jalankan manual untuk sisanya.' : '' }}\n</p>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2360,
+        360
+      ],
+      "id": "Kirim preview",
+      "name": "Kirim preview",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2oer50BZ7t1Mfj85",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 8,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2360,
+        660
+      ],
+      "id": "Coba render lagi?",
+      "name": "Coba render lagi?"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
+        "subject": "=[Portofolio] RENDER GAGAL 8x: {{ $('Siapkan brief').first().json.folder }}",
+        "emailType": "html",
+        "message": "=<p>Artikel sudah tayang di website, tapi carousel gagal dirender <b>8 kali berturut-turut</b> — tidak ada yang diposting ke sosmed.</p><pre style=\"white-space:pre-wrap\">{{ JSON.stringify($json, null, 2).slice(0, 2000) }}</pre><p>Tiap ronde font sudah diperkecil sampai 70% dan kata dipangkas. Kalau tetap \"overflow\", berarti ada yang salah di template Code node \"Rakit slide\", bukan di isinya. Kalau errornya bukan 422, cek render-svc: <code>GET /health</code>.</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2140,
+        860
+      ],
+      "id": "Lapor render gagal",
+      "name": "Lapor render gagal",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2oer50BZ7t1Mfj85",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "limitWaitTime": true,
+        "limitType": "afterTimeInterval",
+        "resumeAmount": 48,
+        "resumeUnit": "hours",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2580,
+        360
+      ],
+      "id": "Tunggu approval",
+      "name": "Tunggu approval",
+      "webhookId": "b1f0c2d4-7a55-4e18-9c3b-2d6e8f4a1c07"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.query.action }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2800,
+        360
+      ],
+      "id": "Approve?",
+      "name": "Approve?"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
+        "subject": "=[Portofolio] Dilewati: {{ $('Rakit slide').first().json.folder }}",
+        "emailType": "html",
+        "message": "=<p>Tidak diposting ke sosmed. Artikelnya tetap tayang di website.</p><p>Slide sudah terlanjur dirender dan masih tersimpan: <a href=\"{{ $('Render').first().json.previewUrl }}\">{{ $('Render').first().json.previewUrl }}</a></p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3020,
+        660
+      ],
+      "id": "Lapor dilewati",
+      "name": "Lapor dilewati",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2oer50BZ7t1Mfj85",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "https://api.linkedin.com/rest/images?action=initializeUpload",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Kredensial').first().json.linkedin_token }}"
+            },
+            {
+              "name": "LinkedIn-Version",
+              "value": "={{ $('Kredensial').first().json.linkedin_version }}"
+            },
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ initializeUploadRequest: { owner: $('Kredensial').first().json.linkedin_urn } }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3020,
+        180
+      ],
+      "id": "LinkedIn init upload",
+      "name": "LinkedIn init upload",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Render').first().json.urls[0] }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3240,
+        180
+      ],
+      "id": "Ambil slide 01",
+      "name": "Ambil slide 01",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "PUT",
+        "url": "={{ $('LinkedIn init upload').item.json.value.uploadUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Kredensial').first().json.linkedin_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3460,
+        180
+      ],
+      "id": "LinkedIn upload",
+      "name": "LinkedIn upload",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "https://api.linkedin.com/rest/posts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Kredensial').first().json.linkedin_token }}"
+            },
+            {
+              "name": "LinkedIn-Version",
+              "value": "={{ $('Kredensial').first().json.linkedin_version }}"
+            },
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ author: $('Kredensial').first().json.linkedin_urn, commentary: $('Rakit slide').first().json.linkedin_caption, visibility: 'PUBLIC', distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] }, content: { media: { id: $('LinkedIn init upload').first().json.value.image } }, lifecycleState: 'PUBLISHED', isReshareDisabledByAuthor: false }) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3680,
+        180
+      ],
+      "id": "LinkedIn post",
+      "name": "LinkedIn post",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Satu item per URL slide, untuk membuat item container IG satu per satu.\n// render-svc mengembalikan urls[] urut sesuai images[] yang dikirim, jadi urutan\n// carousel-nya mengikuti urutan slide.\n//\n// Dibaca dari node `Render`, BUKAN dari $input: node ini berjalan setelah `Tunggu\n// approval`, jadi $input berisi data request webhook resume (query/body/headers),\n// bukan hasil render.\nconst hasil = $('Render').first().json;\nconst urls = hasil.urls || [];\n\nif (!urls.length) {\n  throw new Error(`render-svc tidak mengembalikan urls[]: ${JSON.stringify(hasil).slice(0, 300)}`);\n}\nreturn urls.map((url, i) => ({ json: { url, idx: i } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3020,
+        460
+      ],
+      "id": "Pecah URL slide",
+      "name": "Pecah URL slide"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "=https://graph.instagram.com/v23.0/{{ $('Kredensial').first().json.ig_user_id }}/media",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "is_carousel_item",
+              "value": "true"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Kredensial').first().json.ig_token }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3240,
+        460
+      ],
+      "id": "IG item container",
+      "name": "IG item container",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kumpulkan id container anak jadi satu daftar untuk container CAROUSEL.\n// Node IG memakai onError:continueRegularOutput supaya satu slide gagal tidak\n// mematikan eksekusi — tapi carousel dengan slide bolong jangan diterbitkan.\nconst items = $input.all();\nconst ids = items.map((i) => i.json && i.json.id).filter(Boolean);\n\nif (ids.length !== items.length) {\n  const gagal = items.filter((i) => !(i.json && i.json.id));\n  throw new Error(\n    `${ids.length}/${items.length} item container IG berhasil. Contoh error: ` +\n      JSON.stringify(gagal[0] && gagal[0].json).slice(0, 400)\n  );\n}\nif (ids.length < 2) throw new Error(`Carousel IG butuh minimal 2 anak, dapat ${ids.length}.`);\n\nreturn [{ json: { children: ids.join(','), jumlah: ids.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3460,
+        460
+      ],
+      "id": "Kumpulkan children",
+      "name": "Kumpulkan children"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "=https://graph.instagram.com/v23.0/{{ $('Kredensial').first().json.ig_user_id }}/media",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "CAROUSEL"
+            },
+            {
+              "name": "children",
+              "value": "={{ $json.children }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Rakit slide').first().json.ig_caption }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Kredensial').first().json.ig_token }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3680,
+        460
+      ],
+      "id": "IG carousel container",
+      "name": "IG carousel container",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "POST",
+        "url": "=https://graph.instagram.com/v23.0/{{ $('Kredensial').first().json.ig_user_id }}/media_publish",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Kredensial').first().json.ig_token }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3900,
+        460
+      ],
+      "id": "IG publish",
+      "name": "IG publish",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "url": "=https://graph.instagram.com/v23.0/{{ $json.id }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "permalink"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Kredensial').first().json.ig_token }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4120,
+        460
+      ],
+      "id": "IG permalink",
+      "name": "IG permalink",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "numberInputs": 2,
+        "useDataOfInput": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        4340,
+        320
+      ],
+      "id": "Tunggu 2 cabang",
+      "name": "Tunggu 2 cabang"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
+        "subject": "=[Portofolio] Terbit: {{ $('Rakit slide').first().json.folder }}",
+        "emailType": "html",
+        "message": "=<div style=\"font-family:system-ui,sans-serif;max-width:640px;line-height:1.55\">\n<h2 style=\"margin:0 0 16px\">{{ $('Rakit slide').first().json.folder }} &mdash; selesai</h2>\n<ul style=\"padding-left:20px;margin:0 0 20px\">\n  <li>Website: <a href=\"{{ $('Rakit slide').first().json.url_id }}\">ID</a> &middot; <a href=\"{{ $('Rakit slide').first().json.url_en }}\">EN</a></li>\n  <li>LinkedIn: {{ $('LinkedIn post').first().json.id ? 'terbit (' + $('LinkedIn post').first().json.id + ')' : '<b style=\"color:#B00020\">GAGAL</b> &mdash; ' + JSON.stringify($('LinkedIn post').first().json).slice(0, 300) }}</li>\n  <li>Instagram: {{ $('IG permalink').first().json.permalink ? '<a href=\"' + $('IG permalink').first().json.permalink + '\">' + $('IG permalink').first().json.permalink + '</a>' : '<b style=\"color:#B00020\">GAGAL</b> &mdash; ' + JSON.stringify($('IG permalink').first().json).slice(0, 300) }}</li>\n</ul>\n<p style=\"font-size:13px;color:#888;margin:0\">Slide: <a href=\"{{ $('Render').first().json.previewUrl }}\">{{ $('Render').first().json.previewUrl }}</a></p>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        4560,
+        320
+      ],
+      "id": "Email hasil",
+      "name": "Email hasil",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2oer50BZ7t1Mfj85",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Kredensial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kredensial": {
+      "main": [
+        [
+          {
+            "node": "Mode sync?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mode sync?": {
+      "main": [
+        [
+          {
+            "node": "Sync ke API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pecah artikel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync ke API": {
+      "main": [
+        [
+          {
+            "node": "Cek sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek sync": {
+      "main": [
+        [
+          {
+            "node": "Respond sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pecah artikel": {
+      "main": [
+        [
+          {
+            "node": "Publish artikel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish artikel": {
+      "main": [
+        [
+          {
+            "node": "Ringkas hasil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ringkas hasil": {
+      "main": [
+        [
+          {
+            "node": "Respond delta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond delta": {
+      "main": [
+        [
+          {
+            "node": "Ada artikel baru?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ada artikel baru?": {
+      "main": [
+        [
+          {
+            "node": "Siapkan brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siapkan brief": {
+      "main": [
+        [
+          {
+            "node": "Gemini copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Flash": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Gemini copy",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skema copy": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Gemini copy",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini copy": {
+      "main": [
+        [
+          {
+            "node": "Pecah slide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pecah slide": {
+      "main": [
+        [
+          {
+            "node": "Gemini gambar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini gambar": {
+      "main": [
+        [
+          {
+            "node": "Jadi JPEG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jadi JPEG": {
+      "main": [
+        [
+          {
+            "node": "Rakit slide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rakit slide": {
+      "main": [
+        [
+          {
+            "node": "Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render": {
+      "main": [
+        [
+          {
+            "node": "Kirim preview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Coba render lagi?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coba render lagi?": {
+      "main": [
+        [
+          {
+            "node": "Rakit slide",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lapor render gagal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kirim preview": {
+      "main": [
+        [
+          {
+            "node": "Tunggu approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tunggu approval": {
+      "main": [
+        [
+          {
+            "node": "Approve?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve?": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn init upload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Pecah URL slide",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lapor dilewati",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn init upload": {
+      "main": [
+        [
+          {
+            "node": "Ambil slide 01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil slide 01": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn upload": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pecah URL slide": {
+      "main": [
+        [
+          {
+            "node": "IG item container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG item container": {
+      "main": [
+        [
+          {
+            "node": "Kumpulkan children",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kumpulkan children": {
+      "main": [
+        [
+          {
+            "node": "IG carousel container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG carousel container": {
+      "main": [
+        [
+          {
+            "node": "IG publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG publish": {
+      "main": [
+        [
+          {
+            "node": "IG permalink",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn post": {
+      "main": [
+        [
+          {
+            "node": "Tunggu 2 cabang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG permalink": {
+      "main": [
+        [
+          {
+            "node": "Tunggu 2 cabang",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Tunggu 2 cabang": {
+      "main": [
+        [
+          {
+            "node": "Email hasil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f2a4228fc7039c0f0d943b69f0bc71caf753a0f2af9f4141781bcfa693f87ee3"
+  }
+}

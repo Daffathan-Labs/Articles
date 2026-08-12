@@ -1,17 +1,26 @@
-name: Publish Articles to NestJS
+name: Publish Articles via n8n
 
 on:
   push:
     paths:
       - 'articles/**'
+  # Full re-sync manual: kirim semua artikel dan prune yang sudah dihapus.
+  # Mode ini tidak pernah memicu posting ke sosmed.
+  workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Tanpa guard ini push ke branch mana pun ikut publish. Sejak n8n menyambung
+    # ke LinkedIn dan Instagram, itu berarti branch percobaan bisa ikut mem-posting.
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          # Butuh commit sebelumnya supaya `git diff` bisa cari artikel yang berubah.
+          fetch-depth: 2
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -19,10 +28,18 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install gray-matter axios marked
+        run: npm install axios marked
+
+      # Parser rusak ketahuan di sini, bukan setelah payload salah dikirim ke n8n.
+      - name: Self-check
+        run: node --test .github/scripts/publish.test.mjs
 
       - name: Publish updated articles
         run: node .github/scripts/publish.js
         env:
-          API_URL: ${{ secrets.NESTJS_API_URL }}
-          API_KEY: ${{ secrets.NESTJS_API_KEY }}
+          WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+          WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
+          # Kosong saat workflow_dispatch → publish.js jatuh ke mode sync.
+          BEFORE_SHA: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}

@@ -1,0 +1,152 @@
+// Self-check publish.js. Jalankan: node --test .github/scripts/publish.test.mjs
+//
+// Mengimpor publish.js apa adanya — tidak ada salinan logika di file ini, jadi
+// rename fungsi atau perubahan regex langsung bikin test gagal, bukan lolos diam-diam.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+import mod from "./publish.js";
+const { parseArticle, classifyDiff } = mod;
+
+// --------------------------------------------------------------- fixture
+const META = [
+  "<!-- title: Judul Uji -->",
+  "<!-- excerpt: Ringkasan uji. -->",
+  "<!-- image: https://example.com/cover.png -->",
+  "<!-- date: 2026-08-12 -->",
+  "<!-- posting_date: 2026-08-13 -->",
+  "<!-- tags: Film, Review , AI -->",
+].join("\n");
+
+/** Bikin articles/<folder>/<file> di direktori temp, balikin root-nya. */
+function fixture(files, meta = META, body = "\nIsi paragraf.\n") {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "publish-test-"));
+  fs.mkdirSync(path.join(root, "artikel-uji"));
+  for (const f of files) {
+    fs.writeFileSync(path.join(root, "artikel-uji", f), `${meta}\n${body}`, "utf8");
+  }
+  return root;
+}
+
+// --------------------------------------------------------------- parseArticle
+test("locale dibaca dari suffix nama file, default id", () => {
+  const cases = {
+    "artikel-uji-en.md": "en",
+    "artikel-uji.en.md": "en",
+    "artikel-uji-id.md": "id",
+    "artikel-uji.id.md": "id",
+    "artikel-uji.md": "id", // tanpa suffix -> default
+    "artikel-uji-EN.md": "en", // pencocokan case-insensitive
+  };
+  const root = fixture(Object.keys(cases));
+  for (const [file, locale] of Object.entries(cases)) {
+    assert.equal(parseArticle(root, "artikel-uji", file).locale, locale, file);
+  }
+});
+
+test("keenam field metadata terbaca, tags ter-split dan ter-trim", () => {
+  const root = fixture(["artikel-uji-id.md"]);
+  const a = parseArticle(root, "artikel-uji", "artikel-uji-id.md");
+
+  assert.equal(a.id, "artikel-uji"); // id = nama folder, penghubung ID<->EN
+  assert.equal(a.title, "Judul Uji");
+  assert.equal(a.excerpt, "Ringkasan uji.");
+  assert.equal(a.date, "2026-08-12");
+  assert.equal(a.posting_date, "2026-08-13");
+  assert.equal(a.image, "https://example.com/cover.png");
+  assert.deepEqual(a.tags, ["Film", "Review", "AI"]);
+});
+
+test("payload tidak punya field di luar CreateArticleDto", () => {
+  // /articles pakai forbidNonWhitelisted: satu field asing = 400 dari API.
+  const root = fixture(["artikel-uji-id.md"]);
+  const a = parseArticle(root, "artikel-uji", "artikel-uji-id.md");
+  assert.deepEqual(Object.keys(a).sort(), [
+    "content", "date", "excerpt", "id", "image", "locale",
+    "posting_date", "tags", "title",
+  ]);
+});
+
+test("metadata wajib yang hilang bikin throw, bukan 400 dari server", () => {
+  for (const key of ["title", "excerpt", "date"]) {
+    const meta = META.split("\n").filter((l) => !l.startsWith(`<!-- ${key}:`)).join("\n");
+    const root = fixture(["artikel-uji-id.md"], meta);
+    assert.throws(
+      () => parseArticle(root, "artikel-uji", "artikel-uji-id.md"),
+      /metadata wajib tidak lengkap/,
+      key
+    );
+  }
+});
+
+test("list yang nempel paragraf tetap jadi <ul>", () => {
+  // Tanpa perbaikan ini marked memperlakukan "- satu" sebagai lanjutan paragraf
+  // dan hasilnya satu <p> panjang tanpa <ul> sama sekali.
+  const root = fixture(["artikel-uji-id.md"], META, "\nParagraf:\n- satu\n- dua\n");
+  const { content } = parseArticle(root, "artikel-uji", "artikel-uji-id.md");
+  assert.match(content, /<p>Paragraf:<\/p>/);
+  assert.match(content, /<ul>[\s\S]*satu[\s\S]*dua[\s\S]*<\/ul>/);
+  // Baris kosong yang disisipkan bikin list jadi "loose", jadi marked membungkus
+  // tiap item dalam <p>. Itu memang keluarannya — dikunci di sini supaya perubahan
+  // regex-nya nanti kelihatan, bukan karena bentuk ini yang diinginkan.
+  assert.match(content, /<li><p>satu<\/p>/);
+});
+
+test("komentar metadata dibuang dari content", () => {
+  const root = fixture(["artikel-uji-id.md"]);
+  const { content } = parseArticle(root, "artikel-uji", "artikel-uji-id.md");
+  assert.doesNotMatch(content, /<!--/);
+  assert.doesNotMatch(content, /Judul Uji/);
+});
+
+// --------------------------------------------------------------- classifyDiff
+const diff = (...lines) => classifyDiff(lines.join("\n") + "\n");
+
+test("folder yang semua .md-nya A dihitung baru", () => {
+  const { folders, addedMd } = diff(
+    "A\tarticles/artikel-baru/artikel-baru-id.md",
+    "A\tarticles/artikel-baru/artikel-baru-en.md",
+    "A\tarticles/artikel-baru/banner.png"
+  );
+  assert.deepEqual([...folders], ["artikel-baru"]);
+  assert.deepEqual([...addedMd.get("artikel-baru")].sort(), [
+    "artikel-baru-en.md",
+    "artikel-baru-id.md",
+  ]);
+  assert.ok(!addedMd.get("artikel-baru").has("banner.png"), "non-.md tidak dihitung");
+});
+
+test("edit artikel lama tidak masuk addedMd — ini yang mencegah post ulang", () => {
+  const { folders, addedMd } = diff("M\tarticles/artikel-lama/artikel-lama-id.md");
+  assert.deepEqual([...folders], ["artikel-lama"]);
+  assert.equal(addedMd.get("artikel-lama"), undefined);
+});
+
+test("nambah terjemahan EN ke artikel lama: hanya EN yang A", () => {
+  // main() minta SEMUA .md di disk berstatus A, jadi folder ini tidak lolos.
+  const { addedMd } = diff("A\tarticles/artikel-lama/artikel-lama-en.md");
+  assert.deepEqual([...addedMd.get("artikel-lama")], ["artikel-lama-en.md"]);
+  assert.ok(!addedMd.get("artikel-lama").has("artikel-lama-id.md"));
+});
+
+test("rename tidak dihitung baru, dan yang dipakai path tujuan", () => {
+  const { folders, addedMd } = diff(
+    "R100\tarticles/nama-lama/x-id.md\tarticles/nama-baru/x-id.md"
+  );
+  assert.deepEqual([...folders], ["nama-baru"]);
+  assert.equal(addedMd.get("nama-baru"), undefined);
+});
+
+test("delete tersentuh tapi tidak baru", () => {
+  const { folders, addedMd } = diff("D\tarticles/artikel-hapus/artikel-hapus-en.md");
+  assert.deepEqual([...folders], ["artikel-hapus"]);
+  assert.equal(addedMd.get("artikel-hapus"), undefined);
+});
+
+test("baris di luar articles/ dan baris kosong diabaikan", () => {
+  const { folders } = diff("M\tREADME.md", "", "A\tarticles/oke/oke-id.md", "   ");
+  assert.deepEqual([...folders], ["oke"]);
+});

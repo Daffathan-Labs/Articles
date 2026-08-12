@@ -1,0 +1,9 @@
+# Dependency untuk menjalankan .github/scripts/ secara lokal (axios, marked).
+# CI meng-install-nya sendiri tiap run, jadi tidak perlu ikut ter-commit.
+node_modules/
+package-lock.json
+
+# Repo ini PUBLIK. n8n/portofolio-publish.local.json berisi token LinkedIn,
+# API key, dan token render yang asli — itu file yang di-import ke n8n.
+# Versi ter-commit (tanpa .local) memakai placeholder dan strukturnya identik.
+*.local.json
