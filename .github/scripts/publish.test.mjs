@@ -210,3 +210,17 @@ test("workflow Action tidak memfilter paths — kalau difilter, [repost:] mati d
   assert.doesNotMatch(isi, /^\s+paths:/m, "filter paths mematikan [repost:]");
   assert.match(isi, /^\s+push:\s*$/m, "trigger push harus tetap ada, tanpa filter");
 });
+
+test("checkout mengambil riwayat penuh — fetch-depth dangkal bikin repost hilang senyap", () => {
+  // Satu push boleh berisi berapa pun commit, jadi kedalaman yang cukup selalu
+  // "jumlah commit + 1" — angka yang tidak bisa ditebak saat menulis workflow-nya.
+  // Kalau kurang, `git diff $BEFORE_SHA $SHA` gagal, publish.js jatuh ke mode sync,
+  // dan [repost:] ikut hilang tanpa satu pun pesan error. Terjadi 2026-08-13.
+  const yml = fs.readFileSync(
+    path.join(import.meta.dirname, "..", "workflows", "publish-articles.yml"),
+    "utf8"
+  );
+  const m = yml.match(/^\s+fetch-depth:\s*(\d+)/m);
+  assert.ok(m, "fetch-depth harus disebut eksplisit, bukan default 1");
+  assert.equal(m[1], "0", `fetch-depth ${m[1]} tidak cukup untuk push multi-commit`);
+});

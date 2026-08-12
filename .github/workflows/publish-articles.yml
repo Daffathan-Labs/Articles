@@ -26,8 +26,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          # Butuh commit sebelumnya supaya `git diff` bisa cari artikel yang berubah.
-          fetch-depth: 2
+          # 0 = seluruh riwayat. Sebelumnya 2, dan itu diam-diam salah: satu push boleh
+          # berisi berapa pun commit, jadi kedalaman yang cukup selalu "jumlah commit
+          # dalam push + 1" — angka yang tidak bisa ditebak saat menulis berkas ini.
+          # Kalau kurang, `git diff $BEFORE_SHA $SHA` gagal, publish.js jatuh ke mode
+          # sync, dan penanda [repost:] ikut hilang tanpa satu pun pesan error.
+          # Repo ini kecil; riwayat penuh jauh lebih murah daripada kelas bug itu.
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v4

@@ -176,6 +176,23 @@ async function main() {
   const dir = path.join(process.cwd(), "articles");
   const only = changedFolders();
 
+  // Mode sync mengabaikan [repost:] (alasannya di bawah, di dalam loop). Kalau
+  // penandanya ADA tapi kita telanjur jatuh ke sync, yang terjadi adalah no-op senyap:
+  // Action hijau, website ter-resync, dan artikel yang mau diposting ulang tidak ke
+  // mana-mana. Persis itu yang terjadi 2026-08-13 gara-gara fetch-depth kurang.
+  if (!only) {
+    const tanda = parseRepost(
+      execSync("git log --format=%B -1", { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
+    );
+    if (tanda.length) {
+      throw new Error(
+        `[repost: ${tanda.join(", ")}] diminta tapi mode-nya sync, dan sync tidak pernah ` +
+          `memicu sosmed. Penyebab tersering: git diff gagal karena clone-nya dangkal ` +
+          `(fetch-depth) atau force push. Perbaiki itu dulu, lalu ulangi commit repost-nya.`
+      );
+    }
+  }
+
   // Nama yang salah ketik akan jadi no-op diam: `newFolders` dibangun di dalam loop
   // `folders`, jadi nama yang tidak cocok tidak pernah sampai ke sana dan kelihatannya
   // seolah repost sudah jalan. Lebih baik gagal di sini.
