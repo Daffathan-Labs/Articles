@@ -27,16 +27,27 @@ YANG HARUS DIHASILKAN
    Tutup dengan baris berisi persis: {{ $('Siapkan brief').first().json.url_en }}
    Tanpa hashtag di linkedin_caption. Tanpa "link in comments".
 
-2. ig_caption — BAHASA INDONESIA, 80-150 kata.
-   Lebih santai dari LinkedIn, tetap tanpa hype. Dipisah baris kosong tiap 1-2 kalimat.
+2. ig_caption — BAHASA INDONESIA, 30-60 kata. PENDEK, dan ini disengaja.
+   Instagram memotong caption di sekitar 125 karakter dengan "... lainnya", jadi yang
+   dibaca orang praktis cuma dua kalimat pertama. Satu ide saja, langsung ke intinya.
+   Dipisah baris kosong tiap 1-2 kalimat.
+   Tutup dengan baris persis: Link lengkapnya di bio
+   DILARANG menulis URL di ig_caption — tautan di Instagram tidak bisa diklik, jadi URL
+   di sana cuma jadi teks panjang yang tidak bisa dipakai siapa pun.
+
+3. fb_caption — BAHASA INDONESIA, 150-250 kata. Boleh panjang, dan ini juga disengaja.
+   Facebook tidak memotong sependek Instagram dan tautannya HIDUP, jadi di sini kamu
+   punya ruang untuk bercerita: konteks masalahnya, apa yang dicoba, apa hasilnya.
+   Bukan ig_caption yang dipanjangkan — sudut pandangnya boleh sama, tapi kalimatnya
+   ditulis ulang. Dipisah baris kosong tiap 2-3 kalimat.
    Tutup dengan baris persis: Baca lengkapnya: {{ $('Siapkan brief').first().json.url_id }}
-   Ingat tautan di caption Instagram TIDAK bisa diklik, jadi tulis URL-nya utuh dan apa adanya.
+   Tanpa hashtag di fb_caption.
 
-3. hashtags — MAKSIMAL 5 hashtag, huruf kecil semua, relevan dengan tag artikel.
+4. hashtags — MAKSIMAL 5 hashtag, huruf kecil semua, relevan dengan tag artikel.
    Lebih dari 5 akan dipotong sistem, jadi pilih yang paling relevan saja.
-   Tanpa hashtag generik sampah seperti #viral #fyp #followforfollow.
+   Hanya dipakai di Instagram. Tanpa hashtag generik sampah seperti #viral #fyp.
 
-4. slides — TEPAT 5 slide untuk carousel Instagram 1080x1350.
+5. slides — TEPAT 5 slide untuk carousel Instagram 1080x1350.
    Alurnya: [1] hook yang bikin berhenti scroll, [2][3][4] tiga poin konkret dari artikel,
    [5] penutup.
    - heading: MAKSIMAL 8 KATA. Bahasa Indonesia. Kalimat, bukan judul bab.
@@ -51,7 +62,7 @@ YANG HARUS DIHASILKAN
      komposisi yang lapang dan tidak ramai di bagian tengah.
    - image_mode: salah satu dari konseptual, tekstur, dokumenter, tempat, properti.
 
-5. image_series — satu kalimat bahasa Inggris yang mengikat kelima gambar jadi satu seri
+6. image_series — satu kalimat bahasa Inggris yang mengikat kelima gambar jadi satu seri
    (subjek, lokasi, dan gaya cahaya yang sama). Dipakai sebagai jangkar konsistensi.
 
 ATURAN GAMBAR — KERAS

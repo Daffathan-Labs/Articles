@@ -6,7 +6,11 @@
 // approval`, jadi $input berisi data request webhook resume (query/body/headers),
 // bukan hasil render.
 const hasil = $('Render').first().json;
-const urls = hasil.urls || [];
+
+// hero.jpg menumpang panggilan Render yang sama, tapi dia gambar artikel 1200x630 —
+// bukan slide. Tanpa saringan ini dia jadi slide terakhir carousel: lanskap, di-crop
+// jadi potret, dan tidak pernah diminta siapa pun.
+const urls = (hasil.urls || []).filter((u) => !u.includes('/hero.jpg'));
 
 if (!urls.length) {
   throw new Error(`render-svc tidak mengembalikan urls[]: ${JSON.stringify(hasil).slice(0, 300)}`);

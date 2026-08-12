@@ -84,7 +84,11 @@ test("setiap node terjangkau dari Webhook", () => {
       .filter((n) => Object.keys(wf.connections[n.name] ?? {}).some((t) => t.startsWith("ai_")))
       .map((n) => n.name)
   );
-  const putus = wf.nodes.map((n) => n.name).filter((n) => !lihat.has(n) && !subNode.has(n));
+  // Node nonaktif memang sengaja tidak tersambung — lihat test cabang Facebook di
+  // bawah, yang mengunci bahwa nonaktif berarti nonaktif DAN terputus.
+  const putus = wf.nodes
+    .map((n) => n.name)
+    .filter((n) => !lihat.has(n) && !subNode.has(n) && !byName[n].disabled);
   assert.deepEqual(putus, [], `node tidak terjangkau: ${putus.join(", ")}`);
 });
 
@@ -351,7 +355,7 @@ function rakit({
       },
     },
     "Gemini copy": {
-      json: { output: { linkedin_caption: "LI", ig_caption: "IG", hashtags } },
+      json: { output: { linkedin_caption: "LI", ig_caption: "IG", fb_caption: "FB", hashtags } },
     },
     // Node HTTP responseFormat:file — json kosong, muatannya di binary.
     "Ambil cover": cover
@@ -513,6 +517,144 @@ test("Pecah URL slide membaca hasil Render, bukan $input", () => {
   // urls[] kosong harus gagal berisik, bukan menerbitkan carousel bolong.
   const kosong = (n) => ({ first: () => ({ json: n === "Render" ? {} : {} }) });
   assert.throws(() => new Function("$", kode)(kosong), /tidak mengembalikan urls/);
+});
+
+test("Pecah URL slide: hero.jpg bukan slide, jadi tidak boleh masuk carousel", () => {
+  // hero menumpang panggilan Render yang sama dan selalu jadi entri terakhir urls[].
+  // Tanpa saringan dia jadi slide ke-6 di Instagram DAN foto ke-6 di Facebook —
+  // gambar lanskap 1200x630 di-crop paksa jadi potret.
+  const kode = byName["Pecah URL slide"].parameters.jsCode;
+  const urls = [
+    "https://r/a/portofolio/x/01.jpg?v=1",
+    "https://r/a/portofolio/x/02.jpg?v=1",
+    "https://r/a/portofolio/x/hero.jpg?v=1",
+  ];
+  const hasil = new Function("$", kode)((n) => ({
+    first: () => ({ json: n === "Render" ? { urls } : {} }),
+  }));
+  assert.equal(hasil.length, 2, "hero ikut terkirim sebagai slide");
+  assert.deepEqual(hasil.map((i) => i.json.idx), [0, 1], "indeks harus rapat setelah disaring");
+});
+
+// -- cabang Facebook (Halaman, nonaktif sampai kredensialnya ada) -----------------
+const FB = ["FB unggah foto", "Kumpulkan foto FB", "FB posting"];
+
+test("cabang FB nonaktif berarti nonaktif DAN terputus", () => {
+  // Ini test yang paling menjaga: node nonaktif TIDAK dieksekusi n8n, sementara
+  // node Merge menunggu semua input yang tersambung. Kalau cabang FB nonaktif tapi
+  // tetap tersambung ke barrier, `Email hasil` menunggu selamanya — yang mati bukan
+  // Facebook saja, tapi seluruh laporan hasil publish.
+  const semuaNonaktif = FB.every((n) => byName[n]?.disabled === true);
+  const barrier = semuaNonaktif ? "Tunggu 2 cabang" : "Tunggu 3 cabang";
+  assert.ok(byName[barrier], `barrier harus bernama "${barrier}"`);
+  assert.equal(byName[barrier].parameters.numberInputs, semuaNonaktif ? 2 : 3);
+
+  const sumberBarrier = Object.entries(wf.connections).flatMap(([dari, t]) =>
+    (t.main ?? []).flat().filter((c) => c.node === barrier).map((c) => `${dari}#${c.index}`)
+  );
+  assert.deepEqual(
+    sumberBarrier.sort(),
+    semuaNonaktif
+      ? ["IG permalink#1", "LinkedIn post#0"]
+      : ["FB posting#2", "IG permalink#1", "LinkedIn post#0"]
+  );
+
+  if (semuaNonaktif) {
+    for (const n of FB) {
+      assert.ok(!wf.connections[n], `${n} nonaktif tapi masih punya sambungan keluar`);
+    }
+  }
+});
+
+test("FB memakai host graph.facebook.com dan token Halaman, IG tidak", () => {
+  // Meta punya dua jalur yang tidak saling kompatibel. Token yang benar di host yang
+  // salah dibalas #190, dan pesan errornya tidak menyebut host sama sekali.
+  for (const n of ["FB unggah foto", "FB posting"]) {
+    const p = byName[n].parameters;
+    assert.match(p.url, /graph\.facebook\.com/, `${n} salah host`);
+    assert.doesNotMatch(p.url, /graph\.instagram\.com/);
+    assert.match(JSON.stringify(p), /fb_page_token/, `${n} tidak memakai token Halaman`);
+    assert.doesNotMatch(JSON.stringify(p), /ig_token|ig_user_id/, `${n} memakai kredensial IG`);
+  }
+  for (const n of ["IG item container", "IG carousel container", "IG publish", "IG permalink"]) {
+    const p = byName[n].parameters;
+    assert.match(p.url, /graph\.instagram\.com/, `${n} salah host`);
+    assert.doesNotMatch(JSON.stringify(p), /fb_page/, `${n} memakai kredensial Facebook`);
+  }
+});
+
+test("tiap foto FB diunggah published=false", () => {
+  // Tanpa ini tiap slide jadi post sendiri: satu artikel membanjiri Halaman dengan
+  // 5 post, bukan satu post berisi 5 foto.
+  const p = byName["FB unggah foto"].parameters.bodyParameters.parameters;
+  assert.equal(p.find((x) => x.name === "published").value, "false");
+  assert.equal(p.find((x) => x.name === "url").value, "={{ $json.url }}");
+});
+
+test("Kumpulkan foto FB: bentuk attached_media[n] persis dokumentasi Meta", () => {
+  const hasil = jalankan("Kumpulkan foto FB", {
+    input: [{ json: { id: "111" } }, { json: { id: 222 } }, { json: { id: "333" } }],
+  });
+  assert.deepEqual(hasil[0].json.body, {
+    "attached_media[0]": '{"media_fbid":"111"}',
+    "attached_media[1]": '{"media_fbid":"222"}',
+    "attached_media[2]": '{"media_fbid":"333"}',
+  });
+  assert.equal(hasil[0].json.jumlah, 3);
+});
+
+test("Kumpulkan foto FB: foto gagal dibuang bukan jadi media_fbid undefined", () => {
+  // Node FB pakai onError:continueRegularOutput, jadi kegagalan datang sebagai item
+  // tanpa `id` — bukan sebagai exception.
+  assert.throws(
+    () => jalankan("Kumpulkan foto FB", {
+      input: [{ json: { id: "1" } }, { json: { error: { code: 190 } } }, { json: { id: "3" } }],
+    }),
+    /2\/3 foto FB berhasil/
+  );
+  assert.throws(
+    () => jalankan("Kumpulkan foto FB", { input: [{ json: { id: "1" } }] }),
+    /minimal 2 foto/
+  );
+});
+
+test("FB posting mengirim body form-urlencoded hasil Kumpulkan, bukan keypair tetap", () => {
+  // Jumlah lampiran ikut jumlah slide; daftar bodyParameters di n8n panjangnya tetap
+  // saat build, jadi keypair tidak bisa dipakai di sini.
+  const p = byName["FB posting"].parameters;
+  assert.equal(p.contentType, "form-urlencoded");
+  assert.equal(p.specifyBody, "json");
+  assert.match(p.jsonBody, /\$json\.body/, "body lampiran tidak ikut terkirim");
+  assert.match(p.jsonBody, /fb_caption/, "FB memakai caption yang salah");
+  assert.match(p.url, /\/feed$/);
+});
+
+test("caption dipisah per platform, hashtag hanya ke Instagram", () => {
+  const skema = JSON.parse(byName["Skema copy"].parameters.inputSchema);
+  assert.ok(skema.required.includes("fb_caption"), "fb_caption tidak wajib di skema");
+  assert.match(skema.properties.ig_caption.description, /30-60 kata/);
+  assert.match(skema.properties.fb_caption.description, /150-250 kata/);
+
+  const r = rakit({ hashtags: ["#satu", "#dua"] });
+  assert.equal(r.fb_caption, "FB", "fb_caption tidak boleh dioplos apa pun");
+  assert.match(r.ig_caption, /#satu #dua/, "hashtag hilang dari Instagram");
+
+  // Node yang memakai caption mana — tertukar berarti IG dapat 250 kata terpotong.
+  const igCap = byName["IG carousel container"].parameters.bodyParameters.parameters.find(
+    (x) => x.name === "caption"
+  ).value;
+  assert.match(igCap, /\.ig_caption/);
+  assert.doesNotMatch(byName["FB posting"].parameters.jsonBody, /\.ig_caption/);
+});
+
+test("e-mail hasil tetap terkirim walau cabang FB nonaktif", () => {
+  // `$('FB posting').first()` pada node yang belum dieksekusi melempar "Referenced
+  // node is unexecuted", dan yang hilang bukan satu baris tapi seluruh e-mail.
+  const html = byName["Email hasil"].parameters.message;
+  assert.match(html, /FB posting'\)\.isExecuted/, "baris Facebook tanpa penjaga isExecuted");
+  for (const p of ["LinkedIn", "Instagram", "Facebook"]) {
+    assert.match(html, new RegExp(`<li>${p}:`), `${p} tidak dilaporkan`);
+  }
 });
 
 test("voice tersisip ke prompt, bukan tertinggal placeholder", () => {

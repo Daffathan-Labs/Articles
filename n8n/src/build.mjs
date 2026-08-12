@@ -82,6 +82,22 @@ try {
 }
 const asli = (k, fallback) => RAHASIA[k] || fallback;
 
+/**
+ * SATU saklar untuk cabang Facebook. false = tiga node FB ikut ter-build tapi
+ * nonaktif, dan `Tunggu 2 cabang` tetap dua input.
+ *
+ * Kenapa nonaktifnya harus ikut memutus sambungan ke node Merge, bukan cuma
+ * mematikan node-nya: node nonaktif TIDAK dieksekusi n8n, sementara Merge menunggu
+ * semua input yang tersambung. Cabang FB yang nonaktif tapi tetap tersambung
+ * membuat `Email hasil` menunggu masukan yang tidak akan pernah datang — dan yang
+ * mati bukan cuma Facebook, tapi seluruh laporan hasil publish.
+ *
+ * Mengaktifkan Facebook: isi fb_page_id + fb_page_token di secrets.local.json,
+ * ubah baris ini jadi true, build ulang, import ulang. Tidak ada langkah manual
+ * di kanvas n8n.
+ */
+const FB_AKTIF = false;
+
 const FIELD = [
   ['article_api_url', 'https://api.daffathan-labs.my.id', 'https://api.daffathan-labs.my.id'],
   ['article_api_key', 'ISI_ARTICLE_API_KEY', 'daffathan-labs-articles-pipeline'],
@@ -96,6 +112,12 @@ const FIELD = [
   // MEDIA_CREATOR, izin content_publish terbukti ada.
   ['ig_user_id', 'ISI_IG_USER_ID', asli('ig_user_id', 'ISI_IG_USER_ID')],
   ['ig_token', 'ISI_IG_ACCESS_TOKEN', asli('ig_token', 'ISI_IG_ACCESS_TOKEN')],
+  // Halaman Facebook, BUKAN profil pribadi: publikasi ke profil pribadi lewat API
+  // sudah dicabut Meta sejak 2018 dan tidak ada izin yang mengembalikannya.
+  // Token Halaman tidak kedaluwarsa selama pemiliknya masih admin — lihat
+  // docs/credentials-facebook.md.
+  ['fb_page_id', 'ISI_FB_PAGE_ID', asli('fb_page_id', 'ISI_FB_PAGE_ID')],
+  ['fb_page_token', 'ISI_FB_PAGE_TOKEN', asli('fb_page_token', 'ISI_FB_PAGE_TOKEN')],
   // PAT fine-grained: HANYA repo Articles, HANYA Contents read/write. Dipakai cabang
   // commit balik untuk menulis hero.jpg dan dua berkas .md. Izin lain tidak dibutuhkan
   // dan cuma memperbesar kerugian kalau bocor.
@@ -247,10 +269,14 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
   schemaType: 'manual',
   inputSchema: JSON.stringify({
     type: 'object',
-    required: ['linkedin_caption', 'ig_caption', 'hashtags', 'slides', 'image_series'],
+    required: ['linkedin_caption', 'ig_caption', 'fb_caption', 'hashtags', 'slides', 'image_series'],
     properties: {
       linkedin_caption: { type: 'string', description: 'Bahasa Inggris, 120-200 kata, diakhiri URL EN' },
-      ig_caption: { type: 'string', description: 'Bahasa Indonesia, 80-150 kata, diakhiri "Baca lengkapnya: <URL ID>"' },
+      // Instagram memotong caption di ~125 karakter dan tautannya tidak bisa diklik.
+      // Facebook tidak memotong dan tautannya hidup, jadi panjang yang sama untuk
+      // dua-duanya berarti salah satunya pasti salah bentuk.
+      ig_caption: { type: 'string', description: 'Bahasa Indonesia, 30-60 kata, diakhiri "Link lengkapnya di bio"' },
+      fb_caption: { type: 'string', description: 'Bahasa Indonesia, 150-250 kata, diakhiri "Baca lengkapnya: <URL ID>"' },
       hashtags: { type: 'array', items: { type: 'string' }, description: 'maksimal 5 hashtag huruf kecil' },
       image_series: { type: 'string', description: 'Satu kalimat Inggris pengikat kelima gambar' },
       slides: {
@@ -586,23 +612,73 @@ N('IG permalink', 'n8n-nodes-base.httpRequest', 4.2, [4120, 460], http({
 }), { onError: 'continueRegularOutput' });
 hubung('IG publish', 'IG permalink');
 
+// ─────────────────────────────────────────────── 5c. carousel Facebook
+// Halaman, bukan profil pribadi. Host graph.FACEBOOK.com dengan token Halaman —
+// kebalikan dari Instagram di atas yang memakai graph.instagram.com dengan token IG.
+// Tertukar dibalas #190, dan pesannya tidak menyebut host sama sekali.
+//
+// `Pecah URL slide` dipakai ulang, tidak dikembarkan: slide yang diposting ke
+// Facebook harus persis slide yang sama dengan Instagram.
+const fbNonaktif = FB_AKTIF ? {} : { disabled: true };
+
+N('FB unggah foto', 'n8n-nodes-base.httpRequest', 4.2, [3240, 700], http({
+  method: 'POST',
+  url: `=https://graph.facebook.com/v25.0/{{ ${K('fb_page_id')} }}/photos`,
+  sendBody: true,
+  contentType: 'form-urlencoded',
+  bodyParameters: {
+    parameters: [
+      { name: 'url', value: '={{ $json.url }}' },
+      // WAJIB. Tanpa ini tiap slide jadi post sendiri dan satu artikel membanjiri
+      // Halaman dengan 5 post, bukan satu post 5 foto.
+      { name: 'published', value: 'false' },
+      { name: 'access_token', value: `={{ ${K('fb_page_token')} }}` },
+    ],
+  },
+}), { onError: 'continueRegularOutput', ...fbNonaktif });
+if (FB_AKTIF) hubung('Pecah URL slide', 'FB unggah foto');
+
+N('Kumpulkan foto FB', 'n8n-nodes-base.code', 2, [3460, 700], {
+  jsCode: baca('kumpulkan-foto-fb.js'),
+}, fbNonaktif);
+if (FB_AKTIF) hubung('FB unggah foto', 'Kumpulkan foto FB');
+
+// specifyBody:'json' di atas form-urlencoded, bukan keypair: jumlah lampiran ikut
+// jumlah slide, dan daftar bodyParameters di n8n panjangnya harus tetap saat build.
+// Objeknya di-form-encode per kunci, jadi yang keluar di kabel tetap
+// `attached_media[0]=...&attached_media[1]=...` persis seperti dokumentasi Meta.
+N('FB posting', 'n8n-nodes-base.httpRequest', 4.2, [3680, 700], http({
+  method: 'POST',
+  url: `=https://graph.facebook.com/v25.0/{{ ${K('fb_page_id')} }}/feed`,
+  sendBody: true,
+  contentType: 'form-urlencoded',
+  specifyBody: 'json',
+  jsonBody:
+    '={{ JSON.stringify(Object.assign({ ' +
+    "message: $('Rakit slide').first().json.fb_caption, " +
+    `access_token: ${K('fb_page_token')} }, $json.body)) }}`,
+}), { onError: 'continueRegularOutput', ...fbNonaktif });
+if (FB_AKTIF) hubung('Kumpulkan foto FB', 'FB posting');
+
 // ─────────────────────────────────────────────── 6. lapor
-// Barrier: e-mail hasil baru dikirim setelah kedua cabang selesai, supaya isinya
+// Barrier: e-mail hasil baru dikirim setelah semua cabang selesai, supaya isinya
 // tidak melaporkan LinkedIn saja padahal Instagram masih jalan.
-N('Tunggu 2 cabang', 'n8n-nodes-base.merge', 3, [4340, 320], {
+N(`Tunggu ${FB_AKTIF ? 3 : 2} cabang`, 'n8n-nodes-base.merge', 3, [4340, 320], {
   mode: 'chooseBranch',
-  numberInputs: 2,
+  numberInputs: FB_AKTIF ? 3 : 2,
   useDataOfInput: 1,
   options: {},
 });
-hubung('LinkedIn post', 'Tunggu 2 cabang', 0, 'main', 0);
-hubung('IG permalink', 'Tunggu 2 cabang', 0, 'main', 1);
+const barrier = `Tunggu ${FB_AKTIF ? 3 : 2} cabang`;
+hubung('LinkedIn post', barrier, 0, 'main', 0);
+hubung('IG permalink', barrier, 0, 'main', 1);
+if (FB_AKTIF) hubung('FB posting', barrier, 0, 'main', 2);
 
 N('Email hasil', 'n8n-nodes-base.gmail', 2.2, [4560, 320], gmail(
   "=[Portofolio] Terbit: {{ $('Rakit slide').first().json.folder }}",
   baca('email-hasil.html')
 ), { credentials: GMAIL_CRED });
-hubung('Tunggu 2 cabang', 'Email hasil');
+hubung(barrier, 'Email hasil');
 
 // ───────────────────────────────────────────────
 const bungkus = (name) => ({

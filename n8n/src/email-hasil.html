@@ -4,6 +4,10 @@
   <li>Website: <a href="{{ $('Rakit slide').first().json.url_id }}">ID</a> &middot; <a href="{{ $('Rakit slide').first().json.url_en }}">EN</a></li>
   <li>LinkedIn: {{ $('LinkedIn post').first().json.id ? 'terbit (' + $('LinkedIn post').first().json.id + ')' : '<b style="color:#B00020">GAGAL</b> &mdash; ' + JSON.stringify($('LinkedIn post').first().json).slice(0, 300) }}</li>
   <li>Instagram: {{ $('IG permalink').first().json.permalink ? '<a href="' + $('IG permalink').first().json.permalink + '">' + $('IG permalink').first().json.permalink + '</a>' : '<b style="color:#B00020">GAGAL</b> &mdash; ' + JSON.stringify($('IG permalink').first().json).slice(0, 300) }}</li>
+  <!-- isExecuted wajib: selama cabang FB masih nonaktif, `$('FB posting').first()`
+       melempar "Referenced node is unexecuted" dan yang hilang bukan cuma baris ini,
+       tapi seluruh e-mail hasil. -->
+  <li>Facebook: {{ !$('FB posting').isExecuted ? 'nonaktif' : ($('FB posting').first().json.id ? '<a href="https://www.facebook.com/' + $('FB posting').first().json.id.split('_')[0] + '/posts/' + $('FB posting').first().json.id.split('_')[1] + '">' + $('FB posting').first().json.id + '</a>' : '<b style="color:#B00020">GAGAL</b> &mdash; ' + JSON.stringify($('FB posting').first().json).slice(0, 300)) }}</li>
 </ul>
 <p style="font-size:13px;color:#888;margin:0">Slide: <a href="{{ $('Render').first().json.previewUrl }}">{{ $('Render').first().json.previewUrl }}</a></p>
 </div>

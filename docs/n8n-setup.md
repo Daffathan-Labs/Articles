@@ -86,7 +86,7 @@ Buka node itu di n8n, isi yang masih `ISI_...`, simpan. Selesai.
 | `ig_token` | idem. Diperpanjang otomatis tiap bulan — lihat workflow 2 |
 | `fb_page_id` | → [credentials-facebook.md](credentials-facebook.md) |
 | `fb_page_token` | idem. **Tidak kedaluwarsa** selama kamu tetap admin Halamannya |
-| `github_token` | PAT **fine-grained**: hanya repo `Articles`, hanya **Contents: Read and write** |
+| `github_token` | PAT untuk commit balik gambar. Yang terpasang sekarang PAT **klasik** (`ghp_`) — berlaku untuk **semua** repo akunmu. Yang dibutuhkan cuma repo `Articles` + **Contents: Read and write**, jadi ganti ke **fine-grained** kalau sempat |
 | `notify_email` | alamat **penerima** e-mail; pengirimnya selalu akun Gmail di kredensial |
 
 Umur token per platform, supaya jelas mana yang perlu diingat:
@@ -184,6 +184,55 @@ e-mail `Lapor commit`.
 
 Artikel yang **sudah** punya gambar tidak menyentuh cabang ini sama sekali: `Susun commit`
 mengembalikan nol item, dan nol item berarti seluruh rantai di bawahnya tidak dieksekusi.
+
+## 3c. Cabang Facebook — ter-build, tapi nonaktif
+
+Tiga node (`FB unggah foto`, `Kumpulkan foto FB`, `FB posting`) sudah ada di workflow
+tapi **nonaktif** sampai `fb_page_id` dan `fb_page_token` terisi.
+
+Facebook tidak punya endpoint carousel. Polanya dua langkah:
+
+```
+1. tiap slide:  POST /{page-id}/photos   url=..., published=false   -> id
+2. sekali:      POST /{page-id}/feed     message=..., attached_media[0..4]
+```
+
+### Mengaktifkannya
+
+Satu baris di `n8n/src/build.mjs`:
+
+```js
+const FB_AKTIF = false;   // -> true
+```
+
+Lalu isi dua kredensialnya di `n8n/src/secrets.local.json`, `node n8n/src/build.mjs`,
+import ulang. **Tidak ada langkah manual di kanvas n8n.**
+
+Saklar itu tidak cuma mematikan tiga node — dia juga memutus sambungannya ke node
+Merge dan mengembalikan Merge ke dua input. Itu bukan kerapian: **node nonaktif tidak
+dieksekusi n8n, sementara Merge menunggu semua input yang tersambung.** Cabang FB yang
+nonaktif tapi tetap tersambung membuat `Email hasil` menunggu masukan yang tidak akan
+pernah datang — dan yang mati bukan Facebook saja, tapi seluruh laporan hasil publish.
+Ada test yang mengunci "nonaktif berarti nonaktif DAN terputus".
+
+Selama nonaktif, baris Facebook di e-mail hasil berbunyi `nonaktif`. Baris itu dijaga
+`$('FB posting').isExecuted` — tanpa penjaga itu ekspresinya melempar
+*"Referenced node is unexecuted"* dan e-mailnya hilang seluruhnya, bukan satu barisnya.
+
+### Caption dipisah per platform
+
+Satu panggilan `Gemini copy`, tiga caption, karena tiga platform memotong dan menautkan
+dengan cara yang berbeda:
+
+| Field | Bahasa | Panjang | Diakhiri | Hashtag |
+|---|---|---|---|---|
+| `linkedin_caption` | Inggris | 120–200 kata | URL EN | tidak |
+| `ig_caption` | Indonesia | **30–60 kata** | "Link lengkapnya di bio" | ya, maks 5 |
+| `fb_caption` | Indonesia | **150–250 kata** | `Baca lengkapnya: <URL ID>` | tidak |
+
+Instagram sependek itu karena feed memotong di ±125 karakter, dan URL-nya tidak
+dibuat-buat pun tidak bisa diklik. Facebook tidak memotong sependek itu dan tautannya
+hidup, jadi di sana URL-nya ditulis utuh.
 
 ## 4. render-svc
 

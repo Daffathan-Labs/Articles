@@ -155,8 +155,15 @@ curl -s -X POST "https://graph.facebook.com/v25.0/$FB_PAGE_ID/photos" \
 curl -s -X DELETE "https://graph.facebook.com/v25.0/1234...?access_token=$FB_PAGE_TOKEN"
 ```
 
-Kalau ini berhasil, kredensialnya sudah benar. Isi `fb_page_id` dan `fb_page_token` di
-node **`Kredensial`**, simpan, selesai.
+Kalau ini berhasil, kredensialnya sudah benar. Tiga langkah terakhir:
+
+1. Isi `fb_page_id` dan `fb_page_token` di `n8n/src/secrets.local.json` (di-gitignore).
+2. Ubah `const FB_AKTIF = false` jadi `true` di `n8n/src/build.mjs` — tiga node Facebook
+   ikut ter-build sejak awal tapi **nonaktif** sampai saklar ini dinyalakan.
+3. `node n8n/src/build.mjs`, lalu import ulang `n8n/portofolio-publish.local.json`.
+
+Tidak ada langkah manual di kanvas n8n. Alasan saklarnya ada di
+[n8n-setup.md § 3c](n8n-setup.md).
 
 ---
 

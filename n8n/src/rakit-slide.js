@@ -153,6 +153,9 @@ return [{
     ig_caption: [copy.ig_caption, (copy.hashtags || []).slice(0, 5).join(' ')]
       .filter(Boolean)
       .join('\n\n'),
+    // Tanpa hashtag: di Facebook hashtag tidak menambah jangkauan, cuma bikin
+    // tulisannya terlihat seperti hasil bot.
+    fb_caption: copy.fb_caption,
     slides,
   },
 }];
