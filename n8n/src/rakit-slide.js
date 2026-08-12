@@ -65,6 +65,25 @@ const esc = (s) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])
   );
 
+/**
+ * Rapikan hashtag jadi bentuk yang benar-benar jadi tautan di Instagram.
+ *
+ * Prompt sudah meminta hashtag, tapi model rutin mengembalikan kata telanjang
+ * ("spiderman marvel mcu") — dan caption yang terbit jadi deretan kata biasa yang
+ * tidak bisa diklik dan tidak masuk pencarian mana pun. Sudah kejadian sekali.
+ * Ditegakkan di kode, bukan diminta di prompt, sama seperti batas jumlahnya.
+ *
+ * Spasi di dalam satu tagar juga dibuang: "#brand new day" cuma jadi tagar "#brand",
+ * dua kata sisanya hilang jadi teks biasa.
+ */
+const tagar = (daftar) =>
+  (daftar || [])
+    .map((t) => String(t == null ? '' : t).trim().replace(/^#+/, '').replace(/\s+/g, ''))
+    .filter(Boolean)
+    .slice(0, 5)
+    .map((t) => `#${t}`)
+    .join(' ');
+
 // Disisipkan build.mjs dari icons/icon-192.png.
 const LOGO = '{{LOGO}}';
 
@@ -150,9 +169,7 @@ return [{
     linkedin_caption: copy.linkedin_caption,
     // Dipotong keras di kode, bukan cuma diminta di prompt: model rutin melewati
     // batas yang hanya disebut dalam instruksi.
-    ig_caption: [copy.ig_caption, (copy.hashtags || []).slice(0, 5).join(' ')]
-      .filter(Boolean)
-      .join('\n\n'),
+    ig_caption: [copy.ig_caption, tagar(copy.hashtags)].filter(Boolean).join('\n\n'),
     // Tanpa hashtag: di Facebook hashtag tidak menambah jangkauan, cuma bikin
     // tulisannya terlihat seperti hasil bot.
     fb_caption: copy.fb_caption,

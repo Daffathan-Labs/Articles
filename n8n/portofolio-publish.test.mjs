@@ -1258,3 +1258,24 @@ test("ID kredensial node terisi nilai asli, bukan placeholder", () => {
     }
   }
 });
+
+test("hashtag selalu berawalan # walau model mengembalikan kata telanjang", () => {
+  // Sudah kejadian: model membalas ["spiderman","marvel","mcu"] tanpa "#", dan
+  // caption yang terbit jadi deretan kata biasa — tidak bisa diklik, tidak masuk
+  // pencarian mana pun. Prompt sudah meminta hashtag; yang menegakkan harus kode.
+  const tag = (h) => rakit({ hashtags: h }).ig_caption.split("\n\n").pop();
+
+  assert.equal(tag(["spiderman", "marvel", "mcu"]), "#spiderman #marvel #mcu");
+  assert.equal(tag(["#sudah", "belum"]), "#sudah #belum", "yang sudah punya # tidak jadi ##");
+  assert.equal(tag(["##dobel"]), "#dobel");
+  assert.equal(tag(["brand new day"]), "#brandnewday", "spasi memotong tagar jadi satu kata");
+  assert.equal(tag(["  spasi  "]), "#spasi");
+  assert.equal(tag(["a", "b", "c", "d", "e", "f", "g"]), "#a #b #c #d #e", "batas 5 tetap");
+  // Entri kosong tidak boleh jadi "#" telanjang.
+  assert.equal(tag(["", "  ", "#", "isi"]), "#isi");
+
+  // Nol hashtag: caption berakhir di CTA, tanpa baris kosong menggantung.
+  const kosong = rakit({ hashtags: [] }).ig_caption;
+  assert.doesNotMatch(kosong, /#/);
+  assert.doesNotMatch(kosong, /\n\n$/);
+});
