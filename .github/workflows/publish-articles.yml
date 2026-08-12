@@ -44,13 +44,16 @@ jobs:
       - name: Publish updated articles
         run: node .github/scripts/publish.js
         env:
-          # Nama secret harus persis seperti yang dibuat di repo. Sebelumnya di sini
-          # tertulis N8N_WEBHOOK_URL sementara secretnya bernama WEBHOOK_URL, jadi
-          # nilainya kosong dan Action gagal dengan pesan yang menyalahkan secret lain.
-          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          # Nama di sebelah KANAN harus persis nama secret di repo — `gh secret list`
+          # untuk memastikan. Secret yang tidak ada tidak bikin error di sini; dia jadi
+          # string kosong, dan yang gagal adalah publish.js dengan pesan yang menyebut
+          # nama sebelah KIRI. Itu sudah dua kali menyesatkan: pesannya bilang
+          # "WEBHOOK_URL kosong" padahal secretnya bernama N8N_WEBHOOK_URL dan isinya
+          # baik-baik saja. Jangan ubah sisi kanan tanpa mengecek daftar secret dulu.
+          WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
           # Opsional: webhook n8n saat ini tanpa autentikasi. Diisi hanya kalau
           # Header Auth dinyalakan lagi di node Webhook.
-          WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+          WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
           # Kosong saat workflow_dispatch → publish.js jatuh ke mode sync.
           BEFORE_SHA: ${{ github.event.before }}
           SHA: ${{ github.sha }}
