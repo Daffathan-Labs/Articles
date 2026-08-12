@@ -98,25 +98,109 @@ const CTA_AKHIR = {
   body: 'Semua tulisan aku ada di sana — teknis, review film, sampai catatan keseharian.',
 };
 
+// ── warna aksen: dipilih model, TIDAK dipercaya ─────────────────────────────────
+// Biru brand, dipakai kalau aksen dari model tidak lolos pemeriksaan.
+const AKSEN_CADANGAN = '#5EC8FF';
+
+/** Luminansi relatif WCAG. */
+const luminansi = (hex) => {
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+};
+const kontras = (a, b) => {
+  const [x, y] = [luminansi(a), luminansi(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+
+/**
+ * Aksen dipakai sebagai LATAR chip berteks putih, jadi hex yang sah pun bisa tidak
+ * terbaca. Model rutin mengembalikan bentuk yang tidak diminta — hashtag tanpa `#`
+ * baru saja membuktikannya — jadi dua-duanya diperiksa di sini, bukan diminta di
+ * prompt: bentuknya harus #RRGGBB, dan kontrasnya terhadap putih minimal 4,5:1.
+ * Gagal salah satu berarti jatuh ke biru brand, bukan terbit dengan chip yang tidak
+ * terbaca dan baru ketahuan setelah tayang.
+ */
+const aksen = (() => {
+  const v = String(copy.accent == null ? '' : copy.accent).trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(v)) return AKSEN_CADANGAN;
+  return kontras(v, '#FFFFFF') >= 4.5 ? v.toUpperCase() : AKSEN_CADANGAN;
+})();
+
+// ── layout: dipilih model dari daftar tertutup ──────────────────────────────────
+// Tertutup, bukan bebas, karena tiap bentuk harus bisa dibuktikan tidak meluber.
+const LAYOUT = ['blok-bawah', 'pias-bawah', 'tengah'];
+const layout = LAYOUT.includes(copy.layout) ? copy.layout : LAYOUT[0];
+
+/**
+ * Foto tampil UTUH — opacity 1, dan tidak ada satu pun lapisan yang menutup seluruh
+ * kanvas. Versi sebelumnya memasang foto di opacity .42 lalu menimpanya dengan veil
+ * .62–.96 sekanvas; yang sampai ke mata tinggal 16% di ujung atas dan 1,7% di bawah,
+ * jadi review film dan catatan teknis menghasilkan kotak hitam yang sama persis.
+ *
+ * Kontras sekarang dijaga LOKAL: hanya di belakang teks, lewat blok/panel/scrim
+ * sesuai layout. Itu yang membuat foto tetap terbaca sekaligus teks tetap aman di
+ * atas foto seterang apa pun.
+ */
 const CSS = `
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1080px;height:1350px;overflow:hidden}
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0B0F14;color:#F5F7FA;position:relative}
-.bg{position:absolute;inset:0;width:1080px;height:1350px;object-fit:cover;opacity:.42}
-/* Ujung atas dipertebal dari .50: kicker dan penomoran duduk di sana, dan foto
-   latar yang kebetulan terang bisa menelannya. Satu angka, tanpa logika per-slide. */
-.veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,15,20,.62) 0%,rgba(11,15,20,.82) 52%,rgba(11,15,20,.96) 100%)}
-.wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:${px(92)}px ${px(84)}px}
-.atas{display:flex;justify-content:space-between;align-items:baseline;font-size:${px(25)}px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#5EC8FF}
-.atas .nomor{color:#8A97A6;letter-spacing:.1em}
-h1{font-size:${px(78)}px;line-height:1.07;font-weight:800;letter-spacing:-.02em}
-h1.cta{font-size:${px(62)}px}
-p{font-size:${px(36)}px;line-height:1.44;font-weight:400;color:#C3CCD6;margin-top:${px(26)}px}
-/* Baris bawah hanya logo. URL per-slide dibuang: di Instagram tidak bisa diklik,
-   dan yang panjang justru terpotong elipsis seperti di render pertama. */
-.foot{display:flex;justify-content:flex-end;align-items:flex-end}
-.logo{height:${px(112)}px;width:auto;flex:none}
+.bg{position:absolute;inset:0;width:1080px;height:1350px;object-fit:cover}
+/* Tanpa raster: kartu warna solid dari aksen, bukan kanvas kosong. Begitu foto jadi
+   bintangnya, kelima gambar yang gagal menghasilkan lubang — ini yang menutupnya
+   dengan sesuatu yang terlihat seperti pilihan desain. */
+.kartu{position:absolute;inset:0;background:linear-gradient(155deg,${aksen} 0%,#0B0F14 78%)}
+/* Redup tipis sekanvas, cuma untuk menahan foto yang benar-benar putih. .22 masih
+   menyisakan 78% foto — bandingkan dengan veil lama yang menyisakan 4–16%. */
+.redup{position:absolute;inset:0;background:rgba(11,15,20,.22)}
+.wrap{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:${px(72)}px ${px(64)}px}
+/* Kepala duduk langsung di atas foto, jadi dia bawa scrim sendiri. */
+.atas{display:flex;justify-content:space-between;align-items:center;font-size:${px(24)}px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.merek{display:flex;align-items:center;gap:${px(16)}px;background:rgba(11,15,20,.72);padding:${px(12)}px ${px(22)}px ${px(12)}px ${px(12)}px;border-radius:999px}
+.logo{height:${px(46)}px;width:auto;display:block;flex:none}
+.nomor{background:rgba(11,15,20,.72);padding:${px(12)}px ${px(20)}px;border-radius:999px;color:#C3CCD6;letter-spacing:.1em}
+/* Zona teks. Sengaja TANPA overflow:hidden — teks yang meluber harus menambah
+   scrollHeight supaya render-svc bisa membalas 422 aturan 11 dan loop ronde
+   memperkecilnya. Ditutup di sini berarti teks terpotong diam-diam. */
+.teks{padding:${px(48)}px ${px(44)}px}
+.kicker{display:inline-block;background:${aksen};color:#fff;font-size:${px(23)}px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:${px(10)}px ${px(20)}px;border-radius:${px(6)}px;margin-bottom:${px(22)}px}
+h1{font-size:${px(74)}px;line-height:1.08;font-weight:800;letter-spacing:-.02em;text-transform:uppercase}
+h1.cta{font-size:${px(58)}px;text-transform:none}
+p{font-size:${px(34)}px;line-height:1.42;color:#D7DEE6;margin-top:${px(22)}px}
+/* blok-bawah: pola HEROID — foto utuh, teks di dalam blok pekat di bawah. */
+.l-blok .wrap{justify-content:space-between}
+.l-blok .teks{background:rgba(9,12,16,.9);border-radius:${px(20)}px;border-left:${px(10)}px solid ${aksen}}
+/* pias-bawah: foto 58% atas, panel warna solid 42% bawah. */
+.l-pias .bg{height:783px;bottom:auto}
+.l-pias .kartu{height:783px;bottom:auto}
+.l-pias .redup{height:783px;bottom:auto}
+.l-pias body,.l-pias{background:#0B0F14}
+.l-pias .teks{background:#0B0F14;border-top:${px(8)}px solid ${aksen};border-radius:0;padding-top:${px(40)}px}
+/* tengah: judul di tengah, scrim gradien terbatas di zona teksnya saja. */
+/* tengah: scrim harus BENAR-BENAR sampai transparan sebelum tepi kotaknya, kalau
+   tidak yang terlihat kotak abu-abu bersudut, bukan bayangan lembut. Karena itu
+   berhenti di 72% dengan padding lega — sisa 28% kotak murni transparan.
+   Konsekuensinya bagian pinggir teks kehilangan sebagian kontras, jadi ditambal
+   text-shadow: dua lapis pelindung, dan yang kedua tidak bergantung ukuran kotak. */
+.l-tengah .wrap{justify-content:space-between}
+.l-tengah .tengahkan{flex:1;display:flex;align-items:center}
+.l-tengah .teks{background:radial-gradient(72% 54% at 50% 50%,rgba(9,12,16,.93) 0%,rgba(9,12,16,.74) 46%,rgba(9,12,16,0) 72%);text-align:center;padding:${px(104)}px ${px(72)}px}
+.l-tengah .kicker{margin-left:auto;margin-right:auto}
+.l-tengah h1,.l-tengah p{text-shadow:0 ${px(2)}px ${px(20)}px rgba(0,0,0,.9)}
 `.trim();
+
+/**
+ * Chip kategori — tempat warna aksen hidup, dan satu-satunya bagian yang menyebut
+ * topik artikel. Diambil dari tag pertama, bukan dari field baru ke model: tag-nya
+ * sudah ada di brief, sudah ditulis manusia, dan tidak bisa mengarang.
+ */
+const KICKER = (() => {
+  const t = String(brief.tags || '').split(',')[0].trim();
+  return (t || 'Artikel').slice(0, 18);
+})();
+
+const KELAS = { 'blok-bawah': 'l-blok', 'pias-bawah': 'l-pias', tengah: 'l-tengah' };
 
 const slides = meta.map((m, i) => {
   const akhir = i === meta.length - 1;
@@ -126,17 +210,23 @@ const slides = meta.map((m, i) => {
   const heading = maksKata(sumber.heading, Math.max(5, 8 - Math.floor(ronde / 2)));
   const body = maksKata(sumber.body, Math.max(10, 25 - ronde * 2));
 
+  const teks =
+    `<div class="teks">` +
+    `<span class="kicker">${esc(akhir ? 'Baca selengkapnya' : KICKER)}</span>` +
+    `<h1${akhir ? ' class="cta"' : ''}>${esc(heading)}</h1>` +
+    `${body ? `<p>${esc(body)}</p>` : ''}` +
+    `</div>`;
+
   return `<!doctype html>
-<html lang="id"><head><meta charset="utf-8"><style>${CSS}</style></head><body>
-${latar[i] ? `<img class="bg" src="${latar[i]}">` : ''}
-<div class="veil"></div>
+<html lang="id" class="${KELAS[layout]}"><head><meta charset="utf-8"><style>${CSS}</style></head><body>
+${latar[i] ? `<img class="bg" src="${latar[i]}">` : '<div class="kartu"></div>'}
+${latar[i] ? '<div class="redup"></div>' : ''}
 <div class="wrap">
-  <div class="atas"><span>Daffathan Labs</span><span class="nomor">${i + 1} / ${meta.length}</span></div>
-  <div>
-    <h1${akhir ? ' class="cta"' : ''}>${esc(heading)}</h1>
-    ${body ? `<p>${esc(body)}</p>` : ''}
+  <div class="atas">
+    <span class="merek"><img class="logo" src="${LOGO}" alt="">Daffathan Labs</span>
+    <span class="nomor">${i + 1} / ${meta.length}</span>
   </div>
-  <div class="foot"><img class="logo" src="${LOGO}" alt=""></div>
+  ${layout === 'tengah' ? `<div class="tengahkan">${teks}</div>` : teks}
 </div>
 </body></html>`;
 });

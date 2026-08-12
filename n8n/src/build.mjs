@@ -282,7 +282,10 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
   schemaType: 'manual',
   inputSchema: JSON.stringify({
     type: 'object',
-    required: ['linkedin_caption', 'ig_caption', 'fb_caption', 'hashtags', 'slides', 'image_series'],
+    required: [
+      'linkedin_caption', 'ig_caption', 'fb_caption', 'hashtags', 'slides',
+      'image_series', 'accent', 'layout', 'image_mood',
+    ],
     properties: {
       linkedin_caption: { type: 'string', description: 'Bahasa Inggris, 120-200 kata, diakhiri URL EN' },
       // Instagram memotong caption di ~125 karakter dan tautannya tidak bisa diklik.
@@ -292,6 +295,23 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
       fb_caption: { type: 'string', description: 'Bahasa Indonesia, 150-250 kata, diakhiri "Baca lengkapnya: <URL ID>"' },
       hashtags: { type: 'array', items: { type: 'string' }, description: 'maksimal 5 hashtag huruf kecil' },
       image_series: { type: 'string', description: 'Satu kalimat Inggris pengikat kelima gambar' },
+      // Tiga field desain, per ARTIKEL bukan per slide: satu artikel tetap satu wajah
+      // di kelima slide. Nilainya tidak dipercaya mentah-mentah — `accent` diperiksa
+      // bentuk dan kontrasnya, `layout` dicocokkan ke daftar tertutup, dua-duanya di
+      // rakit-slide.js.
+      accent: {
+        type: 'string',
+        description: 'Satu warna #RRGGBB yang mewakili subjek artikel. Harus cukup gelap: dipakai sebagai latar chip berteks putih, kontras minimal 4.5:1',
+      },
+      layout: {
+        type: 'string',
+        enum: ['blok-bawah', 'pias-bawah', 'tengah'],
+        description: 'blok-bawah = foto penuh + blok teks di bawah; pias-bawah = foto atas + panel gelap bawah; tengah = judul di tengah foto',
+      },
+      image_mood: {
+        type: 'string',
+        description: 'Bahasa Inggris, 3-8 kata. Arah cahaya dan warna foto sesuai tema artikel, mis. "neon night city, high contrast"',
+      },
       slides: {
         type: 'array',
         description: 'Tepat 5 slide: hook, 3 poin, CTA',

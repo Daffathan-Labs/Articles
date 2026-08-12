@@ -327,12 +327,18 @@ test("Wait node punya webhookId dan batas waktu", () => {
 
 // ── Menjalankan sumber Code node "Rakit slide" apa adanya dari JSON, dengan
 // global n8n yang dipalsukan. Tidak ada salinan template di file test ini.
+// Ukuran h1 di ronde 0. Satu tempat, dipakai dua test — kalau desainnya diubah,
+// yang menyesuaikan satu baris, bukan berburu angka telanjang di beberapa assert.
+const H1_RONDE0 = 74;
+
 function rakit({
   ronde = 0,
   gambar = 5,
   heading,
   body,
   hashtags = ["#a"],
+  accent = "#B3261E",
+  layout = "blok-bawah",
   // null = artikel tanpa gambar, atau unduhan cover yang gagal. Dua-duanya jalur
   // yang sama dari sisi Rakit slide.
   cover = null,
@@ -349,13 +355,19 @@ function rakit({
         url_id: "https://daffathan-labs.my.id/id/articles/uji",
         url_en: "https://daffathan-labs.my.id/en/articles/uji",
         cover: cover ? "https://api.contoh/uploads/articles/abc.webp" : null,
+        tags: "Movie Review, Marvel",
         repo: "Daffathan-Labs/Articles",
         berkas_md: ["artikel-uji-id.md", "artikel-uji-en.md"],
         dilewat: [],
       },
     },
     "Gemini copy": {
-      json: { output: { linkedin_caption: "LI", ig_caption: "IG", fb_caption: "FB", hashtags } },
+      json: {
+        output: {
+          linkedin_caption: "LI", ig_caption: "IG", fb_caption: "FB",
+          hashtags, accent, layout,
+        },
+      },
     },
     // Node HTTP responseFormat:file — json kosong, muatannya di binary.
     "Ambil cover": cover
@@ -380,7 +392,7 @@ test("Rakit slide: ronde 0 menghasilkan 5 slide dengan teks penuh", () => {
   assert.equal(r.slides.length, 5);
   assert.equal(r.ronde, 1);
   assert.equal(r.gambar_gagal, 0);
-  assert.match(r.slides[0], /font-size:78px/, "ronde 0 pakai ukuran penuh");
+  assert.match(r.slides[0], new RegExp(`h1\\{font-size:${H1_RONDE0}px`), "ronde 0 pakai ukuran penuh");
   assert.doesNotMatch(r.slides[0], /…/, "ronde 0 tidak memangkas kata");
 });
 
@@ -477,8 +489,8 @@ test("Rakit slide: tiap ronde benar-benar mengecil, dan berhenti di lantai", () 
   for (let i = 1; i < 6; i++) {
     assert.ok(seri[i] < seri[i - 1], `ronde ${i} (${seri[i]}px) harus < ronde ${i - 1}`);
   }
-  assert.equal(seri[0], 78);
-  assert.equal(seri[8], Math.round(78 * 0.7), "lantai skala 70%");
+  assert.equal(seri[0], H1_RONDE0);
+  assert.equal(seri[8], Math.round(H1_RONDE0 * 0.7), "lantai skala 70%");
 
   // Pemangkasan kata ikut turun.
   assert.doesNotMatch(rakit({ ronde: 0 }).slides[0], /…/);
@@ -1278,4 +1290,128 @@ test("hashtag selalu berawalan # walau model mengembalikan kata telanjang", () =
   const kosong = rakit({ hashtags: [] }).ig_caption;
   assert.doesNotMatch(kosong, /#/);
   assert.doesNotMatch(kosong, /\n\n$/);
+});
+
+// ═══════════ desain slide: foto tampil utuh, warna ikut tema ════════════════════
+const LAYOUT = ["blok-bawah", "pias-bawah", "tengah"];
+/** Ukuran font h1 dan seluruh CSS satu slide, untuk diperiksa aturan per aturan. */
+const gaya = (s) => s.match(/<style>([\s\S]*?)<\/style>/)[1];
+
+test("foto tampil UTUH — nol lapisan yang menutup seluruh kanvas", () => {
+  // Ini test yang paling menjaga, dan yang paling mudah jebol lagi. Versi lama
+  // memasang foto di opacity .42 lalu menimpanya veil .62-.96 sekanvas: yang sampai
+  // ke mata tinggal 16% di ujung atas dan 1,7% di bawah, jadi review film dan catatan
+  // teknis menghasilkan kotak hitam yang sama persis.
+  for (const layout of LAYOUT) {
+    const css = gaya(rakit({ layout }).slides[0]);
+
+    // .bg tidak boleh diredupkan sama sekali.
+    const bg = css.match(/\.bg\{([^}]*)\}/)[1];
+    assert.doesNotMatch(bg, /opacity/, `${layout}: .bg diberi opacity lagi`);
+
+    // Lapisan sekanvas yang tersisa hanya .redup, dan dia harus tipis. Ambang .35
+    // dipilih supaya "sedikit menahan foto putih" tetap boleh, tapi "menutupi foto"
+    // tidak — veil lama mulai dari .62.
+    const redup = Number(css.match(/\.redup\{[^}]*rgba\(11,15,20,([\d.]+)\)/)[1]);
+    assert.ok(redup <= 0.35, `${layout}: redup sekanvas ${redup} — foto ketutup lagi`);
+    assert.doesNotMatch(css, /\.veil/, `${layout}: veil sekanvas hidup lagi`);
+  }
+});
+
+test("teks selalu punya pelindungnya sendiri, di ketiga layout", () => {
+  // Kontras dijaga LOKAL sekarang. Kalau .teks kehilangan latarnya, judul putih
+  // duduk langsung di atas foto — dan foto yang kebetulan terang bikin slide-nya
+  // tidak terbaca sama sekali.
+  for (const layout of LAYOUT) {
+    const css = gaya(rakit({ layout }).slides[0]);
+    const kelas = { "blok-bawah": "l-blok", "pias-bawah": "l-pias", tengah: "l-tengah" }[layout];
+    const aturan = css.match(new RegExp(`\.${kelas} \.teks\{([^}]*)\}`))[1];
+    assert.match(aturan, /background:/, `${layout}: .teks tanpa latar pelindung`);
+  }
+});
+
+test("wadah teks tidak boleh overflow:hidden — itu yang bikin 422 bisa muncul", () => {
+  // render-svc aturan 11 mengukur scrollHeight setelah layout jadi. Kalau .teks
+  // menutup luapannya sendiri, scrollHeight tidak pernah tumbuh: teks terpotong
+  // diam-diam, render dibalas 200, dan loop penyusutan ronde tidak pernah jalan.
+  for (const layout of LAYOUT) {
+    const css = gaya(rakit({ layout }).slides[0]);
+    for (const m of css.matchAll(/\.teks\{([^}]*)\}/g)) {
+      assert.doesNotMatch(m[1], /overflow:\s*hidden/, `${layout}: .teks menutup luapannya`);
+    }
+  }
+});
+
+test("aksen dari model tidak dipercaya: bentuk dan kontras diperiksa", () => {
+  const dipakai = (accent) => gaya(rakit({ accent }).slides[0]).match(/\.kicker\{[^}]*background:(#[0-9A-Fa-f]{6})/)[1];
+
+  // Hex sah dan cukup pekat dipakai apa adanya.
+  assert.equal(dipakai("#B3261E"), "#B3261E");
+  assert.equal(dipakai("#b3261e"), "#B3261E", "huruf kecil tetap diterima");
+
+  // Bentuk salah -> biru brand. `undefined` tidak ikut didaftar karena default
+  // parameter di rakit() akan menelannya; jalur "model tidak mengirim accent sama
+  // sekali" sudah diwakili `null` — kodenya memperlakukan keduanya identik lewat
+  // `copy.accent == null`.
+  for (const buruk of ["merah", "#GGGGGG", "#FFF", "", null, "#12345", "B3261E"]) {
+    assert.equal(dipakai(buruk), "#5EC8FF", `${JSON.stringify(buruk)} lolos jadi warna`);
+  }
+  // Hex sah TAPI terlalu terang: chip berteks putih tidak terbaca. Ini yang tidak
+  // ketahuan kalau cuma bentuknya yang diperiksa.
+  for (const pucat of ["#FFF9C4", "#FFFFFF", "#B8E986"]) {
+    assert.equal(dipakai(pucat), "#5EC8FF", `${pucat} lolos padahal kontrasnya kurang`);
+  }
+});
+
+test("layout ngawur dari model jatuh ke blok-bawah, bukan slide tanpa CSS", () => {
+  for (const buruk of ["keren", "", null, "BLOK-BAWAH", "blok bawah"]) {
+    const html = rakit({ layout: buruk }).slides[0];
+    assert.match(html, /<html lang="id" class="l-blok"/, `${JSON.stringify(buruk)} tidak jatuh ke default`);
+  }
+  for (const layout of LAYOUT) {
+    const kelas = { "blok-bawah": "l-blok", "pias-bawah": "l-pias", tengah: "l-tengah" }[layout];
+    assert.match(rakit({ layout }).slides[0], new RegExp(`class="${kelas}"`));
+  }
+});
+
+test("nol raster jatuh ke kartu warna, bukan kanvas kosong", () => {
+  // Konsekuensi langsung dari foto jadi bintangnya: dulu gambar gagal tetap terlihat
+  // "normal" karena foto cuma dekorasi 16%. Sekarang gagal berarti lubang — kecuali
+  // ada yang menutupnya dengan sesuatu yang terlihat seperti pilihan desain.
+  const r = rakit({ gambar: 0, accent: "#B3261E" });
+  assert.equal(r.gambar_gagal, 5);
+  assert.equal(r.slides.length, 5);
+  for (const [i, s] of r.slides.entries()) {
+    assert.doesNotMatch(s, /<img class="bg"/, `slide ${i + 1}: bg kosong tetap dipasang`);
+    assert.match(s, /<div class="kartu">/, `slide ${i + 1}: tanpa kartu warna`);
+    assert.match(gaya(s), /\.kartu\{[^}]*#B3261E/, `slide ${i + 1}: kartu tidak memakai aksen`);
+    assert.match(s, /<img class="logo"/, `slide ${i + 1}: logo hilang`);
+  }
+  // Ada raster -> kartu tidak dipasang, supaya tidak menutupi fotonya.
+  assert.doesNotMatch(rakit().slides[0], /<div class="kartu">/);
+});
+
+test("pagar lama tetap berdiri di ketiga layout", () => {
+  // Desain boleh berubah; empat hal ini tidak. Dijalankan ulang per layout karena
+  // yang berubah struktur HTML-nya, bukan cuma warnanya.
+  for (const layout of LAYOUT) {
+    const r = rakit({ layout });
+    assert.equal(r.slides.length, 5);
+    for (const [i, s] of r.slides.entries()) {
+      const isi = s.replace(/src="data:[^"]*"/g, "");
+      assert.doesNotMatch(isi, /https?:|daffathan-labs\.my\.id/, `${layout} slide ${i + 1}: ada URL`);
+      const m = s.match(/<img class="logo" src="data:image\/png;base64,([^"]*)"/);
+      assert.ok(m && m[1].length > 1000, `${layout} slide ${i + 1}: logo hilang atau kosong`);
+      assert.match(s, new RegExp(`${i + 1} / 5`), `${layout} slide ${i + 1}: nomor hilang`);
+    }
+    assert.match(r.slides[4], /link bio/i, `${layout}: slide 5 bukan CTA`);
+    assert.doesNotMatch(r.slides[4], /Satu dua tiga empat/, `${layout}: teks model tidak ditimpa`);
+  }
+});
+
+test("chip kategori diambil dari tag artikel, bukan dikarang model", () => {
+  // Tag ditulis manusia dan sudah ada di brief; field baru ke model cuma menambah
+  // satu peluang gagal untuk sesuatu yang datanya sudah ada.
+  assert.match(rakit().slides[0], /<span class="kicker">Movie Review<\/span>/);
+  assert.match(rakit().slides[4], /<span class="kicker">Baca selengkapnya<\/span>/);
 });

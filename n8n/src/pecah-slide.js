@@ -20,9 +20,21 @@ if (slides.length < 2) {
 
 // Sufiks dikunci di kode, bukan di prompt: ini syarat teknis yang tidak boleh
 // dinegosiasikan model. Semua teks hidup di HTML, nol di raster.
+// Arah cahaya/warna datang dari model per artikel, bukan dipatok di sini. Dulu baris
+// ini memaksa "muted desaturated palette, dark moody background" ke SEMUA artikel, dan
+// itu yang bikin review film dan catatan teknis menghasilkan foto yang sama gelapnya.
+//
+// Yang tetap dikunci di kode cuma dua, karena keduanya syarat teknis yang tidak boleh
+// dinegosiasikan model: nol teks di raster, dan ruang lapang di zona teks.
+const RUANG = {
+  'blok-bawah': 'Leave the lower third visually calm and uncluttered.',
+  'pias-bawah': 'Keep the main subject in the upper half of the frame.',
+  tengah: 'Leave the centre of the frame open and uncluttered.',
+};
+const mood = String(c.image_mood || '').trim();
 const SUFIKS =
-  'Photographic, natural available light, shallow depth of field, muted desaturated ' +
-  'palette, dark moody background suitable as a full-bleed backdrop behind white text. ' +
+  `Photographic, shallow depth of field.${mood ? ` ${mood}.` : ''} ` +
+  `${RUANG[c.layout] || RUANG['blok-bawah']} ` +
   'Absolutely no text, letters, numbers, watermarks, logos or user interface anywhere.';
 
 const CADANGAN = {

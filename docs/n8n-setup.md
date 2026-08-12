@@ -294,6 +294,63 @@ tombol Approve diklik.
 > masuk daftar `dilewat` dan **tidak disimpan di mana pun**. Jadi menyusulkan banyak
 > artikel berarti satu commit dan satu e-mail approval per artikel, bukan sekali jalan.
 
+## 3e. Desain slide — foto jadi bintangnya
+
+Semua slide dulu terlihat sama: kotak gelap berteks putih, tidak peduli artikelnya review
+film atau catatan SQLite. Penyebabnya **tiga lapis yang saling menumpuk**, bukan palet
+yang kurang:
+
+| Lapis | Efek |
+|---|---|
+| prompt gambar dipaksa `muted desaturated palette, dark moody background` | foto lahir gelap dan seragam |
+| `.bg { opacity: .42 }` | sisa 42% |
+| `.veil` `rgba(11,15,20,.62 → .96)` menutup **seluruh** kanvas | sisa **16% di ujung atas, 1,7% di bawah** |
+
+Sekarang foto tampil `opacity: 1` dan tidak ada lapisan yang menutup sekanvas selain
+`.redup` `.22`. Kontras dijaga **lokal** — hanya di belakang teks.
+
+### Yang dipilih model, per artikel
+
+| Field | Isi | Kalau ngawur |
+|---|---|---|
+| `accent` | `#RRGGBB` yang mewakili subjek artikel | jatuh ke biru brand `#5EC8FF` |
+| `layout` | `blok-bawah` · `pias-bawah` · `tengah` | jatuh ke `blok-bawah` |
+| `image_mood` | 3–8 kata Inggris, arah cahaya dan warna foto | prompt jalan tanpa arah |
+
+`accent` diperiksa **dua kali**: bentuknya harus `#RRGGBB`, **dan** kontrasnya terhadap
+putih minimal 4,5:1 — dia dipakai sebagai latar chip berteks putih, jadi hex yang sah pun
+bisa tidak terbaca. Pastel lolos pemeriksaan bentuk tapi gagal pemeriksaan kontras, dan
+tanpa yang kedua itu baru ketahuan setelah tayang.
+
+Tiga layout, bukan bebas: tiap bentuk harus bisa dibuktikan tidak meluber lewat test.
+
+### Yang tidak pernah berubah
+
+Logo DF + wordmark, nomor slide, slide 5 sebagai CTA tetap, dan **nol URL di raster mana
+pun**. Keempatnya dikunci test yang dijalankan ulang di ketiga layout.
+
+### Nol foto = kartu warna, bukan lubang
+
+Konsekuensi langsung dari foto jadi bintangnya. Dulu gambar gagal tetap terlihat "normal"
+karena foto cuma dekorasi 16%; sekarang gagal berarti kanvas kosong. Jadi slide tanpa
+raster jatuh ke **kartu gradien dari `accent`** — bentuk yang terlihat seperti pilihan
+desain. Urutannya: raster sendiri → pinjam raster tetangga → kartu warna.
+
+> **`.teks` tidak boleh diberi `overflow: hidden`.** render-svc aturan 11 mengukur
+> `scrollHeight` setelah layout jadi; kalau zona teks menutup luapannya sendiri,
+> `scrollHeight` tidak pernah tumbuh, render dibalas 200, dan loop penyusutan ronde tidak
+> pernah jalan — teks terpotong diam-diam dan tidak ada yang tahu. Ada test yang
+> menjaganya di ketiga layout.
+
+### Melihat hasilnya tanpa menyentuh workflow
+
+Render langsung ke render-svc dengan `brand` dan `code` sekali pakai, lalu buka
+`previewUrl`-nya. Tidak memicu posting apa pun, tidak menimpa render artikel asli:
+
+```
+POST /render  { brand: "uji", code: "desain-blok", images: [...] }
+```
+
 ## 4. render-svc
 
 Sudah ter-deploy. Workflow memakainya dengan `brand: "portofolio"`, dan service-nya
