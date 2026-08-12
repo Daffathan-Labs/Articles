@@ -326,19 +326,28 @@ Jadi `binary.data.data` yang dipasang ke `<img src="data:image/webp;base64,…">
 menghasilkan `…base64,filesystem-v2` — gambar rusak, di setiap slide, sementara n8n
 melaporkan sukses dan render-svc membalas 200.
 
-Yang membacanya dari disk adalah node **`Extract From File`** (`binaryToPropery`,
-`destinationKey: b64`), dipasang di dua tempat: `Cover base64` setelah `Ambil cover`,
-dan `Slide base64` setelah `Jadi JPEG`. Sesudahnya base64 sungguhan ada di `json.b64`.
+Yang membacanya dari disk adalah dua Code node dengan sumber yang sama
+(`n8n/src/ke-base64.js`): **`Cover base64`** setelah `Ambil cover`, dan
+**`Slide base64`** setelah `Jadi JPEG`. Isinya satu loop
+`this.helpers.getBinaryDataBuffer(i, 'data')`, dan hasilnya ada di `json.b64` + `json.mime`.
 
-Dua hal yang gampang kelewat:
+**Jangan ganti dengan node `Extract From File`.** Node itu memang mengubah binary jadi
+base64, dan sempat dipakai — tapi dia **membuang** item yang tidak punya binary alih-alih
+menandainya. Akibatnya dua-duanya sunyi:
 
-- Node itu **mengganti** `json`, tidak menambah. Aman di jalur cover karena
-  `prompt-copy.txt` cuma membaca `$('Siapkan brief')`.
-- `mimeType` ikut hilang dari `json`, jadi `rakit-slide.js` tetap membacanya dari
-  `$('Ambil cover').first().binary.data.mimeType`. Yang rusak cuma `.data`.
+| Kasus | Keluaran `Extract From File` | Akibat |
+|---|---|---|
+| 2 dari 5 gambar berhasil | 2 item | gambar slide 3 terpasang di slide 1 — pasangan indeks hilang |
+| 0 dari 5 berhasil (kuota habis) | 0 item | cabang berhenti, `Rakit slide` tidak jalan, n8n tetap "success" |
 
-Fixture test meniru mode ini: `binary.data.data` diisi `"filesystem-v2"`, dan ada test
-yang gagal begitu string itu muncul di HTML mana pun.
+Yang kedua benar-benar terjadi di eksekusi 4216. `alwaysOutputData` menambal kasus kedua
+tapi tidak kasus pertama; Code node menyelesaikan dua-duanya karena mengeluarkan tepat
+satu item per item masuk.
+
+Fixture test meniru mode filesystem: `binary.data.data` diisi `"filesystem-v2"`, satu test
+gagal begitu string itu muncul di HTML mana pun, dan `ke-base64.js` dijalankan langsung
+dengan `this.helpers` palsu yang isinya diturunkan dari indeks yang diminta — jadi
+meminta indeks yang salah pun ketahuan.
 
 ### Slide 1 foto artikel, slide 2+ gambarnya masing-masing
 

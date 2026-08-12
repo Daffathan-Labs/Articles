@@ -271,17 +271,13 @@ hubung('Siapkan brief', 'Ambil cover');
 //
 // Perhatikan: node ini MENGGANTI json, bukan menambah. Aman di sini karena
 // prompt-copy.txt cuma membaca $('Siapkan brief'), tidak pernah $json.
-const KE_B64 = {
-  operation: 'binaryToPropery',
-  binaryPropertyName: 'data',
-  destinationKey: 'b64',
-  options: {},
-};
-N('Cover base64', 'n8n-nodes-base.extractFromFile', 1, [1260, 240], KE_B64, {
-  // Artikel tanpa gambar bikin `Ambil cover` gagal, jadi node ini menerima item tanpa
-  // binary dan ikut gagal. Itu jalur normal, bukan alasan menghentikan pipeline.
-  onError: 'continueRegularOutput',
-});
+// Dipakai dua kali: sekali untuk gambar artikel, sekali untuk raster tiap slide.
+// Alasan node ini ada — dan alasan `Extract From File` tidak dipakai — ada di berkasnya.
+const KE_B64 = { jsCode: baca('ke-base64.js') };
+
+// Artikel tanpa gambar bikin `Ambil cover` gagal dan meneruskan item tanpa binary.
+// Node ini tetap mengeluarkan satu item (`b64: null`), jadi `Gemini copy` tetap jalan.
+N('Cover base64', 'n8n-nodes-base.code', 2, [1260, 240], KE_B64);
 hubung('Ambil cover', 'Cover base64');
 
 // ─────────────────────────────────────────────── 3. caption + slide
@@ -399,10 +395,8 @@ hubung('Gemini gambar', 'Jadi JPEG');
 
 // Sama seperti `Cover base64`: tanpa ini `Rakit slide` memasang string "filesystem-v2"
 // sebagai isi gambar. Slide yang gambarnya gagal masuk ke sini tanpa binary dan keluar
-// tanpa `b64` — urutan itemnya tetap, dan itu yang menjaga pasangan per-indeks.
-N('Slide base64', 'n8n-nodes-base.extractFromFile', 1, [1810, 620], KE_B64, {
-  onError: 'continueRegularOutput',
-});
+// dengan `b64: null` — jumlah item tetap 5, dan itu yang menjaga pasangan per-indeks.
+N('Slide base64', 'n8n-nodes-base.code', 2, [1810, 620], KE_B64);
 hubung('Jadi JPEG', 'Slide base64');
 
 // Logo disisipkan saat build sebagai data URI, bukan URL: render-svc memakai

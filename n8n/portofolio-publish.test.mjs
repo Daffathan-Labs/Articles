@@ -61,9 +61,13 @@ test("setiap $('Nama Node') menunjuk node yang ada", () => {
 });
 
 test("Code node lolos parse sebagai JavaScript", () => {
+  // n8n membungkus isi Code node dalam fungsi async, jadi `await` di level teratas sah
+  // di sana — `new Function` biasa menolaknya. Diparse dengan pembungkus yang sama
+  // supaya test ini menilai kode yang benar-benar akan dijalankan.
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
   for (const n of wf.nodes.filter((x) => x.type === "n8n-nodes-base.code")) {
     assert.doesNotThrow(
-      () => new Function(n.parameters.jsCode),
+      () => new AsyncFunction(n.parameters.jsCode),
       `Code node "${n.name}" tidak bisa di-parse`
     );
   }
@@ -381,22 +385,25 @@ function rakit({
     "Ambil cover": cover
       ? { json: {}, binary: { data: { data: RUJUKAN, mimeType: cover.mime, id: "filesystem-v2:…" } } }
       : { json: {} },
-    // Hasil `Extract From File`: json DIGANTI, cuma berisi b64. Tanpa binary sama sekali.
-    "Cover base64": cover ? { json: { b64: cover.b64 } } : { json: {} },
+    // Hasil `Cover base64`: SELALU satu item, `b64` null kalau tidak ada gambar.
+    "Cover base64": { json: cover ? { b64: cover.b64, mime: cover.mime } : { b64: null, mime: null } },
   };
   const $ = (n) => ({
     isExecuted: true,
     first: () => palsu[n],
-    all: () =>
-      n === "Pecah slide"
-        ? Array.from({ length: 5 }, () => ({ json: slide }))
-        : // Raster diberi nomor per slide. Kalau semuanya string yang sama, test tidak
-          // bisa membedakan "tiap slide punya gambarnya sendiri" dari "satu gambar
-          // dipasang lima kali" — dan itu persis keluhan yang memicu perubahan ini.
-          Array.from({ length: 5 }, (_, i) => ({
-            json: i < gambar ? { b64: `QUJD${i}` } : {},
-            binary: i < gambar ? { data: { data: RUJUKAN } } : undefined,
-          })),
+    all: () => {
+      if (n === "Pecah slide") return Array.from({ length: 5 }, () => ({ json: slide }));
+      // `Slide base64` SELALU mengeluarkan satu item per slide, termasuk yang gagal
+      // (`b64: null`). Itu yang menjaga slide ke-4 tidak memakai gambar milik slide
+      // ke-1 saat sebagian gambar gagal.
+      //
+      // Raster diberi nomor per slide. Kalau semuanya string yang sama, test tidak bisa
+      // membedakan "tiap slide punya gambarnya sendiri" dari "satu gambar dipasang lima
+      // kali" — dan itu persis keluhan yang memicu perubahan ini.
+      return Array.from({ length: 5 }, (_, i) => ({
+        json: { b64: i < gambar ? `QUJD${i}` : null, mime: "image/jpeg" },
+      }));
+    },
   });
   const fn = new Function("$runIndex", "$", byName["Rakit slide"].parameters.jsCode);
   return fn(ronde, $)[0].json;
@@ -462,14 +469,70 @@ test("node pengubah binary ke base64 terpasang di dua jalur gambar", () => {
   ]) {
     const n = byName[node];
     assert.ok(n, `${node} tidak ada`);
-    assert.equal(n.parameters.operation, "binaryToPropery", `${node}: operasi salah`);
-    assert.equal(n.parameters.destinationKey, "b64", `${node}: kunci tujuan salah`);
-    // Artikel tanpa gambar bikin item masuk tanpa binary. Tanpa ini, satu gambar gagal
-    // menghentikan seluruh pipeline.
-    assert.equal(n.onError, "continueRegularOutput", `${node}: tanpa onError`);
+    // Harus helper, bukan `binary.data.data` — yang terakhir cuma berisi "filesystem-v2".
+    assert.match(n.parameters.jsCode, /getBinaryDataBuffer/, `${node}: tidak membaca dari disk`);
     assert.deepEqual(wf.connections[dari].main[0].map((c) => c.node), [node], `${dari} -> ${node}`);
     assert.deepEqual(wf.connections[node].main[0].map((c) => c.node), [ke], `${node} -> ${ke}`);
   }
+});
+
+// Menjalankan sumber Code node "Slide base64" apa adanya dari JSON. `this.helpers`
+// dipalsukan, dan isinya sengaja diturunkan dari INDEKS yang diminta — kalau kodenya
+// meminta indeks yang salah, isi base64-nya ikut salah dan test di bawah menangkapnya.
+async function keB64(masuk, node = "Slide base64") {
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  const fn = new AsyncFunction("$input", byName[node].parameters.jsCode);
+  const helpers = { getBinaryDataBuffer: async (i) => Buffer.from(`RASTER${i}`) };
+  return fn.call({ helpers }, { all: () => masuk });
+}
+const b64dari = (i) => Buffer.from(`RASTER${i}`).toString("base64");
+
+test("ke-base64: satu item keluar per item masuk, indeks tidak bergeser", async () => {
+  // Slide 1 dan 3 berhasil, sisanya gagal. Kalau yang gagal dibuang (perilaku
+  // `Extract From File`), gambar slide 3 diam-diam terpasang di slide 2.
+  const masuk = [0, 1, 2, 3, 4].map((i) =>
+    i === 0 || i === 2
+      ? { json: {}, binary: { data: { data: RUJUKAN, mimeType: "image/webp" } } }
+      : { json: { error: "The service is receiving too many requests from you" } }
+  );
+  const keluar = await keB64(masuk);
+
+  assert.equal(keluar.length, 5, "item hilang — pasangan slide↔gambar bergeser");
+  assert.deepEqual(
+    keluar.map((x) => x.json.b64),
+    [b64dari(0), null, b64dari(2), null, null],
+    "isi tidak duduk di slot slide-nya sendiri"
+  );
+  // Yang dipasang harus isi berkas dari disk, bukan rujukan "filesystem-v2".
+  for (const x of keluar) assert.notEqual(x.json.b64, RUJUKAN);
+  assert.equal(keluar[0].json.mime, "image/webp", "mime hilang — WebP ditulis jadi jpeg");
+});
+
+test("ke-base64: nol gambar tetap mengembalikan lima slot, bukan nol item", async () => {
+  // Kuota gambar habis = kelima item masuk tanpa binary. Nol item keluar berarti
+  // cabangnya berhenti diam-diam dan n8n tetap melaporkan "success" (eksekusi 4216).
+  const keluar = await keB64(Array.from({ length: 5 }, () => ({ json: { error: "gagal" } })));
+  assert.equal(keluar.length, 5, "cabang mati saat semua gambar gagal");
+  assert.deepEqual(keluar.map((x) => x.json.b64), [null, null, null, null, null]);
+});
+
+test("ke-base64: node cover memakai kode yang sama persis", () => {
+  // Dua salinan yang diam-diam berbeda adalah cara bug ini kembali lewat pintu belakang.
+  assert.equal(byName["Cover base64"].parameters.jsCode, byName["Slide base64"].parameters.jsCode);
+});
+
+test("gambar gagal tetap punya slot sendiri — bukan digeser ke slide lain", () => {
+  // `Extract From File` MEMBUANG item tanpa binary: 5 slide dengan 2 gambar berhasil
+  // keluar sebagai 2 item, dan gambar slide ke-3 diam-diam terpasang di slide ke-1.
+  // Node Code menggantinya justru karena itu — satu item keluar per item masuk.
+  const kode = byName["Slide base64"].parameters.jsCode;
+  assert.match(kode, /\$input\.all\(\)/, "tidak mengiterasi seluruh item masukan");
+  assert.doesNotMatch(kode, /\.filter\(/, "menyaring item = membuang slot slide");
+
+  // Slide 1 dan 2 dapat gambar, slide 3-5 gagal. Yang gagal harus TIDAK memakai QUJD.
+  const { slides } = rakit({ gambar: 2 });
+  assert.match(slides[0], /base64,QUJD0/, "slide 1 bukan gambarnya sendiri");
+  assert.match(slides[1], /base64,QUJD1/, "slide 2 bukan gambarnya sendiri");
 });
 
 test("punya cover: slide 1 foto artikel, slide 2+ gambarnya masing-masing", () => {
@@ -499,6 +562,17 @@ test("raster Gemini TIDAK ikut digeser", () => {
   for (const opsi of [{}, { cover: COVER }]) {
     const posisi = rakit(opsi).slides.slice(1).map((s) => s.match(/object-position:([^;]+);/)[1]);
     assert.equal(new Set(posisi).size, 1, "raster Gemini ikut di-crop berbeda");
+  }
+});
+
+test("nol gambar lolos: tetap 5 slide, bukan crash pasangan indeks", () => {
+  // Kuota gambar habis = `Slide base64` mengeluarkan SATU item kosong, bukan lima.
+  // Kalau raster diturunkan dari item itu, panjangnya jadi 1 dan penjaga pasangan
+  // per-indeks melempar — carousel-nya mati justru di kasus yang paling sering.
+  for (const opsi of [{ gambar: 0 }, { gambar: 0, cover: COVER }]) {
+    const r = rakit(opsi);
+    assert.equal(r.slides.length, 5, "jumlah slide ikut menyusut");
+    assert.equal(r.gambar_gagal, 5, "kegagalan tidak terhitung benar");
   }
 });
 

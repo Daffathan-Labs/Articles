@@ -23,16 +23,15 @@ const meta = $('Pecah slide').all().map((i) => i.json);
 // mimeType; nilainya utuh, yang jadi rujukan hanya `.data`.
 const jpeg = $('Slide base64').all();
 
-if (jpeg.length && jpeg.length !== meta.length) {
+if (jpeg.length !== meta.length) {
   throw new Error(
     `Slide masuk ${jpeg.length} tapi metadata ${meta.length}. Pasangan per-indeks ` +
       'tidak bisa dipercaya — kemungkinan Gemini gambar men-drop item.'
   );
 }
 
-// Raster per slide. Node gambar memakai onError:continueRegularOutput, jadi slide
-// yang gagal tetap mengirim item tapi tanpa binary — dan keluar dari `Slide base64`
-// tanpa `b64`.
+// Raster per slide. Slide yang gambarnya gagal tetap punya item di sini, isinya null —
+// itu yang menjaga slide ke-4 tidak memakai gambar milik slide ke-1.
 const raster = jpeg.map((it) => (it.json && it.json.b64) || null);
 const adaRaster = raster.filter(Boolean);
 // Nol gambar bukan kegagalan yang menahan pipeline: slide tanpa raster jatuh ke kartu
@@ -45,13 +44,11 @@ const bg = raster.map((r) => r || adaRaster[0] || null);
 // Gambar artikel, kalau ada. `Ambil cover` memakai onError:continueRegularOutput,
 // jadi artikel tanpa gambar dan unduhan yang gagal sama-sama berakhir null di sini —
 // dan dua-duanya memang ditangani sama: pakai gambar Gemini.
-const coverB64 = ($('Cover base64').first().json || {}).b64 || null;
+const unduhan = $('Cover base64').first().json || {};
+const coverB64 = unduhan.b64 || null;
 // Mime dibaca dari unduhan, bukan diasumsikan: API menyajikan cover sebagai WebP,
 // dan menuliskannya sebagai image/jpeg bikin Chromium menolak merender gambarnya.
-// `Cover base64` mengganti json dan tidak membawa mimeType, jadi ini tetap dibaca dari
-// `Ambil cover` — metadata binary-nya utuh, yang jadi rujukan filesystem cuma `.data`.
-const unduhan = $('Ambil cover').first();
-const coverMime = (unduhan && unduhan.binary && unduhan.binary.data && unduhan.binary.data.mimeType) || 'image/jpeg';
+const coverMime = unduhan.mime || 'image/jpeg';
 
 // Slide 1 memakai foto artikel; slide 2+ memakai gambar Gemini-nya masing-masing.
 //
