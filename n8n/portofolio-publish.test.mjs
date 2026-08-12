@@ -1157,3 +1157,108 @@ test("Cek token: refresh yang gagal tetap sampai ke e-mail, bukan diam", () => {
   assert.equal(rfBy["Refresh token"].onError, "continueRegularOutput");
   assert.equal(rfBy["Simpan workflow"].onError, "continueRegularOutput");
 });
+
+// ═══════════ workflow turunan: kirim ulang tanpa LinkedIn ═══════════════════════
+// Dipakai untuk artikel yang sudah terlanjur ada di LinkedIn tapi belum di
+// Instagram/Facebook. Diturunkan dari workflow normal lewat tanpaLinkedIn() di
+// build.mjs, jadi yang diuji di sini adalah hasil transformnya — bukan salinan
+// logikanya.
+const ul = JSON.parse(
+  fs.readFileSync(path.join(import.meta.dirname, "portofolio-ulang.json"), "utf8")
+);
+const ulBy = Object.fromEntries(ul.nodes.map((n) => [n.name, n]));
+
+/** Semua sambungan main yang masuk ke `ke`, sebagai "NodeAsal#index". */
+const masukKe = (w, ke) =>
+  Object.entries(w.connections).flatMap(([dari, t]) =>
+    (t.main ?? []).flat().filter((c) => c.node === ke).map((c) => `${dari}#${c.index}`)
+  );
+
+test("transform tidak menyentuh workflow normal", () => {
+  // Yang paling penting di berkas ini: bug di tanpaLinkedIn() merusak jalur produksi,
+  // bukan cuma varian kirim-ulangnya.
+  assert.deepEqual(
+    wf.nodes.filter((n) => /LinkedIn/.test(n.name)).map((n) => n.name).sort(),
+    ["Ambil gambar LinkedIn", "LinkedIn init upload", "LinkedIn post", "LinkedIn upload"]
+  );
+  assert.ok(byName["Tunggu 3 cabang"], "barrier workflow normal ikut ter-rename");
+  assert.equal(wf.nodes.length - ul.nodes.length, 4, "yang dibuang harus persis 4 node");
+});
+
+test("workflow ulang: nol jejak LinkedIn, sampai ke ekspresi", () => {
+  assert.deepEqual(ul.nodes.filter((n) => /LinkedIn/i.test(n.name)), []);
+  for (const [dari, t] of Object.entries(ul.connections)) {
+    for (const c of (t.main ?? []).flat()) {
+      assert.ok(ulBy[c.node], `${dari} menyambung ke node yang sudah dibuang: ${c.node}`);
+    }
+  }
+  // Node yang hilang tapi ekspresinya tertinggal tidak bikin n8n menolak import —
+  // dia meledak saat jalan, dan yang hilang seluruh e-mail, bukan satu baris.
+  assert.equal(JSON.stringify(ul).match(/\$\('LinkedIn[^']*'\)/g), null);
+});
+
+test("barrier kedua workflow: indeks rapat, jumlah cocok", () => {
+  // Node Merge menunggu SEMUA input yang tersambung. Satu indeks berlubang bikin
+  // `Email hasil` menggantung selamanya, dan tidak ada pesan error apa pun.
+  for (const [label, w] of [["normal", wf], ["ulang", ul]]) {
+    const b = w.nodes.find((n) => n.type === "n8n-nodes-base.merge");
+    const idx = masukKe(w, b.name).map((s) => Number(s.split("#")[1])).sort();
+    assert.deepEqual(idx, [...idx.keys()], `${label}: indeks input barrier berlubang`);
+    assert.equal(b.parameters.numberInputs, idx.length, `${label}: numberInputs tidak cocok`);
+    assert.equal(b.name, `Tunggu ${idx.length} cabang`, `${label}: nama barrier berbohong`);
+  }
+});
+
+test("workflow ulang: setiap node tetap terjangkau dari Webhook", () => {
+  const lihat = new Set();
+  (function jalan(n) {
+    if (lihat.has(n)) return;
+    lihat.add(n);
+    for (const cabang of ul.connections[n]?.main ?? []) for (const c of cabang) jalan(c.node);
+  })("Webhook");
+  const subNode = new Set(
+    ul.nodes
+      .filter((n) => Object.keys(ul.connections[n.name] ?? {}).some((t) => t.startsWith("ai_")))
+      .map((n) => n.name)
+  );
+  const putus = ul.nodes
+    .map((n) => n.name)
+    .filter((n) => !lihat.has(n) && !subNode.has(n) && !ulBy[n].disabled);
+  assert.deepEqual(putus, [], `node tidak terjangkau: ${putus.join(", ")}`);
+});
+
+test("kedua workflow berbagi path webhook yang sama", () => {
+  // Inilah yang bikin Action GitHub memicu salah satu tanpa WEBHOOK_URL disentuh:
+  // yang menjawab adalah yang sedang aktif. n8n juga menolak dua workflow aktif
+  // berbagi path, jadi "cuma satu yang aktif" dipaksa n8n, bukan diingat manusia.
+  const p = (w) => w.nodes.find((n) => n.type === "n8n-nodes-base.webhook").parameters.path;
+  assert.equal(p(ul), p(wf));
+});
+
+test("setiap e-mail dari workflow ulang berawalan [ULANG]", () => {
+  // Penjaga jebakan terakhir: kalau lupa mengaktifkan lagi workflow normal, artikel
+  // berikutnya diam-diam tidak naik ke LinkedIn. Awalan ini yang memberi tahu — di
+  // subject, sebelum tombol Approve diklik.
+  const gmail = ul.nodes.filter((n) => n.type === "n8n-nodes-base.gmail");
+  assert.ok(gmail.length >= 4, `cuma ${gmail.length} node Gmail di workflow ulang`);
+  for (const n of gmail) {
+    assert.match(n.parameters.subject, /^=?\[ULANG\] /, `subject "${n.name}" tanpa awalan`);
+  }
+  for (const n of wf.nodes.filter((x) => x.type === "n8n-nodes-base.gmail")) {
+    assert.doesNotMatch(n.parameters.subject, /\[ULANG\]/, `${n.name} normal ikut ter-awali`);
+  }
+});
+
+test("e-mail workflow ulang cuma menawarkan dan melaporkan platform yang ada", () => {
+  const preview = ulBy["Kirim preview"].parameters.message;
+  assert.doesNotMatch(preview, /linkedin_caption|LinkedIn \(EN\)/, "caption LinkedIn tertinggal");
+  assert.match(preview, /ig_caption/);
+  assert.match(preview, /fb_caption/, "caption Facebook harus ikut ditinjau sebelum approve");
+  assert.match(preview, /posting ke Instagram \+ Facebook/, "tombol Approve berbohong");
+
+  const hasil = ulBy["Email hasil"].parameters.message;
+  assert.doesNotMatch(hasil, /<li>LinkedIn:/);
+  for (const p of ["Instagram", "Facebook"]) {
+    assert.match(hasil, new RegExp(`<li>${p}:`), `${p} tidak dilaporkan`);
+  }
+});

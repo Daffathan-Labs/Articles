@@ -96,7 +96,7 @@ const asli = (k, fallback) => RAHASIA[k] || fallback;
  * ubah baris ini jadi true, build ulang, import ulang. Tidak ada langkah manual
  * di kanvas n8n.
  */
-const FB_AKTIF = false;
+const FB_AKTIF = true;
 
 const FIELD = [
   ['article_api_url', 'https://api.daffathan-labs.my.id', 'https://api.daffathan-labs.my.id'],
@@ -695,6 +695,106 @@ const bungkus = (name) => ({
 });
 const wf = bungkus('Portofolio Publish');
 
+// ═══════════════════════════════════════════════ varian: kirim ulang tanpa LinkedIn
+// Untuk artikel yang sudah terlanjur ada di LinkedIn tapi belum di Instagram/Facebook.
+// `Approve?` bercabang ke semua platform tanpa syarat, jadi kirim ulang lewat workflow
+// normal berarti LinkedIn kena dua kali.
+//
+// DITURUNKAN, bukan disalin. Berkas kedua yang dirawat tangan pasti melenceng dari yang
+// pertama, dan melencengnya baru ketahuan waktu postingan salah sudah tayang.
+//
+// `path` webhook sengaja TIDAK diubah — tetap `portofolio`. Itu yang bikin Action GitHub
+// memicu salah satu tanpa WEBHOOK_URL disentuh: yang menjawab adalah yang sedang aktif.
+// n8n menolak dua workflow aktif berbagi path, jadi "cuma satu yang aktif" dipaksa n8n,
+// bukan kedisiplinan yang harus diingat.
+const LINKEDIN = ['LinkedIn init upload', 'Ambil gambar LinkedIn', 'LinkedIn upload', 'LinkedIn post'];
+
+/** Semua sambungan main yang masuk ke `ke`, sebagai referensi hidup ke w.connections. */
+const masukKe = (w, ke) =>
+  Object.values(w.connections).flatMap((tipe) =>
+    (tipe.main || []).flat().filter((c) => c.node === ke)
+  );
+
+/** Ganti nama node beserta semua rujukan ke dia di connections. */
+const ganti = (w, lama, baru) => {
+  const n = w.nodes.find((x) => x.name === lama);
+  n.name = baru;
+  n.id = baru;
+  if (w.connections[lama]) {
+    w.connections[baru] = w.connections[lama];
+    delete w.connections[lama];
+  }
+  for (const c of masukKe(w, lama)) c.node = baru;
+};
+
+/**
+ * Ubah teks, lalu PASTIKAN benar-benar berubah. Template HTML-nya berkembang terus;
+ * pencocokan yang diam-diam meleset menghasilkan workflow yang barisnya masih merujuk
+ * node LinkedIn yang sudah tidak ada — dan yang hilang bukan satu baris, tapi seluruh
+ * e-mail. Lebih baik build-nya gagal di sini.
+ */
+const wajibUbah = (teks, ubah, keterangan) => {
+  const hasil = ubah(teks);
+  if (hasil === teks) throw new Error(`tanpaLinkedIn: ${keterangan} tidak cocok apa pun`);
+  return hasil;
+};
+const buangBaris = (teks, pola) => teks.split('\n').filter((b) => !pola.test(b)).join('\n');
+
+const tanpaLinkedIn = (sumber, nama) => {
+  const w = structuredClone(sumber);
+  w.name = nama;
+  const buang = new Set(LINKEDIN);
+
+  w.nodes = w.nodes.filter((n) => !buang.has(n.name));
+  for (const n of buang) delete w.connections[n];
+  for (const tipe of Object.values(w.connections)) {
+    for (const [t, grup] of Object.entries(tipe)) {
+      tipe[t] = grup.map((cabang) => cabang.filter((c) => !buang.has(c.node)));
+    }
+  }
+
+  // Node Merge menunggu SEMUA input yang tersambung. Membuang cabang pertama menyisakan
+  // input 0 yang tidak pernah terisi, dan `Email hasil` menggantung selamanya. Jadi
+  // indeksnya dirapatkan, bukan sekadar jumlahnya dikurangi.
+  const barrier = w.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+  const masuk = masukKe(w, barrier.name).sort((a, b) => a.index - b.index);
+  masuk.forEach((c, i) => { c.index = i; });
+  barrier.parameters.numberInputs = masuk.length;
+  ganti(w, barrier.name, `Tunggu ${masuk.length} cabang`);
+
+  const node = (n) => w.nodes.find((x) => x.name === n);
+
+  node('Email hasil').parameters.message = wajibUbah(
+    node('Email hasil').parameters.message,
+    (t) => buangBaris(t, /<li>LinkedIn:/),
+    'baris status LinkedIn di e-mail hasil'
+  );
+
+  const pv = node('Kirim preview');
+  pv.parameters.message = wajibUbah(
+    pv.parameters.message,
+    (t) => buangBaris(buangBaris(t, /LinkedIn \(EN\)/), /linkedin_caption/),
+    'blok caption LinkedIn di e-mail preview'
+  );
+  pv.parameters.message = wajibUbah(
+    pv.parameters.message,
+    (t) => t.replace('posting ke LinkedIn + Instagram + Facebook', 'posting ke Instagram + Facebook'),
+    'teks tombol Approve'
+  );
+
+  // Awalan di SETIAP e-mail, bukan cuma dua yang penting: kalau lupa mengaktifkan lagi
+  // workflow normal, artikel berikutnya diam-diam tidak naik ke LinkedIn. Awalan ini
+  // yang memberi tahu — di subject, sebelum tombol Approve diklik.
+  for (const n of w.nodes.filter((x) => x.type === 'n8n-nodes-base.gmail')) {
+    const s = n.parameters.subject;
+    n.parameters.subject = s.startsWith('=') ? `=[ULANG] ${s.slice(1)}` : `[ULANG] ${s}`;
+  }
+
+  return w;
+};
+
+const wfUlang = tanpaLinkedIn(wf, 'Portofolio Ulang — Instagram + Facebook');
+
 // ═══════════════════════════════════════════════ workflow 2: perpanjang token IG
 // Terpisah dari workflow publish karena pemicunya beda: yang ini jadwal, bukan push.
 // Token IG hidup 60 hari dan refresh memberi 60 hari lagi tiap dipanggil — tapi HANYA
@@ -836,4 +936,5 @@ const keduanya = (sumber, daftar, file) => {
 };
 
 keduanya(wf, FIELD, out);
+keduanya(wfUlang, FIELD, path.join(path.dirname(out), 'portofolio-ulang.json'));
 keduanya(wfRefresh, FIELD_REFRESH, path.join(path.dirname(out), 'refresh-ig-token.json'));

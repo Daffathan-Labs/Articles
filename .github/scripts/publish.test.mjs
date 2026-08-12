@@ -189,3 +189,24 @@ test("pesan multi-baris seperti keluaran git log --format=%B", () => {
   ].join("\n");
   assert.deepEqual(parseRepost(pesan), ["review-supergirl"]);
 });
+
+test("workflow Action tidak memfilter paths — kalau difilter, [repost:] mati diam-diam", () => {
+  // `git commit --allow-empty -m "[repost: folder]"` adalah satu-satunya cara mengirim
+  // ulang artikel lama ke sosmed. Commit kosong tidak menyentuh berkas apa pun, jadi
+  // `paths: articles/**` bikin GitHub melewati Action-nya tanpa pesan apa pun — push
+  // berhasil, Action tidak pernah muncul, dan kelihatannya seperti n8n yang bermasalah.
+  //
+  // Ini pernah terjadi: filter itu ada sampai 2026-08-13 dan [repost:] belum pernah
+  // sekali pun benar-benar jalan. Gerbang penggantinya ada di main() — folders kosong
+  // berarti berhenti sebelum memanggil webhook.
+  const yml = fs.readFileSync(
+    path.join(import.meta.dirname, "..", "workflows", "publish-articles.yml"),
+    "utf8"
+  );
+  const isi = yml
+    .split("\n")
+    .filter((b) => !b.trimStart().startsWith("#"))
+    .join("\n");
+  assert.doesNotMatch(isi, /^\s+paths:/m, "filter paths mematikan [repost:]");
+  assert.match(isi, /^\s+push:\s*$/m, "trigger push harus tetap ada, tanpa filter");
+});

@@ -38,7 +38,7 @@ Satu klik, manual, dan tidak ada API yang menggantikannya.
 ## 0. Prasyarat
 
 - **Halaman Facebook** yang kamu jadi **adminnya**. Kalau belum ada, buat dulu.
-- App Meta yang sudah dipakai Instagram: **`1012873091748986`**.
+- App Meta **`1458175346120052`** (Daffahan Labs).
 - **App secret** dari app itu — dipakai **sekali** di langkah 3, lalu dilupakan.
   Ambil di **Pengaturan aplikasi → Dasar → Rahasia aplikasi**.
 
@@ -47,30 +47,52 @@ Satu klik, manual, dan tidak ada API yang menggantikannya.
 > langkah 3, dan tidak pernah disimpan di mana pun. Ada test yang menolak field bernama
 > `*_secret` di node `Kredensial`.
 
-## 1. Tambah produk Facebook Login
+## 1. Tambah use case "Kelola semua hal di Halaman Anda"
 
-<https://developers.facebook.com/apps> → app `1012873091748986` → **Tambahkan produk** →
-**Facebook Login → Siapkan**.
+**Ini langkah yang paling gampang terlewat, dan gejalanya menyesatkan:**
+`pages_manage_posts` tidak muncul sama sekali di dropdown Graph API Explorer — bukan
+tampil lalu ditolak. Terlihat seperti izinnya dicabut Meta, padahal cuma belum ditawarkan.
 
-Tidak perlu mengatur Redirect URI apa pun — token diambil lewat Graph API Explorer,
-bukan lewat alur OAuth aplikasi.
+Di dashboard Meta yang sekarang, izin yang tampil di Explorer datang dari **use case**
+yang terpasang di app, bukan dari daftar izin global. Tanpa use case Halaman, app cuma
+menawarkan `pages_show_list`, `pages_read_engagement`, `ads_*`, `business_management`,
+dan `whatsapp_*` — nol izin **tulis** Halaman.
 
-Instagram tetap jalan seperti biasa. Satu app boleh punya banyak produk, dan jalur
+1. <https://developers.facebook.com/apps/1458175346120052/dashboard/> → tombol
+   **Tambahkan kasus penggunaan** (kanan atas) → pilih
+   **Kelola semua hal di Halaman Anda**.
+2. **Kasus penggunaan** (menu kiri) → use case yang baru itu → **Sesuaikan** →
+   **Tambahkan** di sebelah `pages_manage_posts` **dan** `business_management`.
+
+Instagram tetap jalan seperti biasa. Satu app boleh punya banyak use case, dan jalur
 Instagram Login tidak terpengaruh sama sekali.
 
 ## 2. Ambil token pendek dari Graph API Explorer
 
 <https://developers.facebook.com/tools/explorer>
 
-1. **Meta App** → pilih `1012873091748986`
-2. **User or Page** → *User Token*
-3. **Permissions** → centang tiga ini:
+1. **Aplikasi Meta** → pilih `1458175346120052`
+2. **Pengguna atau Halaman** → *Token Pengguna*
+3. **Izin** → centang **empat** ini:
    - `pages_show_list`
    - `pages_read_engagement`
    - **`pages_manage_posts`** ← ini yang dipakai untuk posting
-4. **Generate Access Token** → login → izinkan → pilih Halaman yang dimaksud
+   - **`business_management`** ← lihat kotak di bawah
+4. **Generate Access Token** → login → izinkan → **centang semua Halaman** di layar
+   pemilihan
 
 Token yang keluar berumur **1–2 jam**. Itu normal; langkah 3 yang memanjangkannya.
+
+> **Dua sebab Halaman kamu tidak muncul di `/me/accounts`, dan dua-duanya senyap:**
+>
+> 1. **Tidak dicentang** waktu Generate Access Token. Yang tidak dicentang tidak muncul
+>    walaupun kamu adminnya — tanpa pesan error apa pun.
+> 2. **Halamannya di bawah Business portfolio.** Enumerasinya butuh `business_management`;
+>    tanpa itu `/me/businesses` dibalas `(#100) Missing Permission` dan Halamannya
+>    seperti tidak ada.
+>
+> Verifikasi sebelum lanjut: `GET /me/accounts?fields=id,name,tasks` harus memuat Halaman
+> yang kamu maksud, dan `tasks`-nya memuat `CREATE_CONTENT`.
 
 > Kalau nanti izinnya ditambah, **token lama tidak otomatis mendapat izin baru**.
 > Tambahkan izinnya dulu, buat tokennya belakangan. Ini jebakan yang sama persis dengan
@@ -78,10 +100,17 @@ Token yang keluar berumur **1–2 jam**. Itu normal; langkah 3 yang memanjangkan
 
 ## 3. Tukar jadi token Halaman yang tidak kedaluwarsa
 
-Dua panggilan. Yang pertama butuh app secret, yang kedua tidak.
+### Cara singkat, tanpa menyentuh app secret
+
+1. <https://developers.facebook.com/tools/debug/accesstoken/> → tempel token dari
+   langkah 2 → **Debug**
+2. Scroll ke bawah → **Extend Access Token** → keluar token user ±60 hari
+3. Lanjut ke 3b memakai token panjang itu
+
+### Cara curl, kalau tombol Extend tidak ada
 
 ```bash
-APP_ID=1012873091748986
+APP_ID=1458175346120052
 APP_SECRET='...'          # dari langkah 0, jangan disimpan
 TOKEN_PENDEK='...'        # dari langkah 2
 
@@ -100,6 +129,7 @@ TOKEN_PANJANG='...'       # hasil 3a
 
 # 3b) token user panjang -> token HALAMAN, tanpa tanggal kedaluwarsa
 curl -sG 'https://graph.facebook.com/v25.0/me/accounts' \
+  -d fields=id,name,access_token \
   -d access_token=$TOKEN_PANJANG
 ```
 
@@ -123,8 +153,11 @@ sudah otomatis) dan LinkedIn (manual tiap 60 hari).
 ```bash
 curl -sG 'https://graph.facebook.com/v25.0/debug_token' \
   -d input_token=$FB_PAGE_TOKEN \
-  -d access_token="$APP_ID|$APP_SECRET"
+  -d access_token=$TOKEN_PANJANG
 ```
+
+Token user panjang dipakai sebagai pemanggil, bukan `"$APP_ID|$APP_SECRET"` — hasilnya
+sama dan app secret tidak perlu disentuh lagi.
 
 Yang dicari:
 
@@ -155,15 +188,19 @@ curl -s -X POST "https://graph.facebook.com/v25.0/$FB_PAGE_ID/photos" \
 curl -s -X DELETE "https://graph.facebook.com/v25.0/1234...?access_token=$FB_PAGE_TOKEN"
 ```
 
-Kalau ini berhasil, kredensialnya sudah benar. Tiga langkah terakhir:
+Kalau ini berhasil, kredensialnya sudah benar. Dua langkah terakhir:
 
 1. Isi `fb_page_id` dan `fb_page_token` di `n8n/src/secrets.local.json` (di-gitignore).
-2. Ubah `const FB_AKTIF = false` jadi `true` di `n8n/src/build.mjs` — tiga node Facebook
-   ikut ter-build sejak awal tapi **nonaktif** sampai saklar ini dinyalakan.
-3. `node n8n/src/build.mjs`, lalu import ulang `n8n/portofolio-publish.local.json`.
+2. `node n8n/src/build.mjs n8n/portofolio-publish.json`, lalu pasang ulang
+   `n8n/portofolio-publish.local.json` ke n8n.
 
-Tidak ada langkah manual di kanvas n8n. Alasan saklarnya ada di
-[n8n-setup.md § 3c](n8n-setup.md).
+Tidak ada langkah manual di kanvas n8n. Saklar `FB_AKTIF` di `n8n/src/build.mjs` sudah
+`true`; dia cuma perlu disentuh kalau suatu saat cabang Facebook mau dimatikan lagi —
+alasannya di [n8n-setup.md § 3c](n8n-setup.md).
+
+> **Nilai yang terpasang sekarang:** `fb_page_id` = `1253134284553922` (Halaman
+> **Daffathan Labs**). Terverifikasi `type: PAGE`, `expires_at: 0`, dan `tasks` memuat
+> `CREATE_CONTENT`.
 
 ---
 

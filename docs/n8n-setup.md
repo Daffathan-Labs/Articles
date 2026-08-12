@@ -185,10 +185,9 @@ e-mail `Lapor commit`.
 Artikel yang **sudah** punya gambar tidak menyentuh cabang ini sama sekali: `Susun commit`
 mengembalikan nol item, dan nol item berarti seluruh rantai di bawahnya tidak dieksekusi.
 
-## 3c. Cabang Facebook — ter-build, tapi nonaktif
+## 3c. Cabang Facebook
 
-Tiga node (`FB unggah foto`, `Kumpulkan foto FB`, `FB posting`) sudah ada di workflow
-tapi **nonaktif** sampai `fb_page_id` dan `fb_page_token` terisi.
+Tiga node: `FB unggah foto` → `Kumpulkan foto FB` → `FB posting`. **Aktif.**
 
 Facebook tidak punya endpoint carousel. Polanya dua langkah:
 
@@ -197,16 +196,19 @@ Facebook tidak punya endpoint carousel. Polanya dua langkah:
 2. sekali:      POST /{page-id}/feed     message=..., attached_media[0..4]
 ```
 
-### Mengaktifkannya
+`published=false` di langkah 1 itu wajib. Tanpa itu tiap slide jadi post sendiri dan
+satu artikel membanjiri Halaman dengan 5 post, bukan satu post berisi 5 foto.
+
+### Mematikannya lagi kalau perlu
 
 Satu baris di `n8n/src/build.mjs`:
 
 ```js
-const FB_AKTIF = false;   // -> true
+const FB_AKTIF = true;   // -> false
 ```
 
-Lalu isi dua kredensialnya di `n8n/src/secrets.local.json`, `node n8n/src/build.mjs`,
-import ulang. **Tidak ada langkah manual di kanvas n8n.**
+Lalu `node n8n/src/build.mjs n8n/portofolio-publish.json` dan pasang ulang.
+**Tidak ada langkah manual di kanvas n8n.**
 
 Saklar itu tidak cuma mematikan tiga node — dia juga memutus sambungannya ke node
 Merge dan mengembalikan Merge ke dua input. Itu bukan kerapian: **node nonaktif tidak
@@ -233,6 +235,56 @@ dengan cara yang berbeda:
 Instagram sependek itu karena feed memotong di ±125 karakter, dan URL-nya tidak
 dibuat-buat pun tidak bisa diklik. Facebook tidak memotong sependek itu dan tautannya
 hidup, jadi di sana URL-nya ditulis utuh.
+
+## 3d. Workflow kedua: kirim ulang tanpa LinkedIn
+
+Untuk artikel yang **sudah terlanjur ada di LinkedIn** tapi belum di Instagram/Facebook —
+misalnya artikel yang terbit sebelum pipeline ini ada. `Approve?` bercabang ke semua
+platform tanpa syarat, jadi `[repost:]` lewat workflow normal berarti LinkedIn kena
+dua kali.
+
+| | Portofolio Publish | Portofolio Ulang |
+|---|---|---|
+| Node | 50 | 46 |
+| Platform | LinkedIn + Instagram + Facebook | Instagram + Facebook |
+| Subject e-mail | `[Portofolio] …` | **`[ULANG] [Portofolio] …`** |
+| `path` webhook | `portofolio` | `portofolio` — **sama** |
+
+**Diturunkan, bukan disalin.** `tanpaLinkedIn()` di `build.mjs` mengambil workflow normal
+yang sudah jadi lalu membuang 4 node LinkedIn, merapatkan indeks input node Merge,
+membersihkan dua template e-mail, dan memberi awalan `[ULANG]`. Berkas kedua yang dirawat
+tangan pasti melenceng dari yang pertama, dan melencengnya baru ketahuan waktu postingan
+salah sudah tayang.
+
+Indeks Merge dirapatkan, bukan sekadar jumlahnya dikurangi: Merge menunggu **semua** input
+yang tersambung, jadi input 0 yang tidak pernah terisi bikin `Email hasil` menggantung
+selamanya — tanpa pesan error apa pun. Ada test yang mengunci indeksnya rapat di **kedua**
+workflow.
+
+### Prosedur kirim ulang
+
+```bash
+# 1. di n8n: nonaktifkan "Portofolio Publish", aktifkan "Portofolio Ulang"
+# 2. picu:
+git commit --allow-empty -m "[repost: nama-folder-artikel]"
+git push
+# 3. approve dari e-mail  -> subject HARUS berawalan [ULANG]
+# 4. di n8n: kembalikan — nonaktifkan yang Ulang, aktifkan yang Publish
+```
+
+`path` webhook sengaja sama, jadi `WEBHOOK_URL` di secret GitHub tidak perlu disentuh:
+yang menjawab adalah workflow yang sedang aktif. n8n juga **menolak** dua workflow aktif
+berbagi path yang sama — jadi "cuma satu yang aktif" dipaksa n8n, bukan kedisiplinan yang
+harus diingat.
+
+Awalan `[ULANG]` di subject itu penjaga satu-satunya jebakan yang tersisa: kalau lupa
+langkah 4, artikel berikutnya diam-diam tidak naik ke LinkedIn. Dengan awalan itu,
+e-mail preview-nya sendiri yang memberi tahu workflow mana yang berjalan — **sebelum**
+tombol Approve diklik.
+
+> **Satu artikel per eksekusi.** `siapkan-brief.js` cuma memproses `baru[0]`; sisanya
+> masuk daftar `dilewat` dan **tidak disimpan di mana pun**. Jadi menyusulkan banyak
+> artikel berarti satu commit dan satu e-mail approval per artikel, bukan sekali jalan.
 
 ## 4. render-svc
 
@@ -422,6 +474,17 @@ commit tidak bisa basi.
 
 `[repost]` diabaikan di mode `sync`: di sana daftar folder berisi **semua** artikel,
 jadi satu `workflow_dispatch` bisa mengantre puluhan posting.
+
+> **Kenapa Action-nya tidak lagi memfilter `paths: articles/**`.** Karena commit kosong
+> tidak menyentuh berkas apa pun, filter itu bikin GitHub **melewati Action-nya diam-diam**
+> — push berhasil, Action tidak pernah muncul di daftar, dan gejalanya terlihat seperti
+> n8n yang bermasalah. Filter itu ada sampai 2026-08-13, dan selama itu `[repost:]`
+> tidak pernah sekali pun benar-benar bisa jalan.
+>
+> Gantinya ada di `publish.js`: kalau nol folder artikel berubah **dan** tidak ada
+> penanda `[repost:]`, dia berhenti sebelum memanggil webhook. Jadi push yang cuma
+> menyentuh `docs/` atau `n8n/` tetap murah, cuma sekarang lewat gerbang yang tahu soal
+> `[repost:]`. Ada test yang menolak filter itu dikembalikan.
 
 ---
 

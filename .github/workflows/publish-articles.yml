@@ -1,9 +1,16 @@
 name: Publish Articles via n8n
 
 on:
+  # SENGAJA tanpa filter `paths: articles/**`. Filter itu mematikan satu-satunya cara
+  # mengirim ulang artikel lama: `git commit --allow-empty -m "[repost: nama-folder]"`.
+  # Commit kosong tidak menyentuh berkas apa pun, jadi tidak ada path yang cocok dan
+  # Action-nya dilewati diam-diam — mekanisme pemulihannya kelihatan jalan padahal tidak
+  # pernah dieksekusi.
+  #
+  # Yang menggantikan filternya ada di publish.js: kalau tidak ada folder artikel yang
+  # berubah DAN tidak ada penanda [repost:], dia berhenti sebelum memanggil webhook.
+  # Jadi push yang cuma menyentuh docs/ atau n8n/ berakhir dalam hitungan detik.
   push:
-    paths:
-      - 'articles/**'
   # Full re-sync manual: kirim semua artikel dan prune yang sudah dihapus.
   # Mode ini tidak pernah memicu posting ke sosmed.
   workflow_dispatch:

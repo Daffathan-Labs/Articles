@@ -5,7 +5,7 @@
 <p style="margin:0 0 10px">
   <a href="{{ $execution.resumeUrl }}?action=approve"
      style="background:#0B7A4B;color:#fff;padding:13px 22px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
-    Approve &mdash; posting ke LinkedIn + Instagram</a>
+    Approve &mdash; posting ke LinkedIn + Instagram + Facebook</a>
 </p>
 <p style="margin:0 0 24px">
   <a href="{{ $execution.resumeUrl }}?action=skip" style="color:#888;font-size:14px">Skip, jangan posting</a>
@@ -23,6 +23,9 @@
 
 <h3 style="margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666">Instagram (ID)</h3>
 <pre style="white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px">{{ $('Rakit slide').first().json.ig_caption }}</pre>
+
+<h3 style="margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666">Facebook (ID)</h3>
+<pre style="white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px">{{ $('Rakit slide').first().json.fb_caption }}</pre>
 
 <p style="font-size:13px;color:#888;margin:0">
   {{ $('Rakit slide').first().json.url_en }}<br>

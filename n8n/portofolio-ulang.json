@@ -1,5 +1,5 @@
 {
-  "name": "Portofolio Publish",
+  "name": "Portofolio Ulang — Instagram + Facebook",
   "nodes": [
     {
       "parameters": {
@@ -677,7 +677,7 @@
     {
       "parameters": {
         "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
-        "subject": "=[Portofolio] Gambar otomatis: {{ $('Susun commit').first().json.folder }}",
+        "subject": "=[ULANG] [Portofolio] Gambar otomatis: {{ $('Susun commit').first().json.folder }}",
         "emailType": "html",
         "message": "=<p>Artikel ini tidak punya gambar, jadi latar slide 1 dipromosikan jadi gambar artikel dan di-commit balik ke repo.</p><p><img src=\"{{ $('Susun commit').first().json.url_gambar }}\" style=\"max-width:480px\"></p><pre style=\"white-space:pre-wrap\">{{ JSON.stringify($input.all().map(i => i.json), null, 2).slice(0, 1200) }}</pre><p>Commit ini memicu Action sekali lagi; itu yang memasang gambarnya di website. Cabang sosmed <b>tidak</b> jalan dua kali — berkas .md-nya berstatus M, bukan A.</p>",
         "options": {
@@ -702,9 +702,9 @@
     {
       "parameters": {
         "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
-        "subject": "=[Portofolio] Siap posting: {{ $('Siapkan brief').first().json.folder }}",
+        "subject": "=[ULANG] [Portofolio] Siap posting: {{ $('Siapkan brief').first().json.folder }}",
         "emailType": "html",
-        "message": "=<div style=\"font-family:system-ui,sans-serif;max-width:640px;line-height:1.55\">\n<h2 style=\"margin:0 0 4px\">{{ $('Siapkan brief').first().json.folder }}</h2>\n<p style=\"margin:0 0 20px;color:#666\">Artikel sudah tayang di website. Tinggal sosmed.</p>\n\n<p style=\"margin:0 0 10px\">\n  <a href=\"{{ $execution.resumeUrl }}?action=approve\"\n     style=\"background:#0B7A4B;color:#fff;padding:13px 22px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block\">\n    Approve &mdash; posting ke LinkedIn + Instagram + Facebook</a>\n</p>\n<p style=\"margin:0 0 24px\">\n  <a href=\"{{ $execution.resumeUrl }}?action=skip\" style=\"color:#888;font-size:14px\">Skip, jangan posting</a>\n  <span style=\"color:#bbb;font-size:14px\"> &middot; kedaluwarsa 48 jam</span>\n</p>\n\n<p style=\"margin:0 0 24px\">\n  <a href=\"{{ $json.previewUrl }}\" style=\"font-weight:600\">Lihat 5 slide carousel &rarr;</a>\n  {{ $('Rakit slide').first().json.gambar_gagal > 0 ? '<br><span style=\"color:#B4530A\">⚠ ' + $('Rakit slide').first().json.gambar_gagal + ' gambar gagal digenerate dan meminjam latar slide lain.</span>' : '' }}\n  {{ $('Rakit slide').first().json.ronde > 1 ? '<br><span style=\"color:#B4530A\">⚠ Render baru berhasil di percobaan ke-' + $('Rakit slide').first().json.ronde + '; teks slide sudah diperkecil supaya muat.</span>' : '' }}\n</p>\n\n<h3 style=\"margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666\">LinkedIn (EN)</h3>\n<pre style=\"white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px\">{{ $('Rakit slide').first().json.linkedin_caption }}</pre>\n\n<h3 style=\"margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666\">Instagram (ID)</h3>\n<pre style=\"white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px\">{{ $('Rakit slide').first().json.ig_caption }}</pre>\n\n<h3 style=\"margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666\">Facebook (ID)</h3>\n<pre style=\"white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px\">{{ $('Rakit slide').first().json.fb_caption }}</pre>\n\n<p style=\"font-size:13px;color:#888;margin:0\">\n  {{ $('Rakit slide').first().json.url_en }}<br>\n  {{ $('Rakit slide').first().json.url_id }}\n  {{ $('Rakit slide').first().json.dilewat.length ? '<br><br><b>Tidak diproses run ini:</b> ' + $('Rakit slide').first().json.dilewat.join(', ') + '. Satu eksekusi menangani satu artikel — push ulang atau jalankan manual untuk sisanya.' : '' }}\n</p>\n</div>",
+        "message": "=<div style=\"font-family:system-ui,sans-serif;max-width:640px;line-height:1.55\">\n<h2 style=\"margin:0 0 4px\">{{ $('Siapkan brief').first().json.folder }}</h2>\n<p style=\"margin:0 0 20px;color:#666\">Artikel sudah tayang di website. Tinggal sosmed.</p>\n\n<p style=\"margin:0 0 10px\">\n  <a href=\"{{ $execution.resumeUrl }}?action=approve\"\n     style=\"background:#0B7A4B;color:#fff;padding:13px 22px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block\">\n    Approve &mdash; posting ke Instagram + Facebook</a>\n</p>\n<p style=\"margin:0 0 24px\">\n  <a href=\"{{ $execution.resumeUrl }}?action=skip\" style=\"color:#888;font-size:14px\">Skip, jangan posting</a>\n  <span style=\"color:#bbb;font-size:14px\"> &middot; kedaluwarsa 48 jam</span>\n</p>\n\n<p style=\"margin:0 0 24px\">\n  <a href=\"{{ $json.previewUrl }}\" style=\"font-weight:600\">Lihat 5 slide carousel &rarr;</a>\n  {{ $('Rakit slide').first().json.gambar_gagal > 0 ? '<br><span style=\"color:#B4530A\">⚠ ' + $('Rakit slide').first().json.gambar_gagal + ' gambar gagal digenerate dan meminjam latar slide lain.</span>' : '' }}\n  {{ $('Rakit slide').first().json.ronde > 1 ? '<br><span style=\"color:#B4530A\">⚠ Render baru berhasil di percobaan ke-' + $('Rakit slide').first().json.ronde + '; teks slide sudah diperkecil supaya muat.</span>' : '' }}\n</p>\n\n\n<h3 style=\"margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666\">Instagram (ID)</h3>\n<pre style=\"white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px\">{{ $('Rakit slide').first().json.ig_caption }}</pre>\n\n<h3 style=\"margin:0 0 6px;font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:#666\">Facebook (ID)</h3>\n<pre style=\"white-space:pre-wrap;font:inherit;background:#F6F7F9;padding:16px;border-radius:8px;margin:0 0 20px\">{{ $('Rakit slide').first().json.fb_caption }}</pre>\n\n<p style=\"font-size:13px;color:#888;margin:0\">\n  {{ $('Rakit slide').first().json.url_en }}<br>\n  {{ $('Rakit slide').first().json.url_id }}\n  {{ $('Rakit slide').first().json.dilewat.length ? '<br><br><b>Tidak diproses run ini:</b> ' + $('Rakit slide').first().json.dilewat.join(', ') + '. Satu eksekusi menangani satu artikel — push ulang atau jalankan manual untuk sisanya.' : '' }}\n</p>\n</div>",
         "options": {
           "appendAttribution": false
         }
@@ -760,7 +760,7 @@
     {
       "parameters": {
         "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
-        "subject": "=[Portofolio] RENDER GAGAL 8x: {{ $('Siapkan brief').first().json.folder }}",
+        "subject": "=[ULANG] [Portofolio] RENDER GAGAL 8x: {{ $('Siapkan brief').first().json.folder }}",
         "emailType": "html",
         "message": "=<p>Artikel sudah tayang di website, tapi carousel gagal dirender <b>8 kali berturut-turut</b> — tidak ada yang diposting ke sosmed.</p><pre style=\"white-space:pre-wrap\">{{ JSON.stringify($json, null, 2).slice(0, 2000) }}</pre><p>Tiap ronde font sudah diperkecil sampai 70% dan kata dipangkas. Kalau tetap \"overflow\", berarti ada yang salah di template Code node \"Rakit slide\", bukan di isinya. Kalau errornya bukan 422, cek render-svc: <code>GET /health</code>.</p>",
         "options": {
@@ -837,7 +837,7 @@
     {
       "parameters": {
         "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
-        "subject": "=[Portofolio] Dilewati: {{ $('Rakit slide').first().json.folder }}",
+        "subject": "=[ULANG] [Portofolio] Dilewati: {{ $('Rakit slide').first().json.folder }}",
         "emailType": "html",
         "message": "=<p>Tidak diposting ke sosmed. Artikelnya tetap tayang di website.</p><p>Slide sudah terlanjur dirender dan masih tersimpan: <a href=\"{{ $('Render').first().json.previewUrl }}\">{{ $('Render').first().json.previewUrl }}</a></p>",
         "options": {
@@ -858,128 +858,6 @@
           "name": "Gmail account"
         }
       }
-    },
-    {
-      "parameters": {
-        "options": {},
-        "method": "POST",
-        "url": "https://api.linkedin.com/rest/images?action=initializeUpload",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $('Kredensial').first().json.linkedin_token }}"
-            },
-            {
-              "name": "LinkedIn-Version",
-              "value": "={{ $('Kredensial').first().json.linkedin_version }}"
-            },
-            {
-              "name": "X-Restli-Protocol-Version",
-              "value": "2.0.0"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ initializeUploadRequest: { owner: $('Kredensial').first().json.linkedin_urn } }) }}"
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3020,
-        180
-      ],
-      "id": "LinkedIn init upload",
-      "name": "LinkedIn init upload",
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "url": "={{ $('Siapkan brief').first().json.cover || $('Render').first().json.urls.find(u => u.includes('/hero.jpg')) || $('Render').first().json.urls[0] }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file",
-              "outputPropertyName": "data"
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3240,
-        180
-      ],
-      "id": "Ambil gambar LinkedIn",
-      "name": "Ambil gambar LinkedIn",
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "options": {},
-        "method": "PUT",
-        "url": "={{ $('LinkedIn init upload').item.json.value.uploadUrl }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $('Kredensial').first().json.linkedin_token }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "binaryData",
-        "inputDataFieldName": "data"
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3460,
-        180
-      ],
-      "id": "LinkedIn upload",
-      "name": "LinkedIn upload",
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "options": {},
-        "method": "POST",
-        "url": "https://api.linkedin.com/rest/posts",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $('Kredensial').first().json.linkedin_token }}"
-            },
-            {
-              "name": "LinkedIn-Version",
-              "value": "={{ $('Kredensial').first().json.linkedin_version }}"
-            },
-            {
-              "name": "X-Restli-Protocol-Version",
-              "value": "2.0.0"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ author: $('Kredensial').first().json.linkedin_urn, commentary: $('Rakit slide').first().json.linkedin_caption, visibility: 'PUBLIC', distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] }, content: { media: { id: $('LinkedIn init upload').first().json.value.image } }, lifecycleState: 'PUBLISHED', isReshareDisabledByAuthor: false }) }}"
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3680,
-        180
-      ],
-      "id": "LinkedIn post",
-      "name": "LinkedIn post",
-      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -1207,7 +1085,7 @@
     {
       "parameters": {
         "mode": "chooseBranch",
-        "numberInputs": 3,
+        "numberInputs": 2,
         "useDataOfInput": 1,
         "options": {}
       },
@@ -1217,15 +1095,15 @@
         4340,
         320
       ],
-      "id": "Tunggu 3 cabang",
-      "name": "Tunggu 3 cabang"
+      "id": "Tunggu 2 cabang",
+      "name": "Tunggu 2 cabang"
     },
     {
       "parameters": {
         "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
-        "subject": "=[Portofolio] Terbit: {{ $('Rakit slide').first().json.folder }}",
+        "subject": "=[ULANG] [Portofolio] Terbit: {{ $('Rakit slide').first().json.folder }}",
         "emailType": "html",
-        "message": "=<div style=\"font-family:system-ui,sans-serif;max-width:640px;line-height:1.55\">\n<h2 style=\"margin:0 0 16px\">{{ $('Rakit slide').first().json.folder }} &mdash; selesai</h2>\n<ul style=\"padding-left:20px;margin:0 0 20px\">\n  <li>Website: <a href=\"{{ $('Rakit slide').first().json.url_id }}\">ID</a> &middot; <a href=\"{{ $('Rakit slide').first().json.url_en }}\">EN</a></li>\n  <li>LinkedIn: {{ $('LinkedIn post').first().json.id ? 'terbit (' + $('LinkedIn post').first().json.id + ')' : '<b style=\"color:#B00020\">GAGAL</b> &mdash; ' + JSON.stringify($('LinkedIn post').first().json).slice(0, 300) }}</li>\n  <li>Instagram: {{ $('IG permalink').first().json.permalink ? '<a href=\"' + $('IG permalink').first().json.permalink + '\">' + $('IG permalink').first().json.permalink + '</a>' : '<b style=\"color:#B00020\">GAGAL</b> &mdash; ' + JSON.stringify($('IG permalink').first().json).slice(0, 300) }}</li>\n  <!-- isExecuted wajib: selama cabang FB masih nonaktif, `$('FB posting').first()`\n       melempar \"Referenced node is unexecuted\" dan yang hilang bukan cuma baris ini,\n       tapi seluruh e-mail hasil. -->\n  <li>Facebook: {{ !$('FB posting').isExecuted ? 'nonaktif' : ($('FB posting').first().json.id ? '<a href=\"https://www.facebook.com/' + $('FB posting').first().json.id.split('_')[0] + '/posts/' + $('FB posting').first().json.id.split('_')[1] + '\">' + $('FB posting').first().json.id + '</a>' : '<b style=\"color:#B00020\">GAGAL</b> &mdash; ' + JSON.stringify($('FB posting').first().json).slice(0, 300)) }}</li>\n</ul>\n<p style=\"font-size:13px;color:#888;margin:0\">Slide: <a href=\"{{ $('Render').first().json.previewUrl }}\">{{ $('Render').first().json.previewUrl }}</a></p>\n</div>",
+        "message": "=<div style=\"font-family:system-ui,sans-serif;max-width:640px;line-height:1.55\">\n<h2 style=\"margin:0 0 16px\">{{ $('Rakit slide').first().json.folder }} &mdash; selesai</h2>\n<ul style=\"padding-left:20px;margin:0 0 20px\">\n  <li>Website: <a href=\"{{ $('Rakit slide').first().json.url_id }}\">ID</a> &middot; <a href=\"{{ $('Rakit slide').first().json.url_en }}\">EN</a></li>\n  <li>Instagram: {{ $('IG permalink').first().json.permalink ? '<a href=\"' + $('IG permalink').first().json.permalink + '\">' + $('IG permalink').first().json.permalink + '</a>' : '<b style=\"color:#B00020\">GAGAL</b> &mdash; ' + JSON.stringify($('IG permalink').first().json).slice(0, 300) }}</li>\n  <!-- isExecuted wajib: selama cabang FB masih nonaktif, `$('FB posting').first()`\n       melempar \"Referenced node is unexecuted\" dan yang hilang bukan cuma baris ini,\n       tapi seluruh e-mail hasil. -->\n  <li>Facebook: {{ !$('FB posting').isExecuted ? 'nonaktif' : ($('FB posting').first().json.id ? '<a href=\"https://www.facebook.com/' + $('FB posting').first().json.id.split('_')[0] + '/posts/' + $('FB posting').first().json.id.split('_')[1] + '\">' + $('FB posting').first().json.id + '</a>' : '<b style=\"color:#B00020\">GAGAL</b> &mdash; ' + JSON.stringify($('FB posting').first().json).slice(0, 300)) }}</li>\n</ul>\n<p style=\"font-size:13px;color:#888;margin:0\">Slide: <a href=\"{{ $('Render').first().json.previewUrl }}\">{{ $('Render').first().json.previewUrl }}</a></p>\n</div>",
         "options": {
           "appendAttribution": false
         }
@@ -1607,11 +1485,6 @@
       "main": [
         [
           {
-            "node": "LinkedIn init upload",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Pecah URL slide",
             "type": "main",
             "index": 0
@@ -1620,39 +1493,6 @@
         [
           {
             "node": "Lapor dilewati",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LinkedIn init upload": {
-      "main": [
-        [
-          {
-            "node": "Ambil gambar LinkedIn",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ambil gambar LinkedIn": {
-      "main": [
-        [
-          {
-            "node": "LinkedIn upload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LinkedIn upload": {
-      "main": [
-        [
-          {
-            "node": "LinkedIn post",
             "type": "main",
             "index": 0
           }
@@ -1741,24 +1581,13 @@
         ]
       ]
     },
-    "LinkedIn post": {
-      "main": [
-        [
-          {
-            "node": "Tunggu 3 cabang",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "IG permalink": {
       "main": [
         [
           {
-            "node": "Tunggu 3 cabang",
+            "node": "Tunggu 2 cabang",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
@@ -1767,14 +1596,14 @@
       "main": [
         [
           {
-            "node": "Tunggu 3 cabang",
+            "node": "Tunggu 2 cabang",
             "type": "main",
-            "index": 2
+            "index": 1
           }
         ]
       ]
     },
-    "Tunggu 3 cabang": {
+    "Tunggu 2 cabang": {
       "main": [
         [
           {
