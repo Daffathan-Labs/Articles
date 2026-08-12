@@ -30,8 +30,8 @@ const gmail = (subject, message) => ({
   options: { appendAttribution: false },
 });
 
-const nodes = [];
-const conn = {};
+let nodes = [];
+let conn = {};
 
 const N = (name, type, typeVersion, position, parameters, extra = {}) => {
   nodes.push({ parameters, type, typeVersion, position, id: name, name, ...extra });
@@ -105,18 +105,20 @@ const kondisi = (leftValue, operator, rightValue) => ({
 });
 
 // ─────────────────────────────────────────────── 1. terima & publish ke website
+// TANPA autentikasi, atas permintaan. Konsekuensinya nyata: siapa pun yang tahu
+// alamat ini bisa menulis artikel ke website dan memicu posting ke LinkedIn dan
+// Instagram. Yang menjaganya sekarang cuma kerahasiaan URL-nya, dan `portofolio`
+// itu gampang ditebak — ganti `path` jadi acak (mis. `portofolio-a7f3k9x2`) kalau
+// mau pengamanan tanpa membuat credential Header Auth.
 N('Webhook', 'n8n-nodes-base.webhook', 2.1, [-720, 300], {
   httpMethod: 'POST',
   path: 'portofolio',
   // Membalas lewat node Respond, bukan langsung: GitHub Actions jadi tetap menerima
   // status asli publish website, sementara cabang sosmed berjalan setelahnya.
   responseMode: 'responseNode',
-  // Webhook ini publik dan memicu penulisan ke website. Tanpa auth siapa pun bisa.
-  authentication: 'headerAuth',
   options: {},
 }, {
   webhookId: '7df7abbe-8eb6-43b7-9b47-5061592604aa',
-  credentials: { httpHeaderAuth: { id: 'ISI_ID_CREDENTIAL_WEBHOOK', name: 'Portofolio webhook token' } },
 });
 
 // includeOtherFields: body dari webhook harus tetap lewat ke node di bawahnya.
@@ -493,8 +495,8 @@ N('Email hasil', 'n8n-nodes-base.gmail', 2.2, [4560, 320], gmail(
 hubung('Tunggu 2 cabang', 'Email hasil');
 
 // ───────────────────────────────────────────────
-const wf = {
-  name: 'Portofolio Publish',
+const bungkus = (name) => ({
+  name,
   nodes,
   connections: conn,
   active: false,
@@ -504,25 +506,136 @@ const wf = {
     templateCredsSetupCompleted: true,
     instanceId: 'f2a4228fc7039c0f0d943b69f0bc71caf753a0f2af9f4141781bcfa693f87ee3',
   },
-};
+});
+const wf = bungkus('Portofolio Publish');
 
+// ═══════════════════════════════════════════════ workflow 2: perpanjang token IG
+// Terpisah dari workflow publish karena pemicunya beda: yang ini jadwal, bukan push.
+// Token IG hidup 60 hari dan refresh memberi 60 hari lagi tiap dipanggil — tapi HANYA
+// kalau hasilnya disimpan. Token lama tidak ikut diperpanjang oleh panggilan refresh;
+// dia tetap mati di tanggalnya sendiri. Karena itu workflow ini menulis balik nilainya
+// ke node Kredensial workflow publish lewat REST API n8n, bukan sekadar memanggil
+// endpoint-nya lalu membuang hasilnya.
+nodes = [];
+conn = {};
+
+const FIELD_REFRESH = [
+  ['n8n_api_url', 'ISI_URL_N8N', 'https://workflow.daffathan-labs.my.id'],
+  // Settings -> n8n API -> Create an API key. Kunci ini bisa mengubah SEMUA workflow,
+  // jadi jangan pernah masuk ke file yang ter-commit.
+  ['n8n_api_key', 'ISI_N8N_API_KEY', asli('n8n_api_key', 'ISI_N8N_API_KEY')],
+  // ID workflow publish, terbaca di URL editornya: /workflow/<id>
+  ['workflow_id', 'ISI_ID_WORKFLOW_PUBLISH', asli('workflow_id', 'ISI_ID_WORKFLOW_PUBLISH')],
+  ['notify_email', 'ISI_EMAIL_TUJUAN', 'daffa.fathan9@gmail.com'],
+];
+
+// Tiap bulan, bukan tiap 55 hari: kalau satu eksekusi gagal (n8n mati, API key dicabut)
+// masih tersisa satu bulan penuh untuk menyadarinya sebelum tokennya benar-benar mati.
+N('Tiap bulan', 'n8n-nodes-base.scheduleTrigger', 1.2, [-720, 300], {
+  rule: {
+    interval: [{ field: 'months', triggerAtDayOfMonth: 1, triggerAtHour: 3, triggerAtMinute: 0 }],
+  },
+});
+
+N('Kredensial', 'n8n-nodes-base.set', 3.4, [-500, 300], {
+  assignments: {
+    assignments: FIELD_REFRESH.map(([name, placeholder]) => ({
+      id: name,
+      name,
+      value: placeholder,
+      type: 'string',
+    })),
+  },
+  includeOtherFields: true,
+  options: {},
+});
+hubung('Tiap bulan', 'Kredensial');
+
+const apiKey = () => ({ name: 'X-N8N-API-KEY', value: `={{ ${K('n8n_api_key')} }}` });
+
+N('Ambil workflow', 'n8n-nodes-base.httpRequest', 4.2, [-280, 300], http({
+  url: `={{ ${K('n8n_api_url')} }}/api/v1/workflows/{{ ${K('workflow_id')} }}`,
+  sendHeaders: true,
+  headerParameters: { parameters: [apiKey()] },
+}), { onError: 'continueRegularOutput' });
+hubung('Kredensial', 'Ambil workflow');
+
+N('Ambil token lama', 'n8n-nodes-base.code', 2, [-60, 300], {
+  jsCode: baca('ambil-token-lama.js'),
+});
+hubung('Ambil workflow', 'Ambil token lama');
+
+// Diverifikasi 2026-08-12 dengan token asli: HTTP 200, access_token baru,
+// expires_in 5168940 detik (60 hari). Endpoint ini khusus jalur login Instagram;
+// token dari jalur login Facebook dibalas error di host ini.
+N('Refresh token', 'n8n-nodes-base.httpRequest', 4.2, [160, 300], http({
+  url: 'https://graph.instagram.com/refresh_access_token',
+  sendQuery: true,
+  queryParameters: {
+    parameters: [
+      { name: 'grant_type', value: 'ig_refresh_token' },
+      { name: 'access_token', value: '={{ $json.token_lama }}' },
+    ],
+  },
+}), { onError: 'continueRegularOutput', retryOnFail: true, maxTries: 3, waitBetweenTries: 5000 });
+hubung('Ambil token lama', 'Refresh token');
+
+N('Susun workflow baru', 'n8n-nodes-base.code', 2, [380, 300], {
+  jsCode: baca('susun-workflow-baru.js'),
+});
+hubung('Refresh token', 'Susun workflow baru');
+
+N('Simpan workflow', 'n8n-nodes-base.httpRequest', 4.2, [600, 300], http({
+  method: 'PUT',
+  url: `={{ ${K('n8n_api_url')} }}/api/v1/workflows/{{ ${K('workflow_id')} }}`,
+  sendHeaders: true,
+  headerParameters: { parameters: [apiKey()] },
+  sendBody: true,
+  specifyBody: 'json',
+  jsonBody: '={{ JSON.stringify($json.body) }}',
+}), { onError: 'continueRegularOutput' });
+hubung('Susun workflow baru', 'Simpan workflow');
+
+N('Cek token', 'n8n-nodes-base.code', 2, [820, 300], { jsCode: baca('cek-token.js') });
+hubung('Simpan workflow', 'Cek token');
+
+// Satu e-mail untuk dua hasil, bukan dua cabang: yang membedakan cuma isinya, dan
+// cabang kedua berarti satu jalur lagi yang tidak pernah diuji sampai hari dia dipakai.
+N('Lapor token', 'n8n-nodes-base.gmail', 2.2, [1040, 300], gmail(
+  "=[Portofolio] Token IG {{ $json.ok ? 'diperpanjang sampai ' + $json.kedaluwarsa : 'GAGAL diperpanjang' }}",
+  '=<p>{{ $json.ok ? "Token Instagram sudah diperpanjang dan tersimpan di node Kredensial workflow publish." ' +
+    ': "Perpanjangan token Instagram GAGAL. Selama belum diperbaiki, posting ke Instagram akan berhenti begitu token yang sekarang kedaluwarsa." }}</p>' +
+    '<ul>' +
+    '<li>Berlaku sampai <b>{{ $json.kedaluwarsa }}</b> ({{ $json.hari }} hari)</li>' +
+    '<li>Token berubah dari <code>…{{ $json.ekor_lama }}</code> jadi <code>…{{ $json.ekor_baru }}</code></li>' +
+    '</ul>' +
+    '{{ $json.masalah.length ? "<p><b>Masalah:</b></p><ul><li>" + $json.masalah.join("</li><li>") + "</li></ul>" : "" }}' +
+    '<p style="color:#666">LinkedIn tidak punya endpoint serupa — token itu tetap harus diganti tangan tiap 60 hari.</p>'
+), { credentials: GMAIL_CRED });
+hubung('Cek token', 'Lapor token');
+
+const wfRefresh = bungkus('Portofolio — Perpanjang Token IG');
+
+// ───────────────────────────────────────────────
 // Dua keluaran dari sumber yang sama. Repo ini publik — token hidup di file yang
 // ter-commit akan di-scrape bot dalam hitungan menit dan penerbitnya mencabutnya.
 // Yang berbeda HANYA nilai di node Kredensial; struktur node-nya identik, jadi
 // hasil edit di n8n tetap bisa di-diff terhadap versi ter-commit.
-const out = process.argv[2];
-const tulis = (file, kolom) => {
-  const salinan = structuredClone(wf);
+const tulis = (sumber, daftar, file, kolom) => {
+  const salinan = structuredClone(sumber);
   const set = salinan.nodes.find((n) => n.name === 'Kredensial');
-  set.parameters.assignments.assignments = FIELD.map(([name, , nyata]) => ({
+  set.parameters.assignments.assignments = daftar.map(([name, placeholder, nyata]) => ({
     id: name,
     name,
-    value: kolom === 'nyata' ? nyata : FIELD.find((f) => f[0] === name)[1],
+    value: kolom === 'nyata' ? nyata : placeholder,
     type: 'string',
   }));
   fs.writeFileSync(file, JSON.stringify(salinan, null, 2) + '\n', 'utf8');
   const kosong = set.parameters.assignments.assignments
-    .filter((a) => /^ISI_[A-Z_]+$/.test(a.value))
+    // [A-Z0-9_], bukan [A-Z_]: tanpa angka, placeholder seperti ISI_N8N_API_KEY tidak
+    // dikenali sebagai placeholder dan hilang diam-diam dari daftar "masih perlu diisi"
+    // — dan dari pemeriksaan rahasia di test yang memakai pola yang sama.
+    .filter((a) => /^ISI_[A-Z0-9_]+$/.test(a.value))
     .map((a) => a.name);
   console.log(
     `${salinan.nodes.length} node -> ${file}\n` +
@@ -530,5 +643,11 @@ const tulis = (file, kolom) => {
   );
 };
 
-tulis(out, 'placeholder');
-tulis(out.replace(/\.json$/, '.local.json'), 'nyata');
+const out = process.argv[2];
+const keduanya = (sumber, daftar, file) => {
+  tulis(sumber, daftar, file, 'placeholder');
+  tulis(sumber, daftar, file.replace(/\.json$/, '.local.json'), 'nyata');
+};
+
+keduanya(wf, FIELD, out);
+keduanya(wfRefresh, FIELD_REFRESH, path.join(path.dirname(out), 'refresh-ig-token.json'));

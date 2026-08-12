@@ -6,8 +6,11 @@ const { marked } = require("marked");
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const HEADERS = {
-  "X-Portofolio-Token": process.env.WEBHOOK_TOKEN || "",
   "Content-Type": "application/json",
+  // Webhook n8n sekarang tanpa autentikasi, jadi header ini opsional. Tetap dikirim
+  // kalau secretnya ada supaya menyalakan Header Auth di n8n cukup satu langkah —
+  // dan tidak dikirim sebagai string kosong, yang justru ditolak 403 kalau auth aktif.
+  ...(process.env.WEBHOOK_TOKEN ? { "X-Portofolio-Token": process.env.WEBHOOK_TOKEN } : {}),
 };
 
 function parseArticle(dir, folder, file) {
@@ -112,7 +115,29 @@ function classifyDiff(out) {
 }
 
 /**
- * Folder artikel yang berubah sejak commit sebelumnya.
+ * Nama folder dari penanda `[repost: nama-folder]` di pesan commit.
+ *
+ * Git bisa menjawab "artikel ini baru?" tapi tidak "artikel ini sudah berhasil
+ * diposting?". Tiga jalur di n8n berakhir buntu — approval ditolak, render menyerah
+ * setelah 8 ronde, dan artikel yang masuk `dilewat` saat satu push membawa beberapa
+ * artikel baru. Tanpa penanda ini ketiganya hangus permanen: push berikutnya statusnya
+ * M, bukan A.
+ *
+ * Penandanya di pesan commit, bukan di file artikel. Flag di dalam .md harus dibalik
+ * jadi "sudah" setelah posting berhasil, dan yang tahu itu cuma n8n — yang tidak punya
+ * akses tulis ke repo ini. Jadi pembalikannya manual, dan sekali lupa flag tersangkut
+ * di "belum" sampai suatu hari perbaikan typo ikut mem-posting ulang. Pesan commit
+ * tidak bisa basi: dia milik satu commit dan tidak ada yang perlu dibersihkan.
+ */
+function parseRepost(text) {
+  return [...String(text == null ? "" : text).matchAll(/\[repost:\s*([^\]]+)\]/gi)]
+    .map((m) => m[1].trim())
+    .filter(Boolean);
+}
+
+/**
+ * Folder artikel yang berubah sejak commit sebelumnya, plus folder yang diminta
+ * di-posting ulang lewat `[repost: ...]`.
  * Return null = harus full sync (workflow_dispatch, branch baru, force push,
  * atau shallow clone yang tidak punya commit pembanding).
  */
@@ -123,8 +148,15 @@ function changedFolders() {
   if (!before || /^0+$/.test(before)) return null;
 
   let out;
+  let pesan;
   try {
     out = execSync(`git diff --name-status ${before} ${sha} -- articles/`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    // Rentang, bukan `-1`: satu push bisa berisi beberapa commit dan penandanya
+    // belum tentu di yang terakhir.
+    pesan = execSync(`git log --format=%B ${before}..${sha}`, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -133,21 +165,32 @@ function changedFolders() {
     return null;
   }
 
-  return classifyDiff(out);
+  return { ...classifyDiff(out), repost: parseRepost(pesan) };
 }
 
 async function main() {
   if (!WEBHOOK_URL) {
-    throw new Error("WEBHOOK_URL kosong. Set secret N8N_WEBHOOK_URL di repo.");
+    throw new Error("WEBHOOK_URL kosong. Set secret WEBHOOK_URL di Settings → Secrets → Actions.");
   }
 
   const dir = path.join(process.cwd(), "articles");
   const only = changedFolders();
 
+  // Nama yang salah ketik akan jadi no-op diam: `newFolders` dibangun di dalam loop
+  // `folders`, jadi nama yang tidak cocok tidak pernah sampai ke sana dan kelihatannya
+  // seolah repost sudah jalan. Lebih baik gagal di sini.
+  for (const f of (only && only.repost) || []) {
+    if (!fs.existsSync(path.join(dir, f))) {
+      throw new Error(`[repost: ${f}] — folder articles/${f} tidak ada. Cek ejaannya.`);
+    }
+  }
+
   const folders = fs
     .readdirSync(dir)
     .filter((f) => fs.statSync(path.join(dir, f)).isDirectory())
-    .filter((f) => !only || only.folders.has(f));
+    // Folder yang di-repost ikut dikirim ulang ke API (upsert, aman) supaya slug-nya
+    // pasti ada di respons — siapkan-brief.js butuh itu untuk menyusun URL.
+    .filter((f) => !only || only.folders.has(f) || only.repost.includes(f));
 
   if (only && folders.length === 0) {
     console.log("Tidak ada artikel yang berubah — tidak ada yang dikirim.");
@@ -170,6 +213,10 @@ async function main() {
     // baru — file ID-nya tidak muncul di diff, jadi `every` gagal dan sosmed dilewati.
     const added = only && only.addedMd.get(folder);
     if (added && files.length > 0 && files.every((f) => added.has(f))) {
+      newFolders.push(folder);
+    } else if (only && only.repost.includes(folder)) {
+      // Sengaja hanya di mode delta. Di mode sync `folders` berisi SEMUA artikel,
+      // jadi satu workflow_dispatch bisa mengantre puluhan posting sekaligus.
       newFolders.push(folder);
     }
   }
@@ -209,4 +256,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArticle, classifyDiff, changedFolders };
+module.exports = { parseArticle, classifyDiff, parseRepost, changedFolders };

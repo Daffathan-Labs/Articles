@@ -37,8 +37,13 @@ jobs:
       - name: Publish updated articles
         run: node .github/scripts/publish.js
         env:
-          WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
-          WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
+          # Nama secret harus persis seperti yang dibuat di repo. Sebelumnya di sini
+          # tertulis N8N_WEBHOOK_URL sementara secretnya bernama WEBHOOK_URL, jadi
+          # nilainya kosong dan Action gagal dengan pesan yang menyalahkan secret lain.
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          # Opsional: webhook n8n saat ini tanpa autentikasi. Diisi hanya kalau
+          # Header Auth dinyalakan lagi di node Webhook.
+          WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
           # Kosong saat workflow_dispatch → publish.js jatuh ke mode sync.
           BEFORE_SHA: ${{ github.event.before }}
           SHA: ${{ github.sha }}

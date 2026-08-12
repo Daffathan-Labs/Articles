@@ -55,24 +55,30 @@ Default setup cuma memberi tiga yang pertama tanpa `content_publish`, dan tanpa 
 `POST /media` dibalas `#10 permission`. **Token yang terlanjur dibuat tidak otomatis
 mendapat izin baru** — tambahkan izinnya dulu, buat tokennya belakangan.
 
-## 2. Peran Instagram Tester ← penyebab `Insufficient Developer Role`
+## 2. Peran Instagram Tester ← wajib, kerjakan sebelum "Tambahkan akun"
 
-Kalau "Tambahkan akun" di langkah 2 dashboard melempar
-
-```
-instagram.com/oauth/authorize/third_party/error/?message=Insufficient%20Developer%20Role
-```
-
-itu **bukan** soal tipe akun dan bukan soal izin. Akun IG-nya belum jadi tester di app.
+Ini bukan langkah perbaikan kalau ada error, tapi prasyarat. Akun IG harus terdaftar
+sebagai **Instagram Tester** di app **sebelum** tombol "Tambahkan akun" bisa dipakai —
+app yang masih berstatus pengembangan hanya mau menerima akun yang ada di daftar peran.
 
 1. Dashboard app → **Peran → Peran** → bagian **Instagram Tester** → **Tambahkan orang**
    → isi username IG (mis. `dafathan.v2`)
 2. Buka <https://www.instagram.com/accounts/manage_access_tools/> —
    **login sebagai akun IG itu**, bukan akun lain di browser yang sama →
    tab **Undangan penguji** → **Terima**
-3. Balik ke dashboard → **Tambahkan akun** → lanjut
+3. Baru balik ke dashboard → **Tambahkan akun** → lanjut ke langkah 3
 
-Penyebab paling umum kalau masih gagal: browser sedang login sebagai akun Instagram
+Undangan yang dikirim tapi belum diterima di langkah 2 dihitung sama dengan belum
+diundang sama sekali. Statusnya harus **Aktif**, bukan **Menunggu**.
+
+Melewati bagian ini membuat "Tambahkan akun" melempar
+
+```
+instagram.com/oauth/authorize/third_party/error/?message=Insufficient%20Developer%20Role
+```
+
+yang **bukan** soal tipe akun dan bukan soal izin. Penyebab paling umum kalau langkah
+di atas sudah dikerjakan tapi masih gagal: browser sedang login sebagai akun Instagram
 yang berbeda dari yang diundang. Cek dulu di pojok kanan atas instagram.com.
 
 ## 3. Buat token dan ambil `ig_user_id`
@@ -113,12 +119,17 @@ curl -G 'https://graph.instagram.com/refresh_access_token' \
   -d access_token=$IG_TOKEN
 ```
 
-Balasannya token baru dengan umur 60 hari lagi. Syaratnya token minimal berumur
+Balasannya token **baru** dengan umur 60 hari lagi. Syaratnya token minimal berumur
 24 jam dan **belum kedaluwarsa** — lewat dari itu harus ulang dari langkah 3.
 
-Karena bisa dipanggil berulang, ini praktis bikin tokennya abadi. Pasang pengingat
-kalender 50 hari, atau minta dibuatkan workflow n8n terjadwal yang memanggil endpoint
-ini tiap bulan dan menulis hasilnya balik ke node `Kredensial`.
+Yang gampang disalahpahami: panggilan ini **tidak memperpanjang token yang sekarang.**
+Dia menerbitkan token lain; yang lama tetap mati di tanggalnya sendiri. Jadi menjalankan
+`curl` di atas tanpa menyimpan hasilnya sama sekali tidak menunda apa pun.
+
+Sudah diotomatiskan — lihat "Workflow 2 — perpanjang token Instagram otomatis" di
+[n8n-setup.md](n8n-setup.md). Workflow terjadwal bulanan memanggil endpoint ini lalu
+menulis hasilnya balik ke node `Kredensial` lewat REST API n8n, dan mengirim e-mail
+kalau gagal. Tidak perlu pengingat kalender lagi untuk Instagram.
 
 ---
 

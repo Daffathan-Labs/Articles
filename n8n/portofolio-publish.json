@@ -6,7 +6,6 @@
         "httpMethod": "POST",
         "path": "portofolio",
         "responseMode": "responseNode",
-        "authentication": "headerAuth",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
@@ -17,13 +16,7 @@
       ],
       "id": "Webhook",
       "name": "Webhook",
-      "webhookId": "7df7abbe-8eb6-43b7-9b47-5061592604aa",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "ISI_ID_CREDENTIAL_WEBHOOK",
-          "name": "Portofolio webhook token"
-        }
-      }
+      "webhookId": "7df7abbe-8eb6-43b7-9b47-5061592604aa"
     },
     {
       "parameters": {

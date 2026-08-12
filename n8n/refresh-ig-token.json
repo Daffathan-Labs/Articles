@@ -1,0 +1,315 @@
+{
+  "name": "Portofolio — Perpanjang Token IG",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 1,
+              "triggerAtHour": 3,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -720,
+        300
+      ],
+      "id": "Tiap bulan",
+      "name": "Tiap bulan"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n8n_api_url",
+              "name": "n8n_api_url",
+              "value": "ISI_URL_N8N",
+              "type": "string"
+            },
+            {
+              "id": "n8n_api_key",
+              "name": "n8n_api_key",
+              "value": "ISI_N8N_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "workflow_id",
+              "name": "workflow_id",
+              "value": "ISI_ID_WORKFLOW_PUBLISH",
+              "type": "string"
+            },
+            {
+              "id": "notify_email",
+              "name": "notify_email",
+              "value": "ISI_EMAIL_TUJUAN",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -500,
+        300
+      ],
+      "id": "Kredensial",
+      "name": "Kredensial"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "url": "={{ $('Kredensial').first().json.n8n_api_url }}/api/v1/workflows/{{ $('Kredensial').first().json.workflow_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $('Kredensial').first().json.n8n_api_key }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -280,
+        300
+      ],
+      "id": "Ambil workflow",
+      "name": "Ambil workflow",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil ig_token yang sedang dipakai dari node Kredensial workflow publish.\n//\n// Tokennya sengaja dibaca dari sana, bukan disalin ke workflow ini: kalau ada dua\n// salinan, yang satu pasti basi dan refresh-nya memperpanjang token yang sudah tidak\n// dipakai siapa-siapa. Satu tempat penyimpanan, dan tetap yang itu juga yang bisa\n// diedit tangan.\nconst wf = $input.first().json;\nconst nodes = wf.nodes || [];\n\nif (!nodes.length) {\n  throw new Error(\n    `Balasan API tidak memuat nodes[]. Cek workflow_id dan n8n_api_key. ` +\n      `Dapat: ${JSON.stringify(wf).slice(0, 300)}`\n  );\n}\n\nconst kred = nodes.find((n) => n.name === 'Kredensial');\nif (!kred) {\n  throw new Error(\n    `Workflow \"${wf.name || '?'}\" tidak punya node bernama \"Kredensial\" — ` +\n      'kemungkinan workflow_id menunjuk workflow lain.'\n  );\n}\n\nconst daftar = (kred.parameters && kred.parameters.assignments && kred.parameters.assignments.assignments) || [];\nconst field = daftar.find((a) => a.name === 'ig_token');\nif (!field || !field.value) {\n  throw new Error('Node \"Kredensial\" tidak punya field ig_token yang terisi.');\n}\n// Placeholder hasil build yang belum diisi. Meneruskannya bikin refresh dibalas 400\n// dengan pesan Meta yang tidak menyebut sebab aslinya.\nif (/^ISI_[A-Z0-9_]+$/.test(field.value)) {\n  throw new Error(`ig_token masih placeholder (${field.value}) — isi dulu di workflow publish.`);\n}\n\nreturn [{ json: { token_lama: field.value, nama_workflow: wf.name || '' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        300
+      ],
+      "id": "Ambil token lama",
+      "name": "Ambil token lama"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "url": "https://graph.instagram.com/refresh_access_token",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "ig_refresh_token"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.token_lama }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        160,
+        300
+      ],
+      "id": "Refresh token",
+      "name": "Refresh token",
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun badan PUT /api/v1/workflows/{id}: workflow yang sama persis, satu nilai diganti.\n//\n// Dibangun dari salinan utuh hasil GET, bukan dari potongan: PUT itu mengganti seluruh\n// workflow, jadi field apa pun yang tidak ikut dikirim akan HILANG. Bukan sekadar\n// \"tidak diperbarui\" — hilang.\nconst wf = $('Ambil workflow').first().json;\nconst refresh = $input.first().json;\nconst baru = refresh.access_token;\n\nif (!baru) {\n  throw new Error(\n    `refresh_access_token tidak mengembalikan access_token: ${JSON.stringify(refresh).slice(0, 300)}`\n  );\n}\n\nconst nodes = JSON.parse(JSON.stringify(wf.nodes));\nconst kred = nodes.find((n) => n.name === 'Kredensial');\nconst field = kred.parameters.assignments.assignments.find((a) => a.name === 'ig_token');\nconst lama = field.value;\nfield.value = baru;\n\n// Token baru identik dengan yang lama berarti Meta memantulkan balik permintaannya.\n// Menyimpannya tidak merusak apa pun, tapi diam-diam tidak memperpanjang apa pun juga\n// — dan bulan depan tokennya mati tanpa ada yang pernah memberi tahu.\nif (lama === baru) {\n  throw new Error('Token baru identik dengan yang lama — refresh tidak menghasilkan masa berlaku baru.');\n}\n\n// PUT hanya menerima empat properti ini. Menyertakan id/active/tags/pinData/versionId\n// atau meta dibalas 400 \"must NOT have additional properties\", dan pesannya tidak\n// menyebut properti mana yang jadi masalah.\nreturn [{\n  json: {\n    body: {\n      name: wf.name,\n      nodes,\n      connections: wf.connections,\n      settings: wf.settings || { executionOrder: 'v1' },\n    },\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        300
+      ],
+      "id": "Susun workflow baru",
+      "name": "Susun workflow baru"
+    },
+    {
+      "parameters": {
+        "options": {},
+        "method": "PUT",
+        "url": "={{ $('Kredensial').first().json.n8n_api_url }}/api/v1/workflows/{{ $('Kredensial').first().json.workflow_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $('Kredensial').first().json.n8n_api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        300
+      ],
+      "id": "Simpan workflow",
+      "name": "Simpan workflow",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Periksa balasan PUT, bukan sekadar percaya HTTP 200.\n//\n// Node HTTP di atas memakai onError:continueRegularOutput supaya kegagalan tetap\n// sampai ke e-mail — tanpa ini pekerjaan terjadwal yang gagal cuma jadi eksekusi merah\n// di dasbor yang tidak pernah dibuka siapa pun, dan tokennya mati dua bulan kemudian.\nconst refresh = $('Refresh token').first().json;\nconst simpan = $input.first().json;\nconst lama = $('Ambil token lama').first().json.token_lama;\nconst baru = refresh.access_token || '';\n\nconst masalah = [];\n\nif (refresh.error || !baru) {\n  masalah.push(`refresh gagal: ${JSON.stringify(refresh).slice(0, 300)}`);\n}\n\nconst kred = (simpan.nodes || []).find((n) => n.name === 'Kredensial');\nconst tersimpan =\n  kred && (kred.parameters.assignments.assignments || []).find((a) => a.name === 'ig_token');\n\nif (!tersimpan) {\n  masalah.push(`balasan PUT tidak memuat node Kredensial: ${JSON.stringify(simpan).slice(0, 300)}`);\n} else if (tersimpan.value !== baru) {\n  masalah.push('token di workflow publish tidak berubah — yang tersimpan masih yang lama.');\n}\n\n// PUT mengganti seluruh workflow. Kalau prosesnya sampai menonaktifkannya, webhook\n// publish ikut mati dan push berikutnya gagal tanpa sebab yang kelihatan.\nif (simpan.active === false) {\n  masalah.push('Workflow publish jadi NONAKTIF setelah disimpan — aktifkan lagi di n8n sekarang juga.');\n}\n\nconst detik = Number(refresh.expires_in || 0);\n\nreturn [{\n  json: {\n    ok: masalah.length === 0,\n    hari: Math.round(detik / 86400),\n    // Tanggal, bukan cuma jumlah hari: yang berguna saat membaca e-mail sebulan lagi.\n    kedaluwarsa: new Date(Date.now() + detik * 1000).toISOString().slice(0, 10),\n    // Hanya ekornya. E-mail itu penyimpanan jangka panjang yang tidak dienkripsi —\n    // enam karakter sudah cukup untuk memastikan tokennya benar-benar berganti.\n    ekor_lama: String(lama).slice(-6),\n    ekor_baru: baru.slice(-6),\n    masalah,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        300
+      ],
+      "id": "Cek token",
+      "name": "Cek token"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Kredensial').first().json.notify_email }}",
+        "subject": "=[Portofolio] Token IG {{ $json.ok ? 'diperpanjang sampai ' + $json.kedaluwarsa : 'GAGAL diperpanjang' }}",
+        "emailType": "html",
+        "message": "=<p>{{ $json.ok ? \"Token Instagram sudah diperpanjang dan tersimpan di node Kredensial workflow publish.\" : \"Perpanjangan token Instagram GAGAL. Selama belum diperbaiki, posting ke Instagram akan berhenti begitu token yang sekarang kedaluwarsa.\" }}</p><ul><li>Berlaku sampai <b>{{ $json.kedaluwarsa }}</b> ({{ $json.hari }} hari)</li><li>Token berubah dari <code>…{{ $json.ekor_lama }}</code> jadi <code>…{{ $json.ekor_baru }}</code></li></ul>{{ $json.masalah.length ? \"<p><b>Masalah:</b></p><ul><li>\" + $json.masalah.join(\"</li><li>\") + \"</li></ul>\" : \"\" }}<p style=\"color:#666\">LinkedIn tidak punya endpoint serupa — token itu tetap harus diganti tangan tiap 60 hari.</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        300
+      ],
+      "id": "Lapor token",
+      "name": "Lapor token",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2oer50BZ7t1Mfj85",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Tiap bulan": {
+      "main": [
+        [
+          {
+            "node": "Kredensial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kredensial": {
+      "main": [
+        [
+          {
+            "node": "Ambil workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil workflow": {
+      "main": [
+        [
+          {
+            "node": "Ambil token lama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil token lama": {
+      "main": [
+        [
+          {
+            "node": "Refresh token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh token": {
+      "main": [
+        [
+          {
+            "node": "Susun workflow baru",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Susun workflow baru": {
+      "main": [
+        [
+          {
+            "node": "Simpan workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simpan workflow": {
+      "main": [
+        [
+          {
+            "node": "Cek token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek token": {
+      "main": [
+        [
+          {
+            "node": "Lapor token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f2a4228fc7039c0f0d943b69f0bc71caf753a0f2af9f4141781bcfa693f87ee3"
+  }
+}

@@ -23,10 +23,20 @@ tabel status yang perlu dijaga — git sudah menyimpan informasi itu.
 
 **Settings → Secrets and variables → Actions**
 
-| Secret | Isi |
-|---|---|
-| `N8N_WEBHOOK_URL` | `https://workflow.daffathan-labs.my.id/webhook/portofolio` |
-| `N8N_WEBHOOK_TOKEN` | string acak bikinan sendiri, mis. `openssl rand -hex 32` |
+| Secret | Wajib? | Isi |
+|---|---|---|
+| `WEBHOOK_URL` | ya | `https://workflow.daffathan-labs.my.id/webhook/portofolio` |
+| `WEBHOOK_TOKEN` | tidak | hanya kalau Header Auth dinyalakan di node `Webhook` |
+
+Namanya harus **persis** `WEBHOOK_URL`. Salah nama tidak bikin Action gagal di tempat
+yang benar: `secrets.X` yang tidak ada berubah jadi string kosong, dan yang muncul cuma
+"WEBHOOK_URL kosong".
+
+> **Webhook-nya sekarang tanpa autentikasi**, sesuai permintaan. Artinya siapa pun yang
+> tahu alamatnya bisa menulis artikel ke website dan memicu posting ke LinkedIn dan
+> Instagram. Yang menjaganya cuma kerahasiaan URL, dan `portofolio` gampang ditebak.
+> Cara termurah menutupnya tanpa membuat credential: ganti `path` di node Webhook jadi
+> acak (`portofolio-a7f3k9x2`), lalu perbarui secret `WEBHOOK_URL`.
 
 `NESTJS_API_URL` dan `NESTJS_API_KEY` sudah tidak dipakai Action — pindah jadi env var
 n8n di langkah 3. Boleh dihapus dari repo setelah pipeline barunya terbukti jalan.
@@ -46,7 +56,6 @@ tidak ada rahasia ikut ter-commit. Setelah import, buka tiap node bertanda merah
 
 | Node | Jenis kredensial | Isi |
 |---|---|---|
-| `Webhook` | Header Auth | Name: `X-Portofolio-Token`, Value: sama persis dengan `N8N_WEBHOOK_TOKEN` |
 | `Gemini Flash`, `Gemini gambar` | Google Gemini (`googlePalmApi`) | API key dari <https://aistudio.google.com/apikey> |
 | `Kirim preview`, `Email hasil`, `Lapor render gagal`, `Lapor dilewati` | Gmail OAuth2 | **sudah terisi** — kredensial `Gmail account` |
 
@@ -113,13 +122,38 @@ ikut diubah — mengubah `render_url` saja membuat gambar tetap disajikan di ala
 Dua hal yang harus dipastikan sebelum posting pertama:
 
 ```bash
-curl https://<render>/health          # "font" harus menyebut Inter, bukan fallback
-curl -I https://<render>/a/portofolio/uji/01.jpg
+curl -s  https://<render>/health                        # "font" harus menyebut Inter
+curl -s -o /dev/null -D - https://<render>/a/portofolio/uji/01.jpg
 ```
+
+Pakai GET, **jangan `curl -I`**. Server-nya hanya melayani `GET`, jadi HEAD jatuh ke
+handler 404 dan lu bakal mengira gambarnya hilang padahal ada.
 
 Font salah tidak memunculkan error apa pun — teksnya cuma jatuh ke metrik lain dan
 layout 1080×1350 bergeser diam-diam. Route `/a/` juga tidak boleh punya redirect:
 Meta meng-cURL URL itu apa adanya, satu `Location:` saja membuat posting gagal.
+
+### Render ulang artikel yang sama (perlu redeploy, v1.0.2)
+
+JPEG disajikan `Cache-Control: public, max-age=31536000, immutable`. Selama `code`
+sekali pakai itu benar, tapi di sini `code` adalah nama folder artikel — dirender ulang
+tiap `[repost:]`. URL-nya identik, dan browser maupun pengambil media Meta sudah
+diberitahu "ini tidak akan berubah setahun", jadi yang tampil gambar lama padahal
+berkas di disk sudah baru.
+
+Diperbaiki di repo [render-svc](https://github.com/daffa09/render-svc), dua hal:
+
+- `urls[]` sekarang membawa `?v=<stempel>`, ganti tiap render. `immutable` jadi jujur.
+- Folder `code` dibersihkan sebelum ditulis, jadi slide yang hilang di render baru
+  (carousel 7 slide jadi 5) tidak bertahan sebagai `06.jpg` dan `07.jpg` yatim.
+
+Workflow n8n **tidak berubah** — dia memang membaca `urls` dan `previewUrl` dari
+balasan render, tidak pernah menyusun alamatnya sendiri. Yang perlu dilakukan cuma
+redeploy service-nya:
+
+```bash
+docker compose pull && docker compose up -d
+```
 
 ---
 
@@ -208,13 +242,65 @@ e-mail preview**. Ini yang menahan artikel lama dari ter-posting berulang kali.
 
 ---
 
+## Kapan artikel masuk sosmed
+
+Satu aturan: **folder dianggap baru kalau SEMUA berkas `.md` di dalamnya berstatus `A`
+di `git diff`.** Selain itu, tidak ada yang dikirim ke LinkedIn/Instagram.
+
+| Yang lu lakukan | Website | Sosmed |
+|---|---|---|
+| Folder artikel baru | terbit | ✅ e-mail approval |
+| Edit isi / ganti judul / ganti gambar | ter-update | ❌ |
+| Tambah terjemahan EN ke artikel lama | ter-update | ❌ (berkas ID-nya `M`, bukan `A`) |
+| Ganti nama folder | folder baru terbit | ❌ (rename `R`, bukan `A`) |
+| `workflow_dispatch` | full sync | ❌ |
+| Commit berisi `[repost: nama-folder]` | ter-update | ✅ |
+
+Website tidak akan pernah dobel apa pun yang lu lakukan: tabelnya ber-`PRIMARY KEY
+(id, locale)` dengan `ON CONFLICT DO UPDATE`, dan `id` diisi nama folder. Edit = UPDATE
+baris yang sama. Ganti judul juga aman — `slug` bukan bagian dari kunci, jadi dia ikut
+ter-update di baris itu.
+
+### `[repost: nama-folder]`
+
+Git tahu artikel mana yang baru, tapi tidak tahu artikel mana yang **berhasil**
+diposting. Tiga keadaan bikin satu artikel hangus permanen tanpa penanda ini:
+
+- approval di-**Reject**
+- render menyerah setelah 8 ronde
+- satu push membawa beberapa artikel baru — yang tidak terpilih masuk daftar `dilewat`
+
+Tulis penandanya di pesan commit. Commit kosong boleh, dan justru itu bentuk yang
+paling sering dipakai — artikelnya sudah benar, cuma posting-nya yang gagal:
+
+```bash
+git commit --allow-empty -m "[repost: review-supergirl]"
+git push
+```
+
+Boleh lebih dari satu penanda dalam satu pesan, tapi tetap satu artikel per eksekusi;
+sisanya disebut di `dilewat`. Nama folder yang salah ketik **menggagalkan Action**
+dengan pesan jelas, bukan diam-diam tidak melakukan apa-apa.
+
+Penandanya sengaja di pesan commit, bukan flag di dalam berkas `.md`. Flag di berkas
+harus dibalik jadi "sudah" setelah posting berhasil, dan yang tahu itu cuma n8n — yang
+tidak punya akses tulis ke repo ini. Jadi pembalikannya manual, dan sekali lupa, flag
+tersangkut sampai suatu hari perbaikan typo ikut mem-posting ulang ke Instagram. Pesan
+commit tidak bisa basi.
+
+`[repost]` diabaikan di mode `sync`: di sana daftar folder berisi **semua** artikel,
+jadi satu `workflow_dispatch` bisa mengantre puluhan posting.
+
+---
+
 ## Kalau ada yang salah
 
 | Gejala | Sebabnya |
 |---|---|
 | Action merah, `HTTP 403` | `N8N_WEBHOOK_TOKEN` beda dengan value di kredensial Header Auth |
 | Action merah, `HTTP 400 property ... should not exist` | ada field asing di payload artikel; `/articles` memakai `forbidNonWhitelisted` |
-| Action hijau tapi tidak ada e-mail | `new_folders` kosong — folder tidak semua `.md`-nya berstatus `A`. Cek `git diff --name-status HEAD~1 HEAD -- articles/` |
+| Action hijau tapi tidak ada e-mail | `new_folders` kosong — folder tidak semua `.md`-nya berstatus `A`. Cek `git diff --name-status HEAD~1 HEAD -- articles/`. Kalau memang mau diposting, pakai `[repost: nama-folder]` |
+| Slide di preview masih gambar lama | render-svc belum di-redeploy ke v1.0.2; JPEG-nya masih disajikan `immutable` setahun di URL yang sama |
 | E-mail `RENDER GAGAL 8x` | render gagal 8 ronde berturut-turut. Kalau errornya `overflow` padahal font sudah menyusut ke 70%, masalahnya di template `Rakit slide`, bukan di isi artikel. Kalau bukan 422, cek `GET /health` render-svc |
 | Tombol Approve tidak melakukan apa-apa | eksekusi sudah lewat 48 jam dan Wait node kedaluwarsa |
 | LinkedIn gagal, Instagram terbit | token LinkedIn kedaluwarsa (60 hari). Kedua cabang memang sengaja tidak saling menjatuhkan |
@@ -223,19 +309,92 @@ e-mail preview**. Ini yang menahan artikel lama dari ter-posting berulang kali.
 ## Batasan yang disengaja
 
 - **Satu artikel per eksekusi.** Kalau satu push membawa dua artikel baru, yang kedua
-  disebut namanya di e-mail preview dan tidak diproses. Push ulang atau jalankan
-  workflow manual untuk sisanya.
+  disebut namanya di e-mail preview dan tidak diproses. Ambil sisanya dengan
+  `[repost: nama-folder]` — push ulang saja tidak cukup, karena berkasnya sudah
+  berstatus `M` dan `workflow_dispatch` tidak pernah mem-posting.
 - **Tidak ada backlog cron.** 44 artikel lama tidak akan pernah ter-posting otomatis.
 - **`workflow_dispatch` tidak pernah mem-posting ke sosmed.** Mode itu memakai
   `/articles/sync` yang destruktif (menghapus artikel yang tidak ada di payload) dan
   hanya untuk memperbaiki keadaan website.
 - **Push di luar `main` tidak mem-publish sama sekali.**
 
+---
+
+## Workflow 2 — perpanjang token Instagram otomatis
+
+Token Instagram hidup **60 hari**. Ada endpoint yang memberi 60 hari lagi tanpa OAuth
+ulang, dan bisa dipanggil berkali-kali:
+
+```
+GET https://graph.instagram.com/refresh_access_token
+    ?grant_type=ig_refresh_token&access_token=<token sekarang>
+```
+
+Diverifikasi 2026-08-12 dengan token asli: **HTTP 200**, `expires_in` 5.168.940 detik
+= 60 hari, token barunya beda dari yang lama.
+
+Yang penting dipahami: **memanggil endpoint ini tidak memperpanjang token yang lama.**
+Dia menerbitkan token *baru*; yang lama tetap mati di tanggalnya sendiri. Jadi panggilan
+yang hasilnya tidak disimpan sama sekali tidak berguna. Karena itu workflow ini menulis
+balik nilainya ke node `Kredensial` workflow publish lewat REST API n8n.
+
+Alurnya: `Tiap bulan` → `Ambil workflow` (GET) → `Ambil token lama` → `Refresh token` →
+`Susun workflow baru` → `Simpan workflow` (PUT) → `Cek token` → `Lapor token`.
+
+Bulanan, bukan tiap 55 hari: satu eksekusi boleh gagal total dan masih tersisa satu
+bulan penuh untuk menyadarinya.
+
+### Setup
+
+1. n8n → **Settings → n8n API → Create an API key**. Salin kuncinya.
+2. Buka workflow publish di n8n, ambil ID-nya dari URL: `/workflow/<id>`
+3. Import **`n8n/refresh-ig-token.local.json`**
+4. Buka node `Kredensial` di workflow baru itu, isi `n8n_api_key` dan `workflow_id`
+5. **Aktifkan** workflow-nya (toggle Active) — Schedule Trigger tidak jalan kalau tidak aktif
+6. Klik **Execute workflow** sekali untuk membuktikannya jalan, jangan tunggu tanggal 1
+
+Kunci API n8n bisa mengubah **semua** workflow di instance-mu — perlakukan seperti
+password, dan jangan pernah menaruhnya di berkas yang ter-commit. `refresh-ig-token.json`
+(tanpa `.local`) sengaja cuma berisi placeholder, dan ada test yang menguncinya.
+
+### Yang diperiksa sebelum dianggap berhasil
+
+HTTP 200 dari PUT tidak cukup. `Cek token` membaca balasan PUT dan mengeluh kalau:
+
+- nilai `ig_token` yang tersimpan ternyata masih yang lama
+- workflow jadi nonaktif setelah disimpan
+- refresh gagal sama sekali
+
+E-mailnya hanya memuat **enam karakter terakhir** token lama dan baru, cukup untuk
+memastikan nilainya benar-benar berganti tanpa menyimpan token utuh di kotak masuk.
+
+Badan PUT sengaja hanya berisi `name`, `nodes`, `connections`, `settings`. Skema API
+n8n memakai `additionalProperties: false` dan menandai `id`/`active`/`createdAt`/
+`updatedAt` sebagai read-only — menyertakannya dibalas 400 dengan pesan yang tidak
+menyebut properti mana yang salah. Spec-nya bisa dibaca sendiri di
+`GET /api/v1/openapi.yml`, tanpa autentikasi.
+
+### LinkedIn tidak punya ini
+
+Tidak ada endpoint refresh untuk token profil pribadi. Token LinkedIn **tetap harus
+diganti tangan tiap 60 hari** di node `Kredensial` workflow publish. Gejalanya khas:
+Instagram terbit, LinkedIn gagal, dan e-mail hasil menyebutkannya.
+
+---
+
 ## Mengubah workflow
 
-`n8n/portofolio-publish.json` adalah **hasil build**, bukan sumber. Sumbernya di
-`n8n/src/`: `build.mjs` plus tiap Code node sebagai berkas `.js` sendiri, prompt, dan
-badan e-mail. Menyunting JSON-nya langsung akan tertimpa pada build berikutnya.
+`n8n/portofolio-publish.json` dan `n8n/refresh-ig-token.json` adalah **hasil build**,
+bukan sumber. Sumbernya di `n8n/src/`: `build.mjs` plus tiap Code node sebagai berkas
+`.js` sendiri, prompt, dan badan e-mail. Menyunting JSON-nya langsung akan tertimpa
+pada build berikutnya.
+
+```bash
+node n8n/src/build.mjs n8n/portofolio-publish.json
+```
+
+Satu perintah menghasilkan **empat** berkas: dua workflow × (versi placeholder untuk
+git, versi `.local.json` bernilai asli yang di-gitignore).
 
 ```bash
 node n8n/src/build.mjs n8n/portofolio-publish.json

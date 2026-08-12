@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 
 import mod from "./publish.js";
-const { parseArticle, classifyDiff } = mod;
+const { parseArticle, classifyDiff, parseRepost } = mod;
 
 // --------------------------------------------------------------- fixture
 const META = [
@@ -149,4 +149,43 @@ test("delete tersentuh tapi tidak baru", () => {
 test("baris di luar articles/ dan baris kosong diabaikan", () => {
   const { folders } = diff("M\tREADME.md", "", "A\tarticles/oke/oke-id.md", "   ");
   assert.deepEqual([...folders], ["oke"]);
+});
+
+// --------------------------------------------------------------- parseRepost
+test("penanda repost diambil apa adanya", () => {
+  assert.deepEqual(parseRepost("[repost: review-supergirl]"), ["review-supergirl"]);
+});
+
+test("spasi longgar dan huruf besar tetap kena", () => {
+  assert.deepEqual(parseRepost("[REPOST:   review-anora  ]"), ["review-anora"]);
+});
+
+test("dua penanda dalam satu pesan, urut", () => {
+  assert.deepEqual(parseRepost("[repost: satu] dan [repost: dua]"), ["satu", "dua"]);
+});
+
+test("pesan commit biasa tidak memicu apa-apa", () => {
+  assert.deepEqual(parseRepost("review film baru"), []);
+  assert.deepEqual(parseRepost("perbaiki [repost] tanpa nama"), []);
+  assert.deepEqual(parseRepost(""), []);
+  assert.deepEqual(parseRepost(undefined), []);
+});
+
+test("penanda kosong tidak menghasilkan string kosong", () => {
+  // Tanpa .filter(Boolean) ini jadi [""], dan existsSync("articles/") lolos —
+  // folder repost kosong yang diam-diam tidak cocok dengan folder mana pun.
+  assert.deepEqual(parseRepost("[repost:    ]"), []);
+});
+
+test("pesan multi-baris seperti keluaran git log --format=%B", () => {
+  const pesan = [
+    "review supergirl",
+    "",
+    "Render gagal 8 ronde kemarin.",
+    "[repost: review-supergirl]",
+    "",
+    "perbaiki typo",
+    "",
+  ].join("\n");
+  assert.deepEqual(parseRepost(pesan), ["review-supergirl"]);
 });

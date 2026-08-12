@@ -104,14 +104,18 @@ test("sub-node LangChain tersambung ke induk yang ada", () => {
   }
 });
 
-test("webhook POST, pakai Respond node, dan diautentikasi", () => {
+test("webhook POST dan membalas lewat Respond node", () => {
   const w = byName["Webhook"];
   assert.equal(w.parameters.httpMethod, "POST");
   assert.equal(w.parameters.path, "portofolio");
   // responseNode: GitHub Actions tetap menerima status asli publish website.
   assert.equal(w.parameters.responseMode, "responseNode");
-  // Webhook publik yang memicu penulisan ke website — auth tidak boleh hilang.
-  assert.equal(w.parameters.authentication, "headerAuth");
+  // Tanpa autentikasi, atas permintaan. Dikunci di sini supaya kalau suatu saat
+  // headerAuth dinyalakan lagi, credential-nya tidak lupa ikut dipasang — node
+  // dengan authentication tapi tanpa credentials gagal di eksekusi pertama.
+  if (w.parameters.authentication) {
+    assert.ok(w.credentials, "authentication menyala tapi credentials kosong");
+  }
 });
 
 test("kedua cabang mode membalas webhook tepat sekali", () => {
@@ -143,6 +147,10 @@ test("LinkedIn memakai person URN, bukan organization", () => {
 /** Nilai satu field di node Kredensial. */
 const kred = (f) =>
   byName["Kredensial"].parameters.assignments.assignments.find((a) => a.name === f).value;
+
+// [A-Z0-9_], bukan [A-Z_]: tanpa angka, ISI_N8N_API_KEY tidak dikenali sebagai
+// placeholder dan pemeriksaan rahasia di bawah melewatinya diam-diam.
+const PLACEHOLDER = /^ISI_[A-Z0-9_]+$/;
 
 test("LinkedIn-Version aktif dan sama persis di kedua node", () => {
   const versi = ["LinkedIn init upload", "LinkedIn post"].map(
@@ -206,7 +214,7 @@ test("file ter-commit tidak membawa kredensial hidup", () => {
   // Repo ini publik: token hidup di sini akan di-scrape bot dalam hitungan menit.
   // Nilai asli hidup di portofolio-publish.local.json yang di-gitignore.
   for (const f of ["article_api_key", "render_url", "render_token", "linkedin_token", "ig_user_id", "ig_token", "notify_email"]) {
-    assert.match(kred(f), /^ISI_[A-Z_]+$/, `${f} membawa nilai asli`);
+    assert.match(kred(f), PLACEHOLDER, `${f} membawa nilai asli`);
   }
   // Yang boleh nyata: bukan rahasia, dan mengisinya menghemat langkah setup.
   assert.equal(kred("linkedin_urn"), "urn:li:person:B1oVXChp7v");
@@ -419,8 +427,14 @@ test("kredensial: Gmail terpasang, sisanya placeholder yang jelas", () => {
   assert.deepEqual([...new Set(belum)].sort(), [
     "Gemini Flash/googlePalmApi",
     "Gemini gambar/googlePalmApi",
-    "Webhook/httpHeaderAuth",
   ]);
+  // Workflow refresh cuma butuh Gmail; API key n8n lewat node Kredensial, bukan
+  // credential n8n — supaya tetap satu tempat edit seperti kredensial lainnya.
+  for (const n of rf.nodes.filter((x) => x.credentials)) {
+    for (const [jenis, c] of Object.entries(n.credentials)) {
+      assert.doesNotMatch(c.id, /^ISI_ID_CREDENTIAL_/, `refresh: ${n.name}/${jenis} belum diisi`);
+    }
+  }
 });
 
 test("semua e-mail lewat node Gmail, bukan SMTP", () => {
@@ -451,4 +465,220 @@ test("render punya loop retry 8x yang benar-benar mengubah input", () => {
     { node: "Rakit slide", type: "main", index: 0 },
   ]);
   assert.match(byName["Rakit slide"].parameters.jsCode, /\$runIndex/);
+});
+
+// ─────────────────────────────────────────── workflow 2: perpanjang token IG
+const rf = JSON.parse(
+  fs.readFileSync(path.join(import.meta.dirname, "refresh-ig-token.json"), "utf8")
+);
+const rfNama = new Set(rf.nodes.map((n) => n.name));
+const rfBy = Object.fromEntries(rf.nodes.map((n) => [n.name, n]));
+const rfKred = (f) =>
+  rfBy["Kredensial"].parameters.assignments.assignments.find((a) => a.name === f).value;
+
+test("refresh: koneksi dan referensi node valid, Code node lolos parse", () => {
+  for (const [dari, tipe] of Object.entries(rf.connections)) {
+    assert.ok(rfNama.has(dari), `sumber koneksi tidak ada: ${dari}`);
+    for (const grup of Object.values(tipe))
+      for (const keluaran of grup)
+        for (const c of keluaran) assert.ok(rfNama.has(c.node), `${dari} -> ${c.node} tidak ada`);
+  }
+  for (const n of rf.nodes) {
+    for (const s of strings(n.parameters))
+      for (const m of tanpaKomentar(s).matchAll(/\$\(\s*['"]([^'"]+)['"]\s*\)/g))
+        assert.ok(rfNama.has(m[1]), `"${n.name}" mereferensi "${m[1]}" yang tidak ada`);
+    if (n.type === "n8n-nodes-base.code")
+      assert.doesNotThrow(() => new Function(n.parameters.jsCode), n.name);
+  }
+  // Rantainya lurus: tiap node kecuali yang terakhir harus punya keluaran.
+  for (const n of rf.nodes) {
+    if (n.name === "Lapor token") continue;
+    assert.ok(rf.connections[n.name], `${n.name} tidak tersambung ke mana-mana`);
+  }
+});
+
+test("refresh: dipicu jadwal bulanan, bukan webhook", () => {
+  const t = rfBy["Tiap bulan"];
+  assert.equal(t.type, "n8n-nodes-base.scheduleTrigger");
+  const iv = t.parameters.rule.interval[0];
+  assert.equal(iv.field, "months");
+  // Bulanan di token berumur 60 hari = satu eksekusi boleh gagal tanpa token mati.
+  assert.equal(iv.triggerAtDayOfMonth, 1);
+  assert.equal(rf.nodes.filter((n) => n.type === "n8n-nodes-base.webhook").length, 0);
+});
+
+test("refresh: file ter-commit tidak membawa API key hidup", () => {
+  // Kunci API n8n bisa mengubah SEMUA workflow — paling berbahaya dari semua rahasia
+  // di repo ini kalau sampai bocor.
+  for (const f of ["n8n_api_key", "workflow_id", "notify_email"]) {
+    assert.match(rfKred(f), PLACEHOLDER, `${f} membawa nilai asli`);
+  }
+  assert.doesNotMatch(JSON.stringify(rf), /IGAA[A-Za-z0-9]/, "token Instagram ikut ter-commit");
+});
+
+test("refresh: memanggil endpoint dan host yang benar", () => {
+  const r = rfBy["Refresh token"];
+  assert.match(r.parameters.url, /^https:\/\/graph\.instagram\.com\/refresh_access_token$/);
+  const q = Object.fromEntries(
+    r.parameters.queryParameters.parameters.map((p) => [p.name, p.value])
+  );
+  assert.equal(q.grant_type, "ig_refresh_token");
+  assert.match(q.access_token, /token_lama/);
+  // Endpoint ini khusus jalur login Instagram; host jalur Facebook membalas error.
+  assert.doesNotMatch(JSON.stringify(rf), /graph\.facebook\.com/);
+});
+
+test("refresh: menyimpan balik lewat PUT, dengan API key di header", () => {
+  const s = rfBy["Simpan workflow"];
+  assert.equal(s.parameters.method, "PUT");
+  assert.match(s.parameters.url, /\/api\/v1\/workflows\//);
+  for (const n of ["Ambil workflow", "Simpan workflow"]) {
+    const h = rfBy[n].parameters.headerParameters.parameters.map((p) => p.name);
+    assert.deepEqual(h, ["X-N8N-API-KEY"], n);
+  }
+});
+
+// -- jalankan sumber Code node yang asli, bukan salinan --------------------------
+const jalan = (nodeName, input, refs = {}) => {
+  const $ = (n) => {
+    if (!(n in refs)) throw new Error(`test tidak menyiapkan node "${n}"`);
+    return { first: () => ({ json: refs[n] }), all: () => [{ json: refs[n] }] };
+  };
+  const $input = { first: () => ({ json: input }) };
+  return new Function("$", "$input", rfBy[nodeName].parameters.jsCode)($, $input);
+};
+
+/** Bentuk minimal workflow publish seperti yang dikembalikan GET /workflows/{id}. */
+const wfPalsu = (token) => ({
+  id: "abc123",
+  name: "Portofolio Publish",
+  active: true,
+  versionId: "v-1",
+  createdAt: "2026-01-01",
+  pinData: {},
+  meta: { instanceId: "x" },
+  connections: { Webhook: { main: [[]] } },
+  settings: { executionOrder: "v1" },
+  nodes: [
+    { name: "Webhook", parameters: {} },
+    {
+      name: "Kredensial",
+      parameters: {
+        assignments: {
+          assignments: [
+            { id: "ig_token", name: "ig_token", value: token, type: "string" },
+            { id: "site_url", name: "site_url", value: "https://x", type: "string" },
+          ],
+        },
+      },
+    },
+  ],
+});
+
+test("Ambil token lama: membaca ig_token dari node Kredensial", () => {
+  const out = jalan("Ambil token lama", wfPalsu("IGAA-token-lama"));
+  assert.equal(out[0].json.token_lama, "IGAA-token-lama");
+});
+
+test("Ambil token lama: gagal keras kalau workflow_id salah atau token kosong", () => {
+  // Tanpa ini refresh ditembak dengan nilai kosong dan Meta membalas error yang
+  // tidak menyebut sebab aslinya.
+  assert.throws(() => jalan("Ambil token lama", { name: "Lain", nodes: [] }), /nodes\[\]/);
+  const tanpaKred = wfPalsu("x");
+  tanpaKred.nodes = [{ name: "Webhook", parameters: {} }];
+  assert.throws(() => jalan("Ambil token lama", tanpaKred), /tidak punya node bernama "Kredensial"/);
+  assert.throws(() => jalan("Ambil token lama", wfPalsu("ISI_IG_ACCESS_TOKEN")), /placeholder/);
+  // Placeholder berangka harus ikut tertangkap, bukan lolos jadi "token".
+  assert.throws(() => jalan("Ambil token lama", wfPalsu("ISI_N8N_API_KEY")), /placeholder/);
+});
+
+test("Susun workflow baru: hanya ig_token yang berubah, node lain utuh", () => {
+  const out = jalan("Susun workflow baru", { access_token: "IGAA-baru" }, {
+    "Ambil workflow": wfPalsu("IGAA-lama"),
+  });
+  const body = out[0].json.body;
+  const kredBaru = body.nodes.find((n) => n.name === "Kredensial");
+  const f = (n) => kredBaru.parameters.assignments.assignments.find((a) => a.name === n).value;
+  assert.equal(f("ig_token"), "IGAA-baru");
+  assert.equal(f("site_url"), "https://x", "field lain ikut tersentuh");
+  assert.equal(body.nodes.length, 2, "node lain hilang dari badan PUT");
+  assert.deepEqual(body.connections, { Webhook: { main: [[]] } });
+});
+
+test("Susun workflow baru: badan PUT hanya empat properti yang diizinkan", () => {
+  // id/active/versionId/pinData/meta/createdAt yang ikut terkirim dibalas 400
+  // "must NOT have additional properties", dan pesannya tidak menyebut yang mana.
+  const out = jalan("Susun workflow baru", { access_token: "IGAA-baru" }, {
+    "Ambil workflow": wfPalsu("IGAA-lama"),
+  });
+  assert.deepEqual(Object.keys(out[0].json.body).sort(), [
+    "connections",
+    "name",
+    "nodes",
+    "settings",
+  ]);
+});
+
+test("Susun workflow baru: refresh gagal atau token tidak berubah = berhenti", () => {
+  const refs = { "Ambil workflow": wfPalsu("IGAA-lama") };
+  assert.throws(
+    () => jalan("Susun workflow baru", { error: { message: "boom" } }, refs),
+    /tidak mengembalikan access_token/
+  );
+  // Menyimpan token yang sama tidak merusak apa pun, tapi juga tidak memperpanjang
+  // apa pun — dan bulan depan tokennya mati tanpa ada yang pernah memberi tahu.
+  assert.throws(
+    () => jalan("Susun workflow baru", { access_token: "IGAA-lama" }, refs),
+    /identik dengan yang lama/
+  );
+});
+
+test("Cek token: hasil sehat dilaporkan tanpa membocorkan token utuh", () => {
+  const out = jalan("Cek token", wfPalsu("IGAA-token-baru"), {
+    "Refresh token": { access_token: "IGAA-token-baru", expires_in: 5168940 },
+    "Ambil token lama": { token_lama: "IGAA-token-lama" },
+  })[0].json;
+  assert.equal(out.ok, true);
+  assert.deepEqual(out.masalah, []);
+  assert.equal(out.hari, 60);
+  assert.match(out.kedaluwarsa, /^\d{4}-\d{2}-\d{2}$/);
+  // E-mail itu penyimpanan jangka panjang tanpa enkripsi — cukup ekornya.
+  assert.equal(out.ekor_baru, "n-baru");
+  assert.equal(out.ekor_lama, "n-lama");
+  assert.ok(!JSON.stringify(out).includes("IGAA"), "token utuh ikut masuk laporan");
+});
+
+test("Cek token: PUT yang tidak benar-benar menyimpan ketahuan", () => {
+  // HTTP 200 tidak cukup: kalau nilai yang tersimpan masih yang lama, bulan depan
+  // tokennya mati padahal semua eksekusi terlihat hijau.
+  const out = jalan("Cek token", wfPalsu("IGAA-token-lama"), {
+    "Refresh token": { access_token: "IGAA-token-baru", expires_in: 5168940 },
+    "Ambil token lama": { token_lama: "IGAA-token-lama" },
+  })[0].json;
+  assert.equal(out.ok, false);
+  assert.match(out.masalah.join(" "), /tidak berubah/);
+});
+
+test("Cek token: workflow yang jadi nonaktif ikut dilaporkan", () => {
+  // PUT mengganti seluruh workflow. Kalau sampai menonaktifkannya, webhook publish
+  // mati dan push berikutnya gagal tanpa sebab yang kelihatan.
+  const mati = wfPalsu("IGAA-token-baru");
+  mati.active = false;
+  const out = jalan("Cek token", mati, {
+    "Refresh token": { access_token: "IGAA-token-baru", expires_in: 5168940 },
+    "Ambil token lama": { token_lama: "IGAA-token-lama" },
+  })[0].json;
+  assert.equal(out.ok, false);
+  assert.match(out.masalah.join(" "), /NONAKTIF/);
+});
+
+test("Cek token: refresh yang gagal tetap sampai ke e-mail, bukan diam", () => {
+  const out = jalan("Cek token", wfPalsu("IGAA-token-lama"), {
+    "Refresh token": { error: { message: "token kedaluwarsa" } },
+    "Ambil token lama": { token_lama: "IGAA-token-lama" },
+  })[0].json;
+  assert.equal(out.ok, false);
+  assert.match(out.masalah.join(" "), /refresh gagal/);
+  assert.equal(rfBy["Refresh token"].onError, "continueRegularOutput");
+  assert.equal(rfBy["Simpan workflow"].onError, "continueRegularOutput");
 });
