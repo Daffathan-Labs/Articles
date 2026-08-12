@@ -309,20 +309,53 @@ yang kurang:
 Sekarang foto tampil `opacity: 1` dan tidak ada lapisan yang menutup sekanvas selain
 `.redup` `.22`. Kontras dijaga **lokal** — hanya di belakang teks.
 
+### Fotonya foto artikel itu sendiri, di kelima slide
+
+Model gambar **menolak menggambar karakter berhak cipta dan wajah orang nyata**, jadi
+"Spider-Man" atau "Sadie Sink sebagai Jean Grey" tidak akan pernah keluar dari Gemini.
+Satu-satunya foto yang benar-benar menampilkan subjek artikel adalah foto artikelnya.
+Jadi foto itu dipakai di **kelima** slide, dengan **titik potong berbeda** per slide —
+foto yang sama dipasang identik lima kali terbaca sebagai pengulangan, bukan seri.
+
+Konsekuensinya disengaja: **artikel bergambar tidak memanggil `Gemini gambar` sama
+sekali.** Gerbang `Perlu gambar Gemini?` melompatkannya langsung ke `Rakit slide`.
+45 dari 46 artikel punya gambar, jadi kuota gambar praktis berhenti terpakai — kuota itu
+yang habis 2026-08-13 dan bikin seluruh carousel terbit tanpa satu pun latar.
+
+Melompati `Jadi JPEG` berarti node itu tidak dieksekusi, jadi `rakit-slide.js` menjaga
+dirinya dengan `$('Jadi JPEG').isExecuted`. Tanpa penjaga itu ekspresinya melempar
+*"Referenced node is unexecuted"* dan carousel-nya mati total.
+
+> **Bug yang ini menutup:** API mengembalikan `image` sebagai path **relatif**
+> (`/uploads/articles/<md5>.webp`). Diteruskan apa adanya, `Ambil cover` menolaknya
+> dengan *"Invalid URL: … must start with http"* lalu jatuh diam-diam ke gambar Gemini
+> karena node itu `onError: continueRegularOutput`. Foto artikel tidak pernah sekali pun
+> sampai ke carousel **maupun ke LinkedIn**, dan tidak ada satu pun error yang terlihat.
+> Prefiksnya sekarang dipasang di `siapkan-brief.js`, satu tempat.
+
 ### Yang dipilih model, per artikel
 
 | Field | Isi | Kalau ngawur |
 |---|---|---|
-| `accent` | `#RRGGBB` yang mewakili subjek artikel | jatuh ke biru brand `#5EC8FF` |
+| `accent` | `#RRGGBB` dari **keluarga biru** (hue 180–265) | jatuh ke biru brand `#5EC8FF` |
 | `layout` | `blok-bawah` · `pias-bawah` · `tengah` | jatuh ke `blok-bawah` |
 | `image_mood` | 3–8 kata Inggris, arah cahaya dan warna foto | prompt jalan tanpa arah |
 
-`accent` diperiksa **dua kali**: bentuknya harus `#RRGGBB`, **dan** kontrasnya terhadap
-putih minimal 4,5:1 — dia dipakai sebagai latar chip berteks putih, jadi hex yang sah pun
-bisa tidak terbaca. Pastel lolos pemeriksaan bentuk tapi gagal pemeriksaan kontras, dan
-tanpa yang kedua itu baru ketahuan setelah tayang.
+`accent` diperiksa **tiga kali**, dan tiap pemeriksaan menutup kegagalan yang berbeda:
+
+1. **Bentuk `#RRGGBB`** — model rutin mengembalikan bentuk yang tidak diminta.
+2. **Kontras ≥ 4,5:1 terhadap putih** — dia jadi latar chip berteks putih, jadi hex yang
+   sah pun bisa tidak terbaca. Pastel lolos pemeriksaan bentuk tapi gagal yang ini.
+3. **Hue 180–265** — foto dan layout boleh beda tiap artikel; warnanya tetap satu
+   keluarga supaya orang mengenali postingannya tanpa membaca nama.
 
 Tiga layout, bukan bebas: tiap bentuk harus bisa dibuktikan tidak meluber lewat test.
+
+> **Apa pun yang di-`transform: scale` wajib dibungkus `overflow: hidden`.** Transform
+> tidak mengubah layout tapi **tetap menambah scrollable overflow**, jadi zoom 1.12 pada
+> foto setinggi kanvas bikin render-svc mengukur 1431px dan membalas 422 di **setiap**
+> artikel — dan loop penyusutan tidak pernah menyembuhkannya karena penyebabnya bukan
+> teks. Cuma ketahuan dengan benar-benar merender; unit test tidak mengukur piksel.
 
 ### Yang tidak pernah berubah
 

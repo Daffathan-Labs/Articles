@@ -13,9 +13,12 @@ const ronde = $runIndex;
 const brief = $('Siapkan brief').first().json;
 const copy = $('Gemini copy').first().json.output;
 const meta = $('Pecah slide').all().map((i) => i.json);
-const jpeg = $('Jadi JPEG').all();
+// Artikel yang punya foto sendiri melewati `Gemini gambar` sama sekali — cabang itu
+// tidak dieksekusi, jadi node-nya harus ditanya dulu sebelum dibaca. Tanpa penjaga
+// ini ekspresinya melempar "Referenced node is unexecuted" dan seluruh carousel mati.
+const jpeg = $('Jadi JPEG').isExecuted ? $('Jadi JPEG').all() : [];
 
-if (jpeg.length !== meta.length) {
+if (jpeg.length && jpeg.length !== meta.length) {
   throw new Error(
     `Slide masuk ${jpeg.length} tapi metadata ${meta.length}. Pasangan per-indeks ` +
       'tidak bisa dipercaya — kemungkinan Gemini gambar men-drop item.'
@@ -26,9 +29,8 @@ if (jpeg.length !== meta.length) {
 // yang gagal tetap mengirim item tapi tanpa binary.
 const raster = jpeg.map((it) => (it.binary && it.binary.data && it.binary.data.data) || null);
 const adaRaster = raster.filter(Boolean);
-// Nol gambar tidak dianggap kegagalan: latar cuma dekorasi di balik veil gelap,
-// dan slide tanpa latar tetap terbaca penuh. Lebih baik terbit polos daripada
-// menahan seluruh pipeline karena hiasan.
+// Nol gambar bukan kegagalan yang menahan pipeline: slide tanpa raster jatuh ke kartu
+// warna, dan artikel yang punya foto sendiri memang tidak memanggil Gemini sama sekali.
 const gambarGagal = raster.filter((r) => !r).length;
 // Slide yang gagal meminjam raster tetangga — satu latar berulang jauh lebih baik
 // daripada satu slide kosong di tengah carousel.
@@ -43,13 +45,40 @@ const coverB64 = (unduhan && unduhan.binary && unduhan.binary.data && unduhan.bi
 // dan menuliskannya sebagai image/jpeg bikin Chromium menolak merender gambarnya.
 const coverMime = (unduhan && unduhan.binary && unduhan.binary.data && unduhan.binary.data.mimeType) || 'image/jpeg';
 
-// Slide 1 memakai gambar artikel kalau ada — satu identitas visual di website,
-// LinkedIn, dan carousel. Slide 2+ tetap dari Gemini.
-const latar = bg.map((b, i) =>
-  i === 0 && coverB64
+// Foto artikel dipakai di SEMUA slide, bukan cuma slide 1.
+//
+// Alasannya bukan kerapian: model gambar menolak menggambar karakter berhak cipta dan
+// wajah orang nyata, jadi "Spider-Man" atau "Sadie Sink" tidak akan pernah keluar dari
+// Gemini. Satu-satunya foto yang benar-benar menampilkan subjek artikel adalah foto
+// artikel itu sendiri. Lima gambar abstrak yang tidak menyinggung subjeknya kalah
+// nyambung dibanding satu foto asli yang dipotong lima cara.
+//
+// Konsekuensi yang disengaja: artikel bergambar tidak memanggil Gemini gambar sama
+// sekali — 45 dari 46 artikel punya gambar, jadi kuota gambar praktis berhenti terpakai.
+// Diturunkan dari `meta`, BUKAN dari `bg`: cabang "punya cover" melewati Gemini, jadi
+// `bg` kosong di situ dan memetakannya menghasilkan nol latar untuk semua slide.
+const latar = meta.map((_, i) =>
+  coverB64
     ? `data:${coverMime};base64,${coverB64}`
-    : b ? `data:image/jpeg;base64,${b}` : null
+    : bg[i] ? `data:image/jpeg;base64,${bg[i]}` : null
 );
+
+/**
+ * Titik potong per slide. Satu foto yang sama akan terlihat seperti satu gambar
+ * diulang lima kali kalau dipasang identik; menggeser fokus dan sedikit zoom bikin
+ * kelimanya terbaca sebagai satu seri, bukan pengulangan.
+ *
+ * Cuma dipakai kalau fotonya memang satu dan sama. Raster Gemini sudah berbeda-beda
+ * per slide, jadi menggesernya malah membuang bagian yang sengaja dikomposisikan.
+ */
+const CROP = [
+  { pos: '50% 30%', zoom: 1 },
+  { pos: '22% 45%', zoom: 1.12 },
+  { pos: '78% 45%', zoom: 1.12 },
+  { pos: '50% 72%', zoom: 1.06 },
+  { pos: '50% 50%', zoom: 1.18 },
+];
+const potong = (i) => (coverB64 ? CROP[i % CROP.length] : { pos: '50% 50%', zoom: 1 });
 
 // Ronde 0 pakai ukuran penuh; tiap ronde berikutnya mengecil sampai lantai 70%.
 // Digabung dengan pemangkasan kata di bawah, ronde 8 praktis mustahil meluber.
@@ -113,18 +142,37 @@ const kontras = (a, b) => {
   return (x + 0.05) / (y + 0.05);
 };
 
+/** Hue 0-360 dari hex. Dipakai untuk mengunci aksen di keluarga biru. */
+const hue = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const maks = Math.max(r, g, b);
+  const beda = maks - Math.min(r, g, b);
+  if (!beda) return 0;
+  const h =
+    maks === r ? ((g - b) / beda) % 6 : maks === g ? (b - r) / beda + 2 : (r - g) / beda + 4;
+  return (h * 60 + 360) % 360;
+};
+
 /**
- * Aksen dipakai sebagai LATAR chip berteks putih, jadi hex yang sah pun bisa tidak
- * terbaca. Model rutin mengembalikan bentuk yang tidak diminta — hashtag tanpa `#`
- * baru saja membuktikannya — jadi dua-duanya diperiksa di sini, bukan diminta di
- * prompt: bentuknya harus #RRGGBB, dan kontrasnya terhadap putih minimal 4,5:1.
- * Gagal salah satu berarti jatuh ke biru brand, bukan terbit dengan chip yang tidak
- * terbaca dan baru ketahuan setelah tayang.
+ * Aksen diperiksa TIGA kali, dan tiap pemeriksaan menutup kegagalan yang berbeda:
+ *
+ * 1. Bentuk `#RRGGBB`. Model rutin mengembalikan bentuk yang tidak diminta — hashtag
+ *    tanpa `#` baru saja membuktikannya.
+ * 2. Kontras >= 4,5:1 terhadap putih. Aksen jadi LATAR chip berteks putih, jadi hex
+ *    yang sah pun bisa tidak terbaca; pastel lolos pemeriksaan bentuk tapi gagal ini.
+ * 3. Hue 180-265 (teal sampai indigo). Ini yang menjaga identitas brand: foto dan
+ *    layout boleh beda tiap artikel, warnanya tetap satu keluarga supaya orang tahu
+ *    itu postingan yang sama tanpa membaca nama.
+ *
+ * Gagal salah satu berarti jatuh ke biru brand — bukan terbit dengan chip yang tidak
+ * terbaca atau warna yang tidak ada hubungannya dengan brand.
  */
 const aksen = (() => {
   const v = String(copy.accent == null ? '' : copy.accent).trim();
   if (!/^#[0-9a-fA-F]{6}$/.test(v)) return AKSEN_CADANGAN;
-  return kontras(v, '#FFFFFF') >= 4.5 ? v.toUpperCase() : AKSEN_CADANGAN;
+  if (kontras(v, '#FFFFFF') < 4.5) return AKSEN_CADANGAN;
+  const h = hue(v);
+  return h >= 180 && h <= 265 ? v.toUpperCase() : AKSEN_CADANGAN;
 })();
 
 // ── layout: dipilih model dari daftar tertutup ──────────────────────────────────
@@ -141,11 +189,20 @@ const layout = LAYOUT.includes(copy.layout) ? copy.layout : LAYOUT[0];
  * Kontras sekarang dijaga LOKAL: hanya di belakang teks, lewat blok/panel/scrim
  * sesuai layout. Itu yang membuat foto tetap terbaca sekaligus teks tetap aman di
  * atas foto seterang apa pun.
+ *
+ * `.fotolayer` memotong lapisan foto, dan itu WAJIB: transform:scale tidak mengubah
+ * layout tapi tetap menambah scrollable overflow, jadi zoom 1.12 pada foto setinggi
+ * kanvas membuat render-svc mengukur 1431px dan membalas 422 overflow — di SETIAP
+ * artikel, dan tidak pernah sembuh oleh loop penyusutan karena penyebabnya bukan teks.
+ * Yang dipotong hanya lapisan fotonya; lapisan teks justru harus tetap boleh meluber
+ * supaya aturan 11 masih bisa menangkap teks yang benar-benar kepanjangan.
  */
 const CSS = `
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1080px;height:1350px;overflow:hidden}
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0B0F14;color:#F5F7FA;position:relative}
+/* Pembungkus foto memotong dirinya sendiri — lihat catatan di atas blok CSS. */
+.fotolayer{position:absolute;inset:0;overflow:hidden}
 .bg{position:absolute;inset:0;width:1080px;height:1350px;object-fit:cover}
 /* Tanpa raster: kartu warna solid dari aksen, bukan kanvas kosong. Begitu foto jadi
    bintangnya, kelima gambar yang gagal menghasilkan lubang — ini yang menutupnya
@@ -219,7 +276,9 @@ const slides = meta.map((m, i) => {
 
   return `<!doctype html>
 <html lang="id" class="${KELAS[layout]}"><head><meta charset="utf-8"><style>${CSS}</style></head><body>
-${latar[i] ? `<img class="bg" src="${latar[i]}">` : '<div class="kartu"></div>'}
+${latar[i]
+      ? `<div class="fotolayer"><img class="bg" style="object-position:${potong(i).pos};transform:scale(${potong(i).zoom})" src="${latar[i]}"></div>`
+      : '<div class="kartu"></div>'}
 ${latar[i] ? '<div class="redup"></div>' : ''}
 <div class="wrap">
   <div class="atas">

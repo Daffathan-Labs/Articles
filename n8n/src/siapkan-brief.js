@@ -10,8 +10,9 @@ if (!baru.length) return [];
 
 // Slug diambil dari respons API, bukan di-slugify sendiri. Server yang membuatnya
 // dari `title` (slugify strict), dan hasilnya sering beda dari tebakan.
-// `image` ikut diambil dari sana karena API mengembalikannya sudah absolut dan sudah
-// dikonversi ke WebP di /uploads — bukan URL raw.githubusercontent asli di markdown.
+// `image` ikut diambil dari sana karena API sudah mengonversinya ke WebP di /uploads —
+// bukan URL raw.githubusercontent asli di markdown. Bentuknya path RELATIF; yang
+// menjadikannya URL utuh ada di bawah.
 const slugs = {};
 const gambar = {};
 for (const r of $('Publish artikel').all()) {
@@ -57,10 +58,19 @@ const teks = String(utama.content || '')
   .trim()
   .slice(0, 4000);
 
-// Gambar artikel: satu identitas untuk website, LinkedIn, dan latar slide 1.
+// Gambar artikel: satu identitas untuk website, LinkedIn, dan latar semua slide.
 // Kosong berarti artikelnya tidak punya gambar sama sekali — dan itu yang memicu
 // hero hasil Gemini di-commit balik ke repo nanti.
-const cover = gambar[`${folder}|id`] || gambar[`${folder}|en`] || null;
+//
+// API mengembalikannya sebagai path RELATIF (`/uploads/articles/<md5>.webp`), bukan
+// URL utuh. Diteruskan apa adanya, node `Ambil cover` menolaknya dengan "Invalid URL:
+// … must start with http" — lalu jatuh diam-diam ke gambar Gemini karena node itu
+// memakai onError:continueRegularOutput. Akibatnya foto artikel tidak pernah sekali
+// pun sampai ke carousel maupun ke LinkedIn, dan tidak ada satu pun error yang
+// terlihat. Prefiksnya dipasang di sini, satu tempat, bukan di tiap pemakainya.
+const mentah = gambar[`${folder}|id`] || gambar[`${folder}|en`] || null;
+const dasar = String($('Kredensial').first().json.article_api_url || '').replace(/\/+$/, '');
+const cover = !mentah || /^https?:\/\//i.test(mentah) ? mentah : `${dasar}${mentah}`;
 
 return [{
   json: {

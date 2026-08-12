@@ -337,8 +337,11 @@ function rakit({
   heading,
   body,
   hashtags = ["#a"],
-  accent = "#B3261E",
+  accent = "#1B4FA8",
   layout = "blok-bawah",
+  // Artikel yang punya cover melewati cabang Gemini gambar sama sekali, jadi
+  // `Jadi JPEG` tidak pernah dieksekusi di jalur itu.
+  jpegJalan = true,
   // null = artikel tanpa gambar, atau unduhan cover yang gagal. Dua-duanya jalur
   // yang sama dari sisi Rakit slide.
   cover = null,
@@ -375,6 +378,9 @@ function rakit({
       : { json: {} },
   };
   const $ = (n) => ({
+    // Artikel bergambar melewati `Gemini gambar`, jadi `Jadi JPEG` tidak dieksekusi.
+    // Bendera ini yang dibaca rakit-slide.js sebelum berani membacanya.
+    isExecuted: n === "Jadi JPEG" ? jpegJalan : true,
     first: () => palsu[n],
     all: () =>
       n === "Pecah slide"
@@ -427,15 +433,28 @@ test("logo hexagon tertanam di tiap slide", () => {
 // -- gambar artikel: satu identitas untuk website, LinkedIn, dan slide 1 ----------
 const COVER = { b64: "Q09WRVI=", mime: "image/webp" };
 
-test("punya cover: slide 1 memakai gambar artikel, slide lain dari Gemini", () => {
-  const { slides } = rakit({ cover: COVER });
-  assert.match(slides[0], /src="data:image\/webp;base64,Q09WRVI="/, "slide 1 bukan cover");
-  // mimeType dibaca dari unduhan, bukan diasumsikan jpeg: API menyajikan WebP, dan
-  // menuliskannya sebagai image/jpeg bikin Chromium menolak merendernya.
-  for (const s of slides.slice(1)) {
-    assert.match(s, /src="data:image\/jpeg;base64,QUJD"/, "slide 2+ ikut memakai cover");
-    assert.ok(!s.includes("Q09WRVI="), "cover bocor ke slide selain yang pertama");
+test("punya cover: foto artikel dipakai KELIMA slide, dengan crop berbeda", () => {
+  // Model gambar menolak menggambar karakter berhak cipta dan wajah orang nyata, jadi
+  // "Spider-Man" atau "Sadie Sink" tidak akan pernah keluar dari Gemini. Satu-satunya
+  // foto yang benar-benar menampilkan subjek artikel adalah foto artikel itu sendiri.
+  const { slides } = rakit({ cover: COVER, jpegJalan: false });
+  const posisi = [];
+  for (const [i, s] of slides.entries()) {
+    // mimeType dibaca dari unduhan, bukan diasumsikan jpeg: API menyajikan WebP, dan
+    // menuliskannya sebagai image/jpeg bikin Chromium menolak merendernya.
+    assert.match(s, /src="data:image\/webp;base64,Q09WRVI="/, `slide ${i + 1} bukan cover`);
+    assert.ok(!s.includes("QUJD"), `slide ${i + 1}: raster Gemini ikut terpakai`);
+    posisi.push(s.match(/object-position:([^;]+);/)[1]);
   }
+  // Foto yang sama dipasang identik lima kali terbaca sebagai pengulangan, bukan seri.
+  assert.equal(new Set(posisi).size, 5, `crop tidak berbeda: ${posisi.join(" | ")}`);
+});
+
+test("tanpa cover: raster Gemini TIDAK ikut digeser", () => {
+  // Raster Gemini sudah berbeda-beda per slide dan sudah dikomposisikan; menggesernya
+  // malah membuang bagian yang sengaja ditempatkan di tengah frame.
+  const posisi = rakit().slides.map((s) => s.match(/object-position:([^;]+);/)[1]);
+  assert.equal(new Set(posisi).size, 1, "raster Gemini ikut di-crop berbeda");
 });
 
 test("punya cover: tidak ada hero yang digenerate", () => {
@@ -511,7 +530,7 @@ test("Rakit slide: nol gambar tetap terbit, tidak melempar", () => {
 test("Rakit slide: sebagian gambar gagal meminjam latar tetangga", () => {
   const r = rakit({ gambar: 2 });
   assert.equal(r.gambar_gagal, 3);
-  for (const s of r.slides) assert.match(s, /<img class="bg" src="data:image\/jpeg;base64,/);
+  for (const s of r.slides) assert.match(s, /<img class="bg"[^>]*src="data:image\/jpeg;base64,/);
 });
 
 test("Pecah URL slide membaca hasil Render, bukan $input", () => {
@@ -1342,24 +1361,31 @@ test("wadah teks tidak boleh overflow:hidden — itu yang bikin 422 bisa muncul"
   }
 });
 
-test("aksen dari model tidak dipercaya: bentuk dan kontras diperiksa", () => {
+test("aksen dari model tidak dipercaya: bentuk, kontras, DAN keluarga warna", () => {
   const dipakai = (accent) => gaya(rakit({ accent }).slides[0]).match(/\.kicker\{[^}]*background:(#[0-9A-Fa-f]{6})/)[1];
 
-  // Hex sah dan cukup pekat dipakai apa adanya.
-  assert.equal(dipakai("#B3261E"), "#B3261E");
-  assert.equal(dipakai("#b3261e"), "#B3261E", "huruf kecil tetap diterima");
+  // Keluarga biru (hue 180-265) yang cukup pekat dipakai apa adanya.
+  assert.equal(dipakai("#1B4FA8"), "#1B4FA8", "biru tua ditolak");
+  assert.equal(dipakai("#0E7490"), "#0E7490", "teal ditolak");
+  assert.equal(dipakai("#3730A3"), "#3730A3", "indigo ditolak");
+  assert.equal(dipakai("#1b4fa8"), "#1B4FA8", "huruf kecil tetap diterima");
 
   // Bentuk salah -> biru brand. `undefined` tidak ikut didaftar karena default
   // parameter di rakit() akan menelannya; jalur "model tidak mengirim accent sama
   // sekali" sudah diwakili `null` — kodenya memperlakukan keduanya identik lewat
   // `copy.accent == null`.
-  for (const buruk of ["merah", "#GGGGGG", "#FFF", "", null, "#12345", "B3261E"]) {
+  for (const buruk of ["biru", "#GGGGGG", "#FFF", "", null, "#12345", "1B4FA8"]) {
     assert.equal(dipakai(buruk), "#5EC8FF", `${JSON.stringify(buruk)} lolos jadi warna`);
   }
   // Hex sah TAPI terlalu terang: chip berteks putih tidak terbaca. Ini yang tidak
   // ketahuan kalau cuma bentuknya yang diperiksa.
-  for (const pucat of ["#FFF9C4", "#FFFFFF", "#B8E986"]) {
+  for (const pucat of ["#FFF9C4", "#FFFFFF", "#B8E986", "#7DD3FC"]) {
     assert.equal(dipakai(pucat), "#5EC8FF", `${pucat} lolos padahal kontrasnya kurang`);
+  }
+  // Hex sah dan cukup pekat TAPI di luar keluarga biru. Ini yang menjaga identitas
+  // brand: foto dan layout boleh beda tiap artikel, warnanya tetap satu keluarga.
+  for (const salahWarna of ["#B3261E", "#A34700", "#146B2F", "#8B1F8B", "#111111"]) {
+    assert.equal(dipakai(salahWarna), "#5EC8FF", `${salahWarna} lolos padahal bukan biru`);
   }
 });
 
@@ -1378,13 +1404,13 @@ test("nol raster jatuh ke kartu warna, bukan kanvas kosong", () => {
   // Konsekuensi langsung dari foto jadi bintangnya: dulu gambar gagal tetap terlihat
   // "normal" karena foto cuma dekorasi 16%. Sekarang gagal berarti lubang — kecuali
   // ada yang menutupnya dengan sesuatu yang terlihat seperti pilihan desain.
-  const r = rakit({ gambar: 0, accent: "#B3261E" });
+  const r = rakit({ gambar: 0, accent: "#1B4FA8" });
   assert.equal(r.gambar_gagal, 5);
   assert.equal(r.slides.length, 5);
   for (const [i, s] of r.slides.entries()) {
     assert.doesNotMatch(s, /<img class="bg"/, `slide ${i + 1}: bg kosong tetap dipasang`);
     assert.match(s, /<div class="kartu">/, `slide ${i + 1}: tanpa kartu warna`);
-    assert.match(gaya(s), /\.kartu\{[^}]*#B3261E/, `slide ${i + 1}: kartu tidak memakai aksen`);
+    assert.match(gaya(s), /\.kartu\{[^}]*#1B4FA8/, `slide ${i + 1}: kartu tidak memakai aksen`);
     assert.match(s, /<img class="logo"/, `slide ${i + 1}: logo hilang`);
   }
   // Ada raster -> kartu tidak dipasang, supaya tidak menutupi fotonya.
@@ -1414,4 +1440,79 @@ test("chip kategori diambil dari tag artikel, bukan dikarang model", () => {
   // satu peluang gagal untuk sesuatu yang datanya sudah ada.
   assert.match(rakit().slides[0], /<span class="kicker">Movie Review<\/span>/);
   assert.match(rakit().slides[4], /<span class="kicker">Baca selengkapnya<\/span>/);
+});
+
+test("artikel bergambar melewati Gemini gambar sepenuhnya", () => {
+  // 45 dari 46 artikel punya gambar, dan model gambar tidak bisa menggambar subjeknya
+  // (karakter berhak cipta, wajah orang nyata). Jadi lima gambar yang digenerate untuk
+  // artikel bergambar selalu kalah nyambung dibanding foto artikelnya sendiri, sambil
+  // tetap membakar kuota — kuota yang habis 2026-08-13 dan bikin seluruh carousel
+  // terbit tanpa satu pun latar.
+  const gerbang = byName["Perlu gambar Gemini?"];
+  assert.ok(gerbang, "gerbang tidak ada");
+  assert.match(
+    gerbang.parameters.conditions.conditions[0].leftValue,
+    /Siapkan brief'\)\.first\(\)\.json\.cover/,
+    "gerbang tidak melihat cover"
+  );
+
+  const keluar = (idx) =>
+    (wf.connections["Perlu gambar Gemini?"].main[idx] ?? []).map((c) => c.node);
+  assert.deepEqual(keluar(0), ["Gemini gambar"], "cabang 'perlu' salah tujuan");
+  assert.deepEqual(keluar(1), ["Rakit slide"], "cabang 'punya foto' tidak melompat ke Rakit slide");
+
+  // Melompati Jadi JPEG berarti node itu tidak dieksekusi. Membacanya tanpa penjaga
+  // melempar "Referenced node is unexecuted" dan mematikan seluruh carousel.
+  const kode = byName["Rakit slide"].parameters.jsCode;
+  assert.match(kode, /\$\('Jadi JPEG'\)\.isExecuted/, "Jadi JPEG dibaca tanpa penjaga");
+});
+
+test("cover relatif dari API diberi prefiks, bukan diteruskan mentah", () => {
+  // API mengembalikan `/uploads/articles/<md5>.webp`. Diteruskan apa adanya, node
+  // `Ambil cover` menolaknya dengan "Invalid URL: … must start with http" lalu jatuh
+  // diam-diam ke gambar Gemini — foto artikel tidak pernah sampai ke carousel maupun
+  // LinkedIn, dan tidak ada satu pun error yang terlihat.
+  const kode = byName["Siapkan brief"].parameters.jsCode;
+  const jalankanBrief = (image) => {
+    const palsu = {
+      Webhook: {
+        json: {
+          body: {
+            new_folders: ["f"],
+            repo: "a/b",
+            articles: [{ id: "f", locale: "id", title: "T", excerpt: "E", tags: [], content: "<p>x</p>" }],
+          },
+        },
+      },
+      Kredensial: { json: { site_url: "https://situs.contoh", article_api_url: "https://api.contoh" } },
+    };
+    const $ = (n) => ({
+      first: () => palsu[n],
+      all: () => [{ json: { data: { id: "f", locale: "id", slug: "s", image } } }],
+    });
+    return new Function("$", kode)($)[0].json.cover;
+  };
+  assert.equal(jalankanBrief("/uploads/articles/abc.webp"), "https://api.contoh/uploads/articles/abc.webp");
+  assert.equal(jalankanBrief("https://cdn.lain/x.webp"), "https://cdn.lain/x.webp", "URL utuh jangan disentuh");
+  assert.equal(jalankanBrief(null), null, "tanpa gambar tetap null, bukan URL kosong");
+});
+
+test("apa pun yang di-scale harus dipotong pembungkusnya", () => {
+  // transform:scale tidak mengubah layout tapi TETAP menambah scrollable overflow.
+  // Zoom 1.12 pada foto setinggi kanvas bikin render-svc mengukur 1431px dan membalas
+  // 422 "overflow" di SETIAP artikel — dan loop penyusutan tidak pernah menyembuhkannya
+  // karena penyebabnya bukan teks. Ketahuan cuma dengan benar-benar merender.
+  for (const layout of LAYOUT) {
+    const s = rakit({ cover: COVER, jpegJalan: false, layout }).slides[1];
+    const css = gaya(s);
+    assert.match(s, /transform:scale\(/, "zoom hilang — variasi crop ikut mati");
+    assert.match(s, /<div class="fotolayer"><img class="bg"/, `${layout}: foto tanpa pembungkus`);
+    assert.match(
+      css.match(/\.fotolayer\{([^}]*)\}/)[1],
+      /overflow:hidden/,
+      `${layout}: pembungkus foto tidak memotong`
+    );
+    // Lapisan TEKS justru harus tetap boleh meluber, kalau tidak aturan 11 mati total.
+    assert.doesNotMatch(css.match(/\.wrap\{([^}]*)\}/)[1], /overflow:\s*hidden/);
+  }
 });

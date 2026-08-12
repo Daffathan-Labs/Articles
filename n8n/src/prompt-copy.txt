@@ -65,12 +65,15 @@ YANG HARUS DIHASILKAN
 6. image_series — satu kalimat bahasa Inggris yang mengikat kelima gambar jadi satu seri
    (subjek, lokasi, dan gaya cahaya yang sama). Dipakai sebagai jangkar konsistensi.
 
-7. accent — SATU warna #RRGGBB yang mewakili subjek artikel.
-   Ambil dari benda/dunia yang dibicarakan artikel, bukan dari selera: review Spider-Man
-   → merah kostumnya, artikel database → biru terminal, catatan perjalanan → jingga senja.
+7. accent — SATU warna #RRGGBB, WAJIB dari keluarga biru (hue 180-265: teal, biru, indigo).
+   Di dalam rentang itu, pilih yang paling cocok dengan suasana artikel: indigo pekat
+   untuk review malam/gelap, biru dingin untuk artikel teknis, teal untuk catatan santai.
    Warnanya jadi LATAR chip kecil berteks putih, jadi pilih yang cukup pekat —
-   kontras minimal 4.5:1 terhadap putih. Pastel dan warna terang akan ditolak sistem
-   dan diganti biru brand, jadi memilihnya cuma membuang kesempatan.
+   kontras minimal 4.5:1 terhadap putih.
+   Merah, jingga, hijau, ungu magenta, dan pastel akan ditolak sistem dan diganti biru
+   brand, jadi memilihnya cuma membuang kesempatan. Rentangnya sempit dengan sengaja:
+   foto dan layout sudah beda tiap artikel, warna yang menjaga orang tetap mengenali
+   postingannya sebagai satu akun yang sama.
 
 8. layout — pilih SATU yang paling cocok dengan foto yang kamu bayangkan:
    - blok-bawah : foto tampil penuh, teks duduk di blok pekat di bagian bawah.
