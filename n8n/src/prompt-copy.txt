@@ -89,6 +89,14 @@ YANG HARUS DIHASILKAN
    DILARANG memilih arah yang gelap dan kelabu untuk semua artikel — foto sekarang
    tampil utuh, bukan sekadar latar samar, jadi tiap artikel memang harus terlihat beda.
 
+10. film — judul RESMI film atau serial yang diulas, bahasa Inggris, persis seperti judul
+    rilisnya, boleh diikuti tahun. Contoh: "Spider-Man: Brand New Day".
+    KOSONGKAN ("") kalau artikelnya bukan ulasan film atau serial — catatan teknis,
+    tutorial, dan cerita keseharian semuanya dikosongkan.
+    Ini dipakai mencari foto ASLI dari filmnya, jadi judul yang meleset berarti fotonya
+    tidak ketemu dan slide-nya jatuh ke gambar generate. Jangan menerjemahkan judulnya,
+    jangan menambahi kata sendiri.
+
 ATURAN GAMBAR — KERAS
 DILARANG meminta teks, tulisan, angka, huruf, label, logo, atau elemen antarmuka
 DI DALAM gambar. Semua kata hidup di HTML, nol di raster. Model gambar menulis teks

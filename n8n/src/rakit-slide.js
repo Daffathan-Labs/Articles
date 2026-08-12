@@ -180,7 +180,21 @@ const aksen = (() => {
 // ── layout: dipilih model dari daftar tertutup ──────────────────────────────────
 // Tertutup, bukan bebas, karena tiap bentuk harus bisa dibuktikan tidak meluber.
 const LAYOUT = ['blok-bawah', 'pias-bawah', 'tengah'];
-const layout = LAYOUT.includes(copy.layout) ? copy.layout : LAYOUT[0];
+/*
+ * Still film DIPAKSA ke `pias-bawah`, apa pun yang dipilih model.
+ *
+ * Backdrop TMDB semuanya 16:9; kanvas slide 4:5. Di `blok-bawah` dan `tengah` foto mengisi
+ * 1080x1350, jadi `object-fit: cover` membuang 55% lebarnya dan subjeknya gampang
+ * kepotong keluar frame — merusak satu-satunya alasan memakai foto asli. `pias-bawah`
+ * memberi foto area 1080x783 dan cuma membuang 22%.
+ *
+ * Artikel non-film tetap bebas memilih ketiganya: gambar Gemini digenerate langsung di
+ * rasio kanvas, jadi tidak ada yang dibuang.
+ */
+const adaFotoAsli = meta.some((m) => m.pakai_foto);
+const layout = adaFotoAsli
+  ? 'pias-bawah'
+  : LAYOUT.includes(copy.layout) ? copy.layout : LAYOUT[0];
 
 /**
  * Foto tampil UTUH — opacity 1, dan tidak ada satu pun lapisan yang menutup seluruh
@@ -285,7 +299,7 @@ const slides = meta.map((m, i) => {
 ${latar[i]
       // Foto artikel di slide 1 diturunkan sedikit titik fokusnya: subjek foto banner
       // hampir selalu duduk di atas tengah, dan blok teks memakan sepertiga bawah.
-      ? `<div class="fotolayer"><img class="bg" style="object-position:${i === 0 && coverB64 ? '50% 30%' : '50% 50%'}" src="${latar[i]}"></div>`
+      ? `<div class="fotolayer"><img class="bg" style="object-position:${i === 0 && coverB64 ? '50% 30%' : m.foto_fokus || '50% 50%'}" src="${latar[i]}"></div>`
       : `<div class="kartu k${i % 4}"></div>`}
 ${latar[i] ? '<div class="redup"></div>' : ''}
 <div class="wrap">

@@ -94,6 +94,9 @@ Buka node itu di n8n, isi yang masih `ISI_...`, simpan. Selesai.
 | `ig_token` | idem. Diperpanjang otomatis tiap bulan — lihat workflow 2 |
 | `fb_page_id` | → [credentials-facebook.md](credentials-facebook.md) |
 | `fb_page_token` | idem. **Tidak kedaluwarsa** selama kamu tetap admin Halamannya |
+| `tmdb_api_key` | API Key (v3 auth) dari themoviedb.org → Settings → API. Gratis, dipakai mengambil still + daftar pemain untuk artikel film |
+| `google_cse_key` | **opsional**, cadangan. API key Google Cloud dengan Custom Search API aktif. Boleh kosong selama `GOOGLE_AKTIF = false` |
+| `google_cse_cx` | **opsional**, cadangan. Search Engine ID dari programmablesearchengine.google.com, disetel "Search the entire web" + Image search ON |
 | `github_token` | PAT untuk commit balik gambar. Yang terpasang sekarang PAT **klasik** (`ghp_`) — berlaku untuk **semua** repo akunmu. Yang dibutuhkan cuma repo `Articles` + **Contents: Read and write**, jadi ganti ke **fine-grained** kalau sempat |
 | `notify_email` | alamat **penerima** e-mail; pengirimnya selalu akun Gmail di kredensial |
 
@@ -348,6 +351,62 @@ Fixture test meniru mode filesystem: `binary.data.data` diisi `"filesystem-v2"`,
 gagal begitu string itu muncul di HTML mana pun, dan `ke-base64.js` dijalankan langsung
 dengan `this.helpers` palsu yang isinya diturunkan dari indeks yang diminta — jadi
 meminta indeks yang salah pun ketahuan.
+
+### Artikel film memakai foto ASLI, bukan gambar generate
+
+Model gambar menolak menggambar karakter berhak cipta dan wajah orang nyata. Seberapa pun
+promptnya diputar, Spider-Man dan Sadie Sink tidak akan pernah keluar dari Gemini — yang
+keluar sosok berjubah dengan orb energi. Jadi untuk artikel film, fotonya diambil, bukan
+dibuat.
+
+Model mengisi satu field baru, `film` (judul resmi, atau string kosong kalau artikelnya
+bukan ulasan film). Dari situ tiga panggilan TMDB, **sekali per artikel bukan per slide**:
+
+| Node | Isi |
+|---|---|
+| `Cari film` | `search/movie` → id |
+| `Still film` | `movie/{id}/images` → backdrop |
+| `Pemain film` | `movie/{id}/credits` → nama pemain + nama karakter + foto |
+
+Lalu satu gerbang **per artikel**, bukan per slide:
+
+```
+Pecah slide → Ada foto asli? ─┬─ ya  → Ambil foto ──┐
+                              └─ tidak → Gemini gambar ─┴→ Jadi JPEG → Slide base64 → Rakit slide
+```
+
+Dua cabang bertemu lagi di `Jadi JPEG`, jadi `Slide base64` dan `rakit-slide.js` tidak
+peduli gambarnya datang dari mana — dua-duanya cuma melihat binary. `pakai_foto` nilainya
+**sama di kelima item**; IF dievaluasi per item, dan bendera yang berbeda antar item bakal
+membelah slide ke dua cabang lalu menghancurkan pasangan indeks slide↔gambar.
+
+**Slide yang menyebut pemain memakai foto ORANGNYA.** Backdrop tidak membawa keterangan
+isinya, jadi still untuk slide *"Sadie Sink sebagai Jean Grey"* pernah keluar sebagai
+adegan Punisher. TMDB membawa nama asli **dan** nama karakter, jadi teks slide dicocokkan
+ke dua-duanya. Tiga hal yang menjaganya dari cocok palsu, dan ketiganya ada test-nya:
+
+- karakter dipecah di `/` — `"Frank Castle / Punisher"` tidak akan pernah kena kalau
+  dicocokkan utuh;
+- minimal 4 huruf dan harus utuh sebagai kata — tanpa itu `"MJ"` kena di kata lain dan
+  `"Grey"` kena di `"greyscale"`;
+- cuma 20 nama teratas — di bawah itu isinya figuran yang namanya justru bikin cocok palsu.
+
+**Rasio.** Backdrop 16:9, foto pemain 2:3, kanvas 4:5. Karena itu layout **dipaksa
+`pias-bawah`** begitu ada foto asli: di `blok-bawah` foto mengisi 1080×1350 dan
+`object-fit: cover` membuang 55% lebarnya, sementara `pias-bawah` cuma membuang 22%. Foto
+pemain juga digeser fokusnya ke `50% 18%` — dipasang di tengah, wajahnya kepotong.
+
+**Google Custom Search** ada sebagai cadangan di balik `GOOGLE_AKTIF`, **default mati**.
+Google tidak punya API Google Images; yang ada Custom Search, hasilnya tautan ke gambar
+yang di-host situs orang lain, jadi kualitasnya tidak terkendali dan tautannya gampang
+mati. Jatahnya juga 100 panggilan per hari. TMDB praktis punya semua film bioskop, jadi
+cabang ini jarang perlu. Menyalakan: isi `google_cse_key` + `google_cse_cx`, ubah
+`GOOGLE_AKTIF` jadi `true`, build ulang.
+
+> Hak cipta, singkat: still film tetap milik studionya. Memakainya untuk ulasan adalah
+> praktik editorial yang lumrah — itu memang alasan studio merilis still publisitas — tapi
+> bukan pembebasan otomatis. TMDB memperkecil risikonya dibanding mencomot dari blog
+> orang, tidak menolkannya. Atribusi TMDB di bio/caption, bukan di gambar.
 
 ### Slide 1 foto artikel, slide 2+ gambarnya masing-masing
 

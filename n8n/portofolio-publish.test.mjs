@@ -276,7 +276,9 @@ test("node Kredensial tidak boleh menyimpan app secret", () => {
 test("file ter-commit tidak membawa kredensial hidup", () => {
   // Repo ini publik: token hidup di sini akan di-scrape bot dalam hitungan menit.
   // Nilai asli hidup di portofolio-publish.local.json yang di-gitignore.
-  for (const f of ["article_api_key", "render_url", "render_token", "linkedin_token", "ig_user_id", "ig_token", "notify_email"]) {
+  // Daftar ini ditulis tangan, jadi rahasia baru yang lupa didaftarkan TIDAK dijaga
+  // siapa pun. Tiap tambah field rahasia di FIELD, tambah juga namanya di sini.
+  for (const f of ["article_api_key", "render_url", "render_token", "linkedin_token", "ig_user_id", "ig_token", "notify_email", "tmdb_api_key", "google_cse_key", "google_cse_cx"]) {
     assert.match(kred(f), PLACEHOLDER, `${f} membawa nilai asli`);
   }
   // Yang boleh nyata: bukan rahasia, dan mengisinya menghemat langkah setup.
@@ -350,10 +352,13 @@ function rakit({
   // null = artikel tanpa gambar, atau unduhan cover yang gagal. Dua-duanya jalur
   // yang sama dari sisi Rakit slide.
   cover = null,
+  // true = artikel film, gambarnya still asli dari TMDB. Ini yang memaksa layout.
+  fotoAsli = false,
 } = {}) {
   const slide = {
     heading: heading ?? "Satu dua tiga empat lima enam tujuh delapan",
     body: body ?? Array.from({ length: 25 }, (_, i) => `kata${i}`).join(" "),
+    pakai_foto: fotoAsli,
   };
   const palsu = {
     "Siapkan brief": {
@@ -1640,15 +1645,226 @@ test("chip kategori diambil dari tag artikel, bukan dikarang model", () => {
   assert.match(rakit().slides[4], /<span class="kicker">Baca selengkapnya<\/span>/);
 });
 
-test("tiap slide selalu lewat Gemini gambar, tanpa gerbang yang melompatinya", () => {
-  // Pernah ada gerbang yang melewati cabang ini kalau artikel punya cover. Hemat kuota,
-  // tapi hasilnya foto yang sama di kelima slide. Gerbang itu yang tidak boleh balik.
+// Menjalankan sumber Code node "Pecah slide" apa adanya dari JSON hasil build.
+// Bukan memalsukan keluarannya — fixture yang memalsukan keluaran sebuah node tidak bisa
+// menangkap bug DI DALAM node itu, dan mutation test `ke-base64.js` yang pertama sempat
+// lolos diam-diam persis karena itu.
+const bagiFoto = ({
+  backdrops = [],
+  film = "Spider-Man: Brand New Day",
+  jumlahSlide = 5,
+  cast = [],
+  isiSlide = null,
+} = {}) => {
+  const palsu = {
+    "Siapkan brief": { json: { code: "uji" } },
+    "Gemini copy": {
+      json: {
+        output: {
+          film,
+          image_series: "S",
+          layout: "blok-bawah",
+          slides:
+            isiSlide ||
+            Array.from({ length: jumlahSlide }, (_, i) => ({
+              heading: `H${i}`, body: `B${i}`, image_prompt: `P${i}`, image_mode: "tempat",
+            })),
+        },
+      },
+    },
+    "Still film": { json: backdrops.length ? { backdrops } : {} },
+    "Pemain film": { json: cast.length ? { cast } : {} },
+  };
+  const $ = (n) => ({ isExecuted: true, first: () => palsu[n], all: () => [palsu[n]] });
+  return new Function("$", byName["Pecah slide"].parameters.jsCode)($).map((x) => x.json);
+};
+// Backdrop palsu: vote menurun sesuai indeks, jadi urutan hasilnya bisa diperiksa.
+const backdropPalsu = (n) =>
+  Array.from({ length: n }, (_, i) => ({ file_path: `/b${i}.jpg`, vote_average: 100 - i }));
+
+test("still film memaksa layout pias-bawah, apa pun pilihan model", () => {
+  // Backdrop TMDB semuanya 16:9, kanvas slide 4:5. Di blok-bawah/tengah foto mengisi
+  // 1080x1350 dan object-fit:cover membuang 55% lebarnya — subjeknya gampang kepotong
+  // keluar frame, dan itu merusak satu-satunya alasan memakai foto asli. pias-bawah
+  // memberi foto area 1080x783 dan cuma membuang 22%.
+  for (const layout of LAYOUT) {
+    const s = rakit({ layout, fotoAsli: true }).slides[0];
+    assert.match(s, /<html lang="id" class="l-pias"/, `${layout}: still tidak dipaksa pias-bawah`);
+  }
+  // Artikel non-film tetap bebas memilih: gambar Gemini digenerate langsung di rasio
+  // kanvas, jadi tidak ada yang dibuang.
+  assert.match(rakit({ layout: "tengah" }).slides[0], /class="l-tengah"/);
+  assert.match(rakit({ layout: "blok-bawah" }).slides[0], /class="l-blok"/);
+});
+
+test("kolam still dibagi tanpa pengulangan, dan tidak lima teratas berurutan", () => {
+  const slides = bagiFoto({ backdrops: backdropPalsu(30) });
+  const url = slides.map((s) => s.foto_url);
+  assert.equal(url.filter(Boolean).length, 5, "ada slide yang tidak kebagian padahal stok banyak");
+  assert.equal(new Set(url).size, 5, `still dipakai ulang: ${url.join(" | ")}`);
+  for (const s of slides) assert.equal(s.pakai_foto, true);
+
+  // Yang vote-nya tertinggi tetap ke slide 1 — pembagiannya deterministik, bukan acak.
+  assert.match(url[0], /\/b0\.jpg$/, "backdrop vote tertinggi tidak ke slide 1");
+  // Diambil selang, bukan berurutan: 30 backdrop dari satu film hampir selalu memuat
+  // beberapa frame dari adegan yang sama, dan lima teratas gampang jadi lima potongan
+  // adegan yang itu-itu juga.
+  assert.doesNotMatch(url[1], /\/b1\.jpg$/, "diambil berurutan — adegannya bakal mirip semua");
+});
+
+test("kolam lebih sedikit dari slide: sisanya null, BUKAN foto slide lain", () => {
+  const url = bagiFoto({ backdrops: backdropPalsu(3) }).map((s) => s.foto_url);
+  const ada = url.filter(Boolean);
+  assert.equal(ada.length, 3, "slide kebagian lebih banyak dari stoknya");
+  assert.equal(new Set(ada).size, 3, "still dipakai ulang untuk menambal");
+  assert.deepEqual(url.slice(3), [null, null], "slide sisa tidak dikosongkan");
+});
+
+test("artikel bukan film: kolam kosong, gerbang jatuh ke Gemini", () => {
+  for (const opsi of [{ film: "" }, { film: "Apa Pun", backdrops: [] }]) {
+    const slides = bagiFoto(opsi);
+    assert.equal(slides.length, 5, "jumlah slide ikut berubah");
+    for (const s of slides) {
+      assert.equal(s.pakai_foto, false, `pakai_foto salah untuk ${JSON.stringify(opsi)}`);
+      assert.equal(s.foto_url, null);
+      // Prompt gambar tetap disiapkan — cabang Gemini yang akan memakainya.
+      assert.ok(s.image_prompt.length > 10, "image_prompt hilang padahal Gemini yang dipakai");
+    }
+  }
+});
+
+test("pakai_foto sama di kelima item — kalau tidak, item terbelah dua cabang", () => {
+  // Gerbang `Ada foto asli?` dievaluasi PER ITEM. Bendera yang berbeda antar item bikin
+  // sebagian slide lewat `Ambil foto` dan sebagian lewat `Gemini gambar`, lalu keduanya
+  // bertemu di `Jadi JPEG` dengan urutan yang tidak bisa dipercaya.
+  for (const n of [0, 3, 30]) {
+    const nilai = bagiFoto({ backdrops: backdropPalsu(n) }).map((s) => s.pakai_foto);
+    assert.equal(new Set(nilai).size, 1, `pakai_foto tidak seragam saat stok ${n}`);
+  }
+});
+
+// Cast asli dari film yang diuji, dipangkas seperlunya.
+const CAST = [
+  { name: "Tom Holland", character: "Peter Parker / Spider-Man", profile_path: "/tom.jpg" },
+  { name: "Zendaya", character: "MJ", profile_path: "/zen.jpg" },
+  { name: "Sadie Sink", character: "Jean Grey", profile_path: "/sadie.jpg" },
+  { name: "Jon Bernthal", character: "Frank Castle / Punisher", profile_path: "/jon.jpg" },
+];
+
+test("slide yang menyebut pemain memakai foto ORANGNYA, bukan still acak", () => {
+  // Backdrop tidak membawa keterangan isinya, jadi still untuk slide "Sadie Sink sebagai
+  // Jean Grey" pernah keluar sebagai adegan Punisher di render uji. Ini yang menutupnya.
+  const slides = bagiFoto({
+    backdrops: backdropPalsu(30),
+    cast: CAST,
+    isiSlide: [
+      { heading: "Spider-Man kembali ke jalanan", body: "" },
+      { heading: "Sadie Sink sebagai Jean Grey", body: "Perannya bukan tempelan." },
+      { heading: "Aksi berayun yang diadaptasi", body: "Gerakannya terasa nyata." },
+      { heading: "Frank Castle muncul singkat", body: "" },
+      { heading: "penutup", body: "" },
+    ],
+  });
+  assert.match(slides[1].foto_url, /\/sadie\.jpg$/, "slide Sadie Sink tidak memakai fotonya");
+  assert.match(slides[3].foto_url, /\/jon\.jpg$/, "nama karakter tidak ikut dicocokkan");
+  // Slide tanpa nama pemain tetap dapat still biasa.
+  assert.match(slides[2].foto_url, /image\.tmdb\.org\/t\/p\/w1280/, "slide netral malah dapat foto orang");
+  // Slide 1 selalu foto artikel — mencocokkan pemain di situ cuma membuang satu nama.
+  assert.match(slides[0].foto_url, /w1280/, "slide 1 memakai foto orang padahal ditimpa cover");
+
+  // Potret 2:3 dipasang di tengah bikin wajahnya kepotong; fokusnya harus dinaikkan.
+  assert.equal(slides[1].foto_fokus, "50% 18%");
+  assert.equal(slides[2].foto_fokus, "50% 50%", "still 16:9 tidak boleh ikut digeser");
+});
+
+test("nama pendek dan penggalan kata tidak bikin cocok palsu", () => {
+  // "MJ" (2 huruf) dan penggalan seperti "Grey" di dalam kata lain pernah jadi sumber
+  // foto orang yang tidak dibahas sama sekali di slide itu.
+  const slides = bagiFoto({
+    backdrops: backdropPalsu(30),
+    cast: CAST,
+    isiSlide: [
+      { heading: "a", body: "" },
+      { heading: "Hubungan Peter dan MJ menguras emosi", body: "" },
+      { heading: "Warna greyscale mendominasi filmnya", body: "" },
+      { heading: "d", body: "" },
+      { heading: "e", body: "" },
+    ],
+  });
+  assert.match(slides[1].foto_url, /w1280/, '"MJ" yang cuma dua huruf ikut kecocokan');
+  assert.match(slides[2].foto_url, /w1280/, '"greyscale" kena sebagai "Grey"');
+});
+
+test("balasan TMDB aneh tidak mematikan carousel", () => {
+  // Semua bentuk ini pernah mungkin: 404 dari id yang tidak ada, 422 dari query kosong,
+  // atau field yang namanya berubah. Semuanya harus jadi kolam kosong, bukan lemparan.
+  for (const aneh of [{}, { backdrops: null }, { backdrops: "bukan array" }, { success: false }]) {
+    const $ = (n) => ({
+      isExecuted: true,
+      first: () =>
+        n === "Still film"
+          ? { json: aneh }
+          : n === "Gemini copy"
+            ? { json: { output: { film: "X", slides: [{ heading: "a" }, { heading: "b" }] } } }
+            : { json: { code: "uji" } },
+      all: () => [],
+    });
+    const hasil = new Function("$", byName["Pecah slide"].parameters.jsCode)($);
+    assert.equal(hasil.length, 2, `bentuk ${JSON.stringify(aneh)} bikin slide hilang`);
+    assert.equal(hasil[0].json.pakai_foto, false);
+  }
+});
+
+test("saklar Google konsisten: node, gerbang, rujukan, dan sambungan sejalan", () => {
+  // Cabang nonaktif yang masih tersambung pernah menggantung seluruh pipeline (Facebook).
+  // Dan node yang TIDAK dipasang tidak bisa dirujuk `$('...')` dari Code node —
+  // ekspresinya MELEMPAR, bukan mengembalikan undefined. Jadi dua-duanya harus sejalan.
+  const kode = byName["Pecah slide"].parameters.jsCode;
+  if (byName["Cari Google"]) {
+    assert.ok(byName["Perlu Google?"], "node Google ada tapi gerbangnya tidak");
+    assert.match(kode, /\$\('Cari Google'\)\.isExecuted/, "dirujuk tanpa penjaga isExecuted");
+    assert.deepEqual(
+      (wf.connections["Perlu Google?"]?.main?.[0] ?? []).map((c) => c.node),
+      ["Cari Google"],
+      "cabang 'perlu' salah tujuan"
+    );
+  } else {
+    assert.equal(byName["Perlu Google?"], undefined, "gerbang Google ada tapi node-nya tidak");
+    assert.doesNotMatch(kode, /Cari Google/, "merujuk node yang tidak dipasang");
+    assert.deepEqual(
+      wf.connections["Pemain film"].main[0].map((c) => c.node),
+      ["Pecah slide"],
+      "TMDB tidak tersambung langsung ke Pecah slide saat Google mati"
+    );
+  }
+});
+
+test("kunci TMDB dibaca lewat node Kredensial, bukan ditulis di URL", () => {
+  for (const n of ["Cari film", "Still film"]) {
+    const q = byName[n].parameters.queryParameters.parameters;
+    const key = q.find((x) => x.name === "api_key");
+    assert.ok(key, `${n}: api_key tidak dikirim`);
+    assert.match(key.value, /Kredensial'\)\.first\(\)\.json\.tmdb_api_key/, `${n}: kunci tidak dari Kredensial`);
+    // Balasan 422/404 untuk artikel non-film itu jalur NORMAL, bukan alasan berhenti.
+    assert.equal(byName[n].onError, "continueRegularOutput", `${n}: tanpa onError`);
+  }
+  assert.match(byName["Still film"].parameters.url, /image\.tmdb\.org|themoviedb\.org/);
+});
+
+test("gerbang sumber foto bercabang benar dan bertemu lagi di Jadi JPEG", () => {
+  // Gerbang lama `Perlu gambar Gemini?` melewati generasi kalau artikel punya cover, dan
+  // hasilnya foto yang sama di kelima slide. Gerbang itu tidak boleh balik. Yang sekarang
+  // beda tujuannya: memilih SUMBER foto, bukan melewatkan slide.
   assert.equal(byName["Perlu gambar Gemini?"], undefined, "gerbang lama hidup lagi");
-  assert.deepEqual(
-    wf.connections["Pecah slide"].main[0].map((c) => c.node),
-    ["Gemini gambar"],
-    "Pecah slide tidak langsung ke Gemini gambar"
-  );
+
+  const keluar = (n, i = 0) => (wf.connections[n]?.main?.[i] ?? []).map((c) => c.node);
+  assert.deepEqual(keluar("Pecah slide"), ["Ada foto asli?"]);
+  assert.deepEqual(keluar("Ada foto asli?", 0), ["Ambil foto"], "cabang 'ada' salah tujuan");
+  assert.deepEqual(keluar("Ada foto asli?", 1), ["Gemini gambar"], "cabang 'tidak ada' salah tujuan");
+  // Dua cabang WAJIB bertemu lagi, kalau tidak `Slide base64` cuma menerima separuhnya.
+  for (const dari of ["Ambil foto", "Gemini gambar"]) {
+    assert.deepEqual(keluar(dari), ["Jadi JPEG"], `${dari} tidak bermuara di Jadi JPEG`);
+  }
   assert.deepEqual(
     wf.connections["Slide base64"].main[0].map((c) => c.node),
     ["Rakit slide"],

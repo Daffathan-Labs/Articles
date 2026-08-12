@@ -119,6 +119,20 @@ const asli = (k, fallback) => RAHASIA[k] || fallback;
  */
 const FB_AKTIF = true;
 
+/**
+ * Cadangan Google Custom Search untuk foto film yang tidak ketemu di TMDB.
+ *
+ * Dimatikan default, dan itu disengaja. Google tidak punya API Google Images — yang ada
+ * Custom Search, hasilnya tautan ke gambar yang di-host situs orang lain, jadi kualitasnya
+ * tidak terkendali dan tautannya gampang mati. Jatahnya juga cuma 100 panggilan per hari.
+ * TMDB praktis punya semua film yang tayang bioskop, jadi cabang ini memang jarang perlu.
+ *
+ * Menyalakan: isi google_cse_key + google_cse_cx di secrets.local.json, ubah baris ini
+ * jadi true, build ulang. Sama seperti FB_AKTIF, saklar ini sekaligus memutus
+ * sambungannya — cabang nonaktif yang masih tersambung pernah menggantung pipeline.
+ */
+const GOOGLE_AKTIF = false;
+
 const FIELD = [
   ['article_api_url', 'https://api.daffathan-labs.my.id', 'https://api.daffathan-labs.my.id'],
   ['article_api_key', 'ISI_ARTICLE_API_KEY', 'daffathan-labs-articles-pipeline'],
@@ -143,6 +157,15 @@ const FIELD = [
   // commit balik untuk menulis hero.jpg dan dua berkas .md. Izin lain tidak dibutuhkan
   // dan cuma memperbesar kerugian kalau bocor.
   ['github_token', 'ISI_GITHUB_TOKEN', asli('github_token', 'ISI_GITHUB_TOKEN')],
+  // Foto asli untuk artikel film. Model gambar menolak menggambar karakter berhak cipta
+  // dan wajah orang nyata, jadi Spider-Man dan Sadie Sink tidak akan pernah keluar dari
+  // Gemini — satu-satunya jalan ke foto yang benar-benar menampilkan subjeknya adalah
+  // mengambil yang memang sudah ada. TMDB gratis dan memang dibangun untuk ini.
+  ['tmdb_api_key', 'ISI_TMDB_API_KEY', asli('tmdb_api_key', 'ISI_TMDB_API_KEY')],
+  // Cadangan kalau filmnya tidak ketemu di TMDB. Boleh kosong: GOOGLE_AKTIF yang
+  // menentukan node-nya dipasang atau tidak, bukan ada-tidaknya kunci ini.
+  ['google_cse_key', 'ISI_GOOGLE_CSE_KEY', asli('google_cse_key', 'ISI_GOOGLE_CSE_KEY')],
+  ['google_cse_cx', 'ISI_GOOGLE_CSE_CX', asli('google_cse_cx', 'ISI_GOOGLE_CSE_CX')],
   ['notify_email', 'ISI_EMAIL_TUJUAN', 'daffa.fathan9@gmail.com'],
 ];
 const kondisi = (leftValue, operator, rightValue) => ({
@@ -310,7 +333,7 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
     type: 'object',
     required: [
       'linkedin_caption', 'ig_caption', 'fb_caption', 'hashtags', 'slides',
-      'image_series', 'accent', 'layout', 'image_mood',
+      'image_series', 'accent', 'layout', 'image_mood', 'film',
     ],
     properties: {
       linkedin_caption: { type: 'string', description: 'Bahasa Inggris, 120-200 kata, diakhiri URL EN' },
@@ -338,6 +361,12 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
         type: 'string',
         description: 'Bahasa Inggris, 3-8 kata. Arah cahaya dan warna foto sesuai tema artikel, mis. "neon night city, high contrast"',
       },
+      // Satu-satunya field baru untuk jalur foto asli. Kosong = artikelnya bukan tentang
+      // film, dan seluruh cabang TMDB langsung jatuh ke generasi Gemini seperti biasa.
+      film: {
+        type: 'string',
+        description: 'Judul RESMI film atau serial yang diulas, bahasa Inggris, boleh diikuti tahun. String KOSONG kalau artikelnya bukan ulasan film/serial',
+      },
       slides: {
         type: 'array',
         description: 'Tepat 5 slide: hook, 3 poin, CTA',
@@ -357,8 +386,97 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
 });
 sub('Skema copy', 'Gemini copy', 'ai_outputParser');
 
-N('Pecah slide', 'n8n-nodes-base.code', 2, [1260, 460], { jsCode: baca('pecah-slide.js') });
-hubung('Gemini copy', 'Pecah slide');
+// ── foto asli untuk artikel film ────────────────────────────────────────────────
+// Model gambar menolak menggambar karakter berhak cipta dan wajah orang nyata, jadi
+// "Spider-Man" dan "Sadie Sink" tidak akan pernah keluar dari Gemini seberapa pun
+// promptnya diputar. Satu-satunya jalan ke foto yang benar-benar menampilkan subjeknya
+// adalah mengambil yang memang sudah ada.
+//
+// Dicari SEKALI per artikel, bukan per slide: satu film punya puluhan still (Spider-Man:
+// Brand New Day punya 85), jadi satu panggilan sudah cukup untuk kelima slide.
+const tmdb = (nama, posisi, url, param) =>
+  N(nama, 'n8n-nodes-base.httpRequest', 4.2, posisi, {
+    url,
+    sendQuery: true,
+    queryParameters: {
+      parameters: [{ name: 'api_key', value: `={{ ${K('tmdb_api_key')} }}` }, ...param],
+    },
+    options: {},
+  }, {
+    // `film` kosong dibalas 422, id yang tidak ada dibalas 404. Dua-duanya jalur normal
+    // untuk artikel non-film — bukan alasan menghentikan pipeline.
+    onError: 'continueRegularOutput',
+    alwaysOutputData: true,
+  });
+
+tmdb('Cari film', [1040, 40], 'https://api.themoviedb.org/3/search/movie', [
+  { name: 'query', value: "={{ $('Gemini copy').first().json.output.film }}" },
+]);
+hubung('Gemini copy', 'Cari film');
+
+// id 0 kalau pencariannya nihil — dibalas 404 dan diteruskan sebagai kolam kosong.
+tmdb('Still film', [1180, 40],
+  '=https://api.themoviedb.org/3/movie/{{ $json.results && $json.results[0] ? $json.results[0].id : 0 }}/images',
+  []);
+hubung('Cari film', 'Still film');
+
+// Backdrop tidak punya keterangan isinya, jadi still yang jatuh ke slide "Sadie Sink
+// sebagai Jean Grey" bisa saja adegan Punisher — dan itu benar-benar terjadi di render
+// uji. Daftar pemain menutupnya: TMDB membawa nama asli DAN nama karakter, jadi slide
+// yang menyebut salah satunya bisa memakai foto orangnya.
+tmdb('Pemain film', [1320, 40],
+  '=https://api.themoviedb.org/3/movie/{{ $(\'Cari film\').first().json.results && $(\'Cari film\').first().json.results[0] ? $(\'Cari film\').first().json.results[0].id : 0 }}/credits',
+  []);
+hubung('Still film', 'Pemain film');
+
+if (GOOGLE_AKTIF) {
+  N('Perlu Google?', 'n8n-nodes-base.if', 2.2, [1320, 40], {
+    conditions: kondisi(
+      "={{ ($('Still film').first().json.backdrops || []).length }}",
+      { type: 'number', operation: 'equals' },
+      0
+    ),
+    options: {},
+  });
+  hubung('Pemain film', 'Perlu Google?');
+
+  // SATU panggilan per artikel, bukan per slide: num=10 sudah cukup untuk lima slide,
+  // dan jatah Custom Search cuma 100 per hari.
+  N('Cari Google', 'n8n-nodes-base.httpRequest', 4.2, [1460, 40], {
+    url: 'https://www.googleapis.com/customsearch/v1',
+    sendQuery: true,
+    queryParameters: {
+      parameters: [
+        { name: 'key', value: `={{ ${K('google_cse_key')} }}` },
+        { name: 'cx', value: `={{ ${K('google_cse_cx')} }}` },
+        { name: 'searchType', value: 'image' },
+        { name: 'num', value: '10' },
+        { name: 'q', value: "={{ $('Gemini copy').first().json.output.film }}" },
+      ],
+    },
+    options: {},
+  }, { onError: 'continueRegularOutput', alwaysOutputData: true });
+  hubung('Perlu Google?', 'Cari Google', 0);
+  hubung('Cari Google', 'Pecah slide');
+  // TMDB sudah punya isi: Google dilewati sama sekali. Ini yang menjaga jatah 100/hari.
+  hubung('Perlu Google?', 'Pecah slide', 1);
+}
+
+// Membaca `Gemini copy` lewat nama node, bukan $input: node-node TMDB di atas menyisip
+// di antaranya, dan seluruh workflow ini memang membaca lewat nama supaya penyisipan
+// seperti itu tidak diam-diam mengganti sumber datanya.
+// {{GOOGLE}} disisipkan di sini, bukan dijaga di dalam Code node: node yang tidak
+// dipasang tidak bisa dirujuk `$('Cari Google')` — ekspresinya MELEMPAR, bukan
+// mengembalikan undefined, jadi tidak ada penjaga runtime yang bisa menyelamatkannya.
+N('Pecah slide', 'n8n-nodes-base.code', 2, [1260, 460], {
+  jsCode: baca('pecah-slide.js').replace(
+    '{{GOOGLE}}',
+    GOOGLE_AKTIF
+      ? "($('Cari Google').isExecuted ? ($('Cari Google').first().json.items || []) : []).map((x) => x.link)"
+      : '[]'
+  ),
+});
+if (!GOOGLE_AKTIF) hubung('Pemain film', 'Pecah slide');
 
 N('Gemini gambar', '@n8n/n8n-nodes-langchain.googleGemini', 1, [1480, 460], {
   resource: 'image',
@@ -388,7 +506,31 @@ N('Gemini gambar', '@n8n/n8n-nodes-langchain.googleGemini', 1, [1480, 460], {
 // terbaca sebagai satu gambar diulang lima kali. Slide 2+ punya teksnya sendiri, jadi
 // gambarnya juga harus dibuat dari teks itu. Foto artikel tetap dipakai di slide 1 dan
 // jadi jaring pengaman slide 2+ di `Rakit slide`.
-hubung('Pecah slide', 'Gemini gambar');
+// Gerbang per ARTIKEL, bukan per slide — dan itu yang menjaganya sederhana. Dua cabang
+// bertemu lagi di `Jadi JPEG`, jadi `Slide base64` dan `rakit-slide.js` tidak peduli
+// gambarnya datang dari mana; dua-duanya cuma melihat binary.
+//
+// `pakai_foto` nilainya sama di kelima item, jadi IF yang dievaluasi per item tetap
+// mengirim kelimanya ke cabang yang sama. Tanpa itu, item bisa terbelah dua cabang dan
+// pasangan indeks slide↔gambar hancur.
+N('Ada foto asli?', 'n8n-nodes-base.if', 2.2, [1370, 460], {
+  conditions: kondisi('={{ $json.pakai_foto ? 1 : 0 }}', { type: 'number', operation: 'equals' }, 1),
+  options: {},
+});
+hubung('Pecah slide', 'Ada foto asli?');
+
+// Diunduh di n8n, BUKAN ditaruh sebagai URL di HTML. render-svc memakai
+// waitUntil:'networkidle0' dan node `Render` cuma punya 60 detik untuk kelima slide —
+// lima URL luar yang lambat bisa menghabiskannya dan memicu loop retry 8 ronde. Lebih
+// penting lagi: URL mati di sini terlihat sebagai item tanpa binary, bukan gambar rusak
+// yang diam seperti bug `filesystem-v2`.
+N('Ambil foto', 'n8n-nodes-base.httpRequest', 4.2, [1480, 300], {
+  url: '={{ $json.foto_url }}',
+  options: { response: { response: { responseFormat: 'file', outputPropertyName: 'data' } } },
+}, { onError: 'continueRegularOutput' });
+hubung('Ada foto asli?', 'Ambil foto', 0);
+hubung('Ada foto asli?', 'Gemini gambar', 1);
+hubung('Ambil foto', 'Jadi JPEG');
 
 // PNG mentah dari Gemini ~2 MB/slide; base64 lima slide menembus batas body 8 MB
 // render-svc dan gagal 413. Konversi ke JPEG di sini yang mencegahnya.
