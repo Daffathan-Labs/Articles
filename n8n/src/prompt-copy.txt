@@ -9,14 +9,14 @@ emoji roket, dan pertanyaan retoris pembuka ("Pernahkah kamu...").
 Jangan mengarang detail apa pun yang tidak tertulis di ISI ARTIKEL di bawah.
 
 BAHAN
-Judul ID  : {{ $json.title_id }}
-Judul EN  : {{ $json.title_en }}
-Ringkasan : {{ $json.excerpt }}
-Tag       : {{ $json.tags }}
-URL (EN)  : {{ $json.url_en }}
-URL (ID)  : {{ $json.url_id }}
+Judul ID  : {{ $('Siapkan brief').first().json.title_id }}
+Judul EN  : {{ $('Siapkan brief').first().json.title_en }}
+Ringkasan : {{ $('Siapkan brief').first().json.excerpt }}
+Tag       : {{ $('Siapkan brief').first().json.tags }}
+URL (EN)  : {{ $('Siapkan brief').first().json.url_en }}
+URL (ID)  : {{ $('Siapkan brief').first().json.url_id }}
 ISI ARTIKEL:
-{{ $json.teks }}
+{{ $('Siapkan brief').first().json.teks }}
 
 YANG HARUS DIHASILKAN
 
@@ -24,12 +24,12 @@ YANG HARUS DIHASILKAN
    Baris pertama adalah hook berdiri sendiri, maksimal 12 kata, tanpa hashtag.
    Lalu 2-4 paragraf pendek (maksimal 3 kalimat masing-masing), dipisah baris kosong.
    Isinya satu sudut pandang atau satu pelajaran nyata dari artikel — bukan ringkasan daftar isi.
-   Tutup dengan baris berisi persis: {{ $json.url_en }}
+   Tutup dengan baris berisi persis: {{ $('Siapkan brief').first().json.url_en }}
    Tanpa hashtag di linkedin_caption. Tanpa "link in comments".
 
 2. ig_caption — BAHASA INDONESIA, 80-150 kata.
    Lebih santai dari LinkedIn, tetap tanpa hype. Dipisah baris kosong tiap 1-2 kalimat.
-   Tutup dengan baris persis: Baca lengkapnya: {{ $json.url_id }}
+   Tutup dengan baris persis: Baca lengkapnya: {{ $('Siapkan brief').first().json.url_id }}
    Ingat tautan di caption Instagram TIDAK bisa diklik, jadi tulis URL-nya utuh dan apa adanya.
 
 3. hashtags — MAKSIMAL 5 hashtag, huruf kecil semua, relevan dengan tag artikel.

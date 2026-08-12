@@ -34,6 +34,23 @@ const gambarGagal = raster.filter((r) => !r).length;
 // daripada satu slide kosong di tengah carousel.
 const bg = raster.map((r) => r || adaRaster[0] || null);
 
+// Gambar artikel, kalau ada. `Ambil cover` memakai onError:continueRegularOutput,
+// jadi artikel tanpa gambar dan unduhan yang gagal sama-sama berakhir null di sini —
+// dan dua-duanya memang ditangani sama: pakai gambar Gemini.
+const unduhan = $('Ambil cover').first();
+const coverB64 = (unduhan && unduhan.binary && unduhan.binary.data && unduhan.binary.data.data) || null;
+// Mime dibaca dari unduhan, bukan diasumsikan: API menyajikan cover sebagai WebP,
+// dan menuliskannya sebagai image/jpeg bikin Chromium menolak merender gambarnya.
+const coverMime = (unduhan && unduhan.binary && unduhan.binary.data && unduhan.binary.data.mimeType) || 'image/jpeg';
+
+// Slide 1 memakai gambar artikel kalau ada — satu identitas visual di website,
+// LinkedIn, dan carousel. Slide 2+ tetap dari Gemini.
+const latar = bg.map((b, i) =>
+  i === 0 && coverB64
+    ? `data:${coverMime};base64,${coverB64}`
+    : b ? `data:image/jpeg;base64,${b}` : null
+);
+
 // Ronde 0 pakai ukuran penuh; tiap ronde berikutnya mengecil sampai lantai 70%.
 // Digabung dengan pemangkasan kata di bawah, ronde 8 praktis mustahil meluber.
 const skala = Math.max(0.7, 1 - ronde * 0.06);
@@ -92,7 +109,7 @@ const slides = meta.map((m, i) => {
 
   return `<!doctype html>
 <html lang="id"><head><meta charset="utf-8"><style>${CSS}</style></head><body>
-${bg[i] ? `<img class="bg" src="data:image/jpeg;base64,${bg[i]}">` : ''}
+${latar[i] ? `<img class="bg" src="${latar[i]}">` : ''}
 <div class="veil"></div>
 <div class="wrap">
   <div class="atas"><span>Daffathan Labs</span><span class="nomor">${i + 1} / ${meta.length}</span></div>
@@ -105,6 +122,18 @@ ${bg[i] ? `<img class="bg" src="data:image/jpeg;base64,${bg[i]}">` : ''}
 </body></html>`;
 });
 
+// Artikel tanpa gambar: latar Gemini slide 1 dipromosikan jadi gambar artikel.
+// Dirender lanskap 1200x630 — satu ukuran yang melayani og:image dan gambar tunggal
+// LinkedIn sekaligus. Nol teks, nol logo: ini gambar artikel, bukan slide.
+// Kalau artikel sudah punya cover, `hero` tetap null dan tidak ada yang di-commit.
+const hero = coverB64 || !adaRaster[0]
+  ? null
+  : `<!doctype html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0}html,body{width:1200px;height:630px;overflow:hidden;background:#0B0F14}
+img{width:1200px;height:630px;object-fit:cover;display:block}
+</style></head><body><img src="data:image/jpeg;base64,${adaRaster[0]}"></body></html>`;
+
 return [{
   json: {
     code: brief.code,
@@ -114,6 +143,10 @@ return [{
     dilewat: brief.dilewat,
     gambar_gagal: gambarGagal,
     ronde: ronde + 1,
+    hero,
+    // Diteruskan supaya cabang commit balik tidak perlu membaca `Siapkan brief` lagi.
+    repo: brief.repo,
+    berkas_md: brief.berkas_md,
     linkedin_caption: copy.linkedin_caption,
     // Dipotong keras di kode, bukan cuma diminta di prompt: model rutin melewati
     // batas yang hanya disebut dalam instruksi.

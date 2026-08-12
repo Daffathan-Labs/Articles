@@ -83,8 +83,23 @@ Buka node itu di n8n, isi yang masih `ISI_...`, simpan. Selesai.
 | `linkedin_urn` | `urn:li:person:B1oVXChp7v` — sudah terisi dan terverifikasi |
 | `linkedin_version` | `202607` — sudah terisi. Ganti hanya saat muncul 426 `NONEXISTENT_VERSION` |
 | `ig_user_id` | → [credentials-instagram.md](credentials-instagram.md) |
-| `ig_token` | idem |
+| `ig_token` | idem. Diperpanjang otomatis tiap bulan — lihat workflow 2 |
+| `fb_page_id` | → [credentials-facebook.md](credentials-facebook.md) |
+| `fb_page_token` | idem. **Tidak kedaluwarsa** selama kamu tetap admin Halamannya |
+| `github_token` | PAT **fine-grained**: hanya repo `Articles`, hanya **Contents: Read and write** |
 | `notify_email` | alamat **penerima** e-mail; pengirimnya selalu akun Gmail di kredensial |
+
+Umur token per platform, supaya jelas mana yang perlu diingat:
+
+| Platform | Umur token | Perawatan |
+|---|---|---|
+| Instagram | 60 hari | **otomatis** — workflow terjadwal memperpanjang tiap bulan |
+| Facebook | tidak kedaluwarsa | **nol** |
+| LinkedIn | 60 hari | **manual**, satu-satunya yang harus diingat |
+
+> **App secret Facebook tidak masuk ke sini.** Dia bisa mencetak token baru, dan cuma
+> dipakai sekali di terminal saat menukar token. Ada test yang menolak field bernama
+> `*_secret` di node `Kredensial`.
 
 ### Dua file, satu struktur
 
@@ -101,6 +116,74 @@ edit di n8n tetap bisa di-diff terhadap versi ter-commit.
 
 Satu test mengunci ini: `file ter-commit tidak membawa kredensial hidup` gagal kalau ada
 nilai asli yang bocor ke file yang ter-commit.
+
+> ### ⚠️ Jangan simpan hasil "Download" dari n8n ke dalam repo
+>
+> Tombol **Download** di n8n menulis nilai node Set **apa adanya** — tidak ada
+> penyamaran, tidak peduli nama berkasnya. Sekali kejadian: sebuah `n8n/Portofolio.json`
+> hasil ekspor manual membawa token Instagram, token LinkedIn, token render-svc, **dan**
+> API key n8n sekaligus, dan lolos karena `.gitignore` waktu itu cuma menutup pola
+> `*.local.json`.
+>
+> Sekarang ada dua lapis: `.gitignore` menutup `n8n/Portofolio.json` dan
+> `n8n/*.export.json`, **dan** ada test yang memindai seluruh berkas yang akan ter-commit
+> di `n8n/` dan `.github/` untuk pola token Instagram, LinkedIn, JWT, dan PAT GitHub.
+> Lapis kedua itu yang sebenarnya menjaga — dia tidak bergantung pada nama berkas.
+>
+> Kalau butuh mengekspor untuk di-review, simpan ke luar repo.
+
+## 3b. Gambar artikel — satu wajah di semua tempat
+
+Satu gambar per artikel dipakai di tiga tempat: thumbnail + `og:image` di website,
+gambar tunggal di LinkedIn, dan latar slide pertama carousel.
+
+**Artikel punya gambar** (45 dari 45 artikel yang ada): gambarnya diunduh sekali di node
+`Ambil cover`, lalu dipakai apa adanya. Tidak ada yang di-generate, tidak ada yang
+di-commit.
+
+**Artikel tidak punya gambar**: latar Gemini slide 1 dipromosikan jadi gambar artikel,
+dirender lanskap **1200×630** (satu ukuran yang melayani `og:image` dan LinkedIn), lalu
+**di-commit balik ke repo** — `articles/<folder>/hero.jpg` plus dua baris di tiap `.md`:
+
+```markdown
+<!-- image: https://raw.githubusercontent.com/.../hero.jpg -->   <- thumbnail + og:image
+<img width="800" alt="..." src="https://raw.githubusercontent.com/.../hero.jpg" />
+```
+
+### Kenapa harus di-commit, bukan cukup POST ke API
+
+`replaceSet` di API melakukan `DELETE` lalu membangun ulang dari payload, dan payload
+dibuat dari berkas `.md`. Gambar yang hanya hidup di database akan **terhapus** oleh
+`workflow_dispatch` full sync berikutnya — bahkan oleh edit biasa, karena `upsert`
+menulis semua kolom termasuk `image: null`. Repo adalah sumber kebenaran.
+
+### Commit-nya sengaja memicu Action, dan loop-nya berhenti sendiri
+
+Tidak pakai `[skip ci]`. Commit balik memicu Action seperti biasa → `publish.js` kirim
+artikel yang sekarang sudah punya gambar → website ter-update lewat jalur yang sama
+seperti publish normal, tanpa node publish tambahan.
+
+Berhentinya dijamin kode yang sudah ada: `classifyDiff` hanya menghitung status **`A`**
+sebagai artikel baru, dan `.md` hasil commit ini berstatus **`M`**. Jadi `new_folders`
+kosong → gerbang `Ada artikel baru?` mati → cabang sosmed tidak jalan dua kali → tidak
+ada commit kedua. Berhenti setelah tepat satu siklus tambahan.
+
+Konsekuensinya website dapat gambarnya ±1 menit setelah publish pertama, bukan seketika.
+
+### Urutan yang tidak boleh dibalik
+
+Gambar di-commit **dulu**, baru `.md` yang menunjuk ke gambar itu. `Pecah md` menolak
+melanjutkan kalau `Simpan gambar` gagal — kalau dibalik, ada jendela di mana `.md`
+menautkan URL yang masih 404, dan kalau full sync kebetulan jalan di situ,
+`convertSingleImage` gagal dan `image` artikelnya jadi null lagi.
+
+Seluruh cabang ini memakai `onError: continueRegularOutput` karena berjalan berdampingan
+dengan approval yang menunggu sampai 48 jam — kegagalan di sini tidak boleh menjatuhkan
+eksekusi yang sedang menahan artikel. Hasilnya, berhasil atau gagal, dilaporkan lewat
+e-mail `Lapor commit`.
+
+Artikel yang **sudah** punya gambar tidak menyentuh cabang ini sama sekali: `Susun commit`
+mengembalikan nol item, dan nol item berarti seluruh rantai di bawahnya tidak dieksekusi.
 
 ## 4. render-svc
 

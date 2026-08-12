@@ -8,6 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
 
 const wf = JSON.parse(
   fs.readFileSync(path.join(import.meta.dirname, "portofolio-publish.json"), "utf8")
@@ -210,6 +211,60 @@ test("nilai di .local.json masuk akal (kalau file-nya ada)", () => {
   }
 });
 
+/**
+ * Pola token yang bentuknya khas dan tidak mungkin muncul kebetulan. Sengaja TIDAK
+ * memuat nilai rahasia mana pun — daftar "jangan sampai bocor" yang berisi rahasianya
+ * sendiri adalah kebocoran, dan itu pernah kejadian di berkas ini.
+ */
+const POLA_TOKEN = [
+  ["token Instagram/Facebook", /\b(IGAA|EAA)[A-Za-z0-9]{20,}/],
+  ["token LinkedIn", /\bAQ[A-Za-z0-9_-]{60,}/],
+  ["JWT (API key n8n)", /\beyJhbGciOi[A-Za-z0-9_-]{10,}/],
+  ["PAT GitHub", /\b(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/],
+];
+
+test("tidak ada berkas ter-commit di n8n/ dan .github/ yang membawa token hidup", () => {
+  // Definisi "akan ter-commit" diambil dari git sendiri, bukan dari daftar nama berkas:
+  // kebocoran kemarin justru lewat berkas yang belum ada waktu test ini ditulis.
+  const akar = path.resolve(import.meta.dirname, "..");
+  const daftar = execSync(
+    "git ls-files --cached --others --exclude-standard -- n8n .github",
+    { cwd: akar, encoding: "utf8" }
+  )
+    .split("\n")
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  assert.ok(daftar.length > 0, "git tidak mengembalikan berkas apa pun — perintahnya salah");
+
+  const temuan = [];
+  for (const berkas of daftar) {
+    let isi;
+    try {
+      isi = fs.readFileSync(path.join(akar, berkas), "utf8");
+    } catch {
+      continue; // berkas biner atau sudah terhapus
+    }
+    for (const [nama, pola] of POLA_TOKEN) {
+      if (pola.test(isi)) temuan.push(`${berkas}: ${nama}`);
+    }
+  }
+  assert.deepEqual(temuan, [], `kredensial hidup di berkas yang akan ter-commit:\n${temuan.join("\n")}`);
+});
+
+test("node Kredensial tidak boleh menyimpan app secret", () => {
+  // Secret bisa MENCETAK token baru, jadi bocornya jauh lebih parah daripada token.
+  // Dia cuma dipakai sekali saat menukar token, di terminal, di luar n8n.
+  for (const berkas of ["portofolio-publish.json", "refresh-ig-token.json"]) {
+    const w = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, berkas), "utf8"));
+    const set = w.nodes.find((n) => n.name === "Kredensial");
+    const nakal = set.parameters.assignments.assignments
+      .map((a) => a.name)
+      .filter((n) => /secret/i.test(n));
+    assert.deepEqual(nakal, [], `${berkas} menyimpan secret di node Kredensial`);
+  }
+});
+
 test("file ter-commit tidak membawa kredensial hidup", () => {
   // Repo ini publik: token hidup di sini akan di-scrape bot dalam hitungan menit.
   // Nilai asli hidup di portofolio-publish.local.json yang di-gitignore.
@@ -268,23 +323,43 @@ test("Wait node punya webhookId dan batas waktu", () => {
 
 // ── Menjalankan sumber Code node "Rakit slide" apa adanya dari JSON, dengan
 // global n8n yang dipalsukan. Tidak ada salinan template di file test ini.
-function rakit({ ronde = 0, gambar = 5, heading, body, hashtags = ["#a"] } = {}) {
+function rakit({
+  ronde = 0,
+  gambar = 5,
+  heading,
+  body,
+  hashtags = ["#a"],
+  // null = artikel tanpa gambar, atau unduhan cover yang gagal. Dua-duanya jalur
+  // yang sama dari sisi Rakit slide.
+  cover = null,
+} = {}) {
   const slide = {
     heading: heading ?? "Satu dua tiga empat lima enam tujuh delapan",
     body: body ?? Array.from({ length: 25 }, (_, i) => `kata${i}`).join(" "),
   };
   const palsu = {
     "Siapkan brief": {
-      folder: "artikel-uji",
-      code: "artikel-uji",
-      url_id: "https://daffathan-labs.my.id/id/articles/uji",
-      url_en: "https://daffathan-labs.my.id/en/articles/uji",
-      dilewat: [],
+      json: {
+        folder: "artikel-uji",
+        code: "artikel-uji",
+        url_id: "https://daffathan-labs.my.id/id/articles/uji",
+        url_en: "https://daffathan-labs.my.id/en/articles/uji",
+        cover: cover ? "https://api.contoh/uploads/articles/abc.webp" : null,
+        repo: "Daffathan-Labs/Articles",
+        berkas_md: ["artikel-uji-id.md", "artikel-uji-en.md"],
+        dilewat: [],
+      },
     },
-    "Gemini copy": { output: { linkedin_caption: "LI", ig_caption: "IG", hashtags } },
+    "Gemini copy": {
+      json: { output: { linkedin_caption: "LI", ig_caption: "IG", hashtags } },
+    },
+    // Node HTTP responseFormat:file — json kosong, muatannya di binary.
+    "Ambil cover": cover
+      ? { json: {}, binary: { data: { data: cover.b64, mimeType: cover.mime } } }
+      : { json: {} },
   };
   const $ = (n) => ({
-    first: () => ({ json: palsu[n] }),
+    first: () => palsu[n],
     all: () =>
       n === "Pecah slide"
         ? Array.from({ length: 5 }, () => ({ json: slide }))
@@ -331,6 +406,56 @@ test("logo hexagon tertanam di tiap slide", () => {
     // Placeholder {{LOGO}} yang gagal terisi menghasilkan src kosong dan lolos diam-diam.
     assert.ok(m[1].length > 1000, `slide ${i + 1}: base64 logo cuma ${m[1].length} char`);
   }
+});
+
+// -- gambar artikel: satu identitas untuk website, LinkedIn, dan slide 1 ----------
+const COVER = { b64: "Q09WRVI=", mime: "image/webp" };
+
+test("punya cover: slide 1 memakai gambar artikel, slide lain dari Gemini", () => {
+  const { slides } = rakit({ cover: COVER });
+  assert.match(slides[0], /src="data:image\/webp;base64,Q09WRVI="/, "slide 1 bukan cover");
+  // mimeType dibaca dari unduhan, bukan diasumsikan jpeg: API menyajikan WebP, dan
+  // menuliskannya sebagai image/jpeg bikin Chromium menolak merendernya.
+  for (const s of slides.slice(1)) {
+    assert.match(s, /src="data:image\/jpeg;base64,QUJD"/, "slide 2+ ikut memakai cover");
+    assert.ok(!s.includes("Q09WRVI="), "cover bocor ke slide selain yang pertama");
+  }
+});
+
+test("punya cover: tidak ada hero yang digenerate", () => {
+  // Ini yang mencegah commit balik untuk artikel yang gambarnya sudah ada.
+  assert.equal(rakit({ cover: COVER }).hero, null);
+});
+
+test("tanpa cover: slide 1 dari Gemini, dan hero dibuat", () => {
+  const { slides, hero } = rakit();
+  assert.match(slides[0], /src="data:image\/jpeg;base64,QUJD"/);
+  assert.ok(hero, "hero tidak dibuat padahal artikel tidak punya gambar");
+  assert.match(hero, /width:1200px;height:630px/, "hero bukan lanskap 1200x630");
+  assert.match(hero, /src="data:image\/jpeg;base64,QUJD"/, "hero tidak memakai raster slide 1");
+});
+
+test("hero adalah foto polos — nol teks, nol logo, nol veil", () => {
+  // Ini gambar artikel, bukan slide. Teks apa pun di sini ikut jadi thumbnail
+  // website dan og:image, dan tidak bisa dihapus tanpa commit baru.
+  const { hero } = rakit();
+  for (const jejak of ["<h1", "<p", "veil", "Daffathan Labs", "class=\"logo\"", "nomor"]) {
+    assert.ok(!hero.includes(jejak), `hero memuat ${jejak}`);
+  }
+});
+
+test("tanpa cover dan semua gambar Gemini gagal: tidak ada hero kosong", () => {
+  // Hero tanpa raster berarti commit gambar hitam polos ke repo. Lebih baik tidak
+  // ada gambar sama sekali daripada gambar kosong yang permanen.
+  const { hero, slides } = rakit({ gambar: 0 });
+  assert.equal(hero, null);
+  assert.equal(slides.length, 5, "carousel tetap terbit walau tanpa latar");
+});
+
+test("brief diteruskan ke cabang commit: repo dan nama berkas .md", () => {
+  const r = rakit();
+  assert.equal(r.repo, "Daffathan-Labs/Articles");
+  assert.deepEqual(r.berkas_md, ["artikel-uji-id.md", "artikel-uji-en.md"]);
 });
 
 test("hashtag dipotong 5 walau model mengirim lebih", () => {
@@ -407,6 +532,39 @@ test("prompt melarang URL di slide dan membatasi hashtag 5", () => {
   assert.match(prompt, /SLIDE 5: heading dan body-nya DIISI SISTEM/);
 });
 
+test("Ambil cover tidak mematikan eksekusi saat artikel tidak punya gambar", () => {
+  // Artikel tanpa gambar bikin URL-nya kosong dan node ini gagal — itu jalur normal,
+  // bukan kondisi error. Tanpa onError, artikel tanpa gambar menghentikan seluruh
+  // cabang sosmed.
+  assert.equal(byName["Ambil cover"].onError, "continueRegularOutput");
+  assert.match(byName["Ambil cover"].parameters.url, /\$json\.cover/);
+  assert.equal(
+    byName["Ambil cover"].parameters.options.response.response.responseFormat,
+    "file"
+  );
+});
+
+test("LinkedIn memakai gambar artikel, bukan slide ber-teks", () => {
+  const u = byName["Ambil gambar LinkedIn"].parameters.url;
+  // Urutannya penting: cover dulu, hero kedua, slide 01 sebagai jaring terakhir.
+  const iCover = u.indexOf("json.cover");
+  const iHero = u.indexOf("/hero.jpg");
+  const iSlide = u.indexOf("urls[0]");
+  assert.ok(iCover >= 0 && iHero > iCover && iSlide > iHero, `urutan fallback salah: ${u}`);
+  assert.ok(!nama.has("Ambil slide 01"), "node lama masih ada");
+});
+
+test("hero ikut menumpang panggilan Render, dengan ukuran lanskap", () => {
+  const b = byName["Render"].parameters.jsonBody;
+  assert.match(b, /name: 'hero'/);
+  assert.match(b, /w: 1200, h: 630/);
+  // Slide TIDAK boleh ikut dikirimi w/h — Instagram butuh 1080x1350, dan render-svc
+  // memakai default itu justru saat w/h tidak dikirim.
+  assert.doesNotMatch(b, /padStart\(2, '0'\), html: h, w:/);
+  // Ekspresinya panjang dan mudah salah kurung; pastikan JS-nya valid.
+  assert.doesNotThrow(() => new Function(`return (${b.replace(/^=\{\{|\}\}$/g, "")})`));
+});
+
 test("gambar dikonversi JPEG sebelum masuk render", () => {
   // PNG mentah lima slide menembus batas body 8 MB render-svc dan gagal 413.
   const n = byName["Jadi JPEG"];
@@ -439,7 +597,11 @@ test("kredensial: Gmail terpasang, sisanya placeholder yang jelas", () => {
 
 test("semua e-mail lewat node Gmail, bukan SMTP", () => {
   const email = wf.nodes.filter((n) => /gmail|emailSend/.test(n.type));
-  assert.equal(email.length, 4);
+  // Kirim preview, Email hasil, Lapor render gagal, Lapor dilewati, Lapor commit.
+  assert.deepEqual(
+    email.map((n) => n.name).sort(),
+    ["Email hasil", "Kirim preview", "Lapor commit", "Lapor dilewati", "Lapor render gagal"]
+  );
   for (const n of email) {
     assert.equal(n.type, "n8n-nodes-base.gmail", n.name);
     assert.equal(n.parameters.emailType, "html", n.name);
@@ -447,6 +609,177 @@ test("semua e-mail lewat node Gmail, bukan SMTP", () => {
     assert.equal(n.parameters.options.appendAttribution, false, n.name);
     assert.match(n.parameters.sendTo, /json\.notify_email/, n.name);
   }
+});
+
+// -- cabang commit balik ----------------------------------------------------------
+/** Jalankan sumber Code node asli dari JSON, dengan node lain dipalsukan. */
+const jalankan = (nodeName, { input = [], refs = {} } = {}) => {
+  const $ = (n) => {
+    if (!(n in refs)) throw new Error(`test tidak menyiapkan node "${n}"`);
+    const arr = Array.isArray(refs[n]) ? refs[n] : [refs[n]];
+    return { first: () => arr[0], all: () => arr };
+  };
+  const $input = { first: () => input[0], all: () => input };
+  return new Function("$", "$input", byName[nodeName].parameters.jsCode)($, $input);
+};
+
+const RENCANA = {
+  hero: "<html>hero</html>",
+  repo: "Daffathan-Labs/Articles",
+  folder: "artikel-uji",
+  berkas_md: ["artikel-uji-id.md", "artikel-uji-en.md"],
+};
+const URLS = {
+  urls: [
+    "https://r/a/portofolio/artikel-uji/01.jpg?v=1",
+    "https://r/a/portofolio/artikel-uji/hero.jpg?v=1",
+  ],
+};
+const susun = (rakit = RENCANA, render = URLS) =>
+  jalankan("Susun commit", { refs: { "Rakit slide": { json: rakit }, Render: { json: render } } });
+
+test("Susun commit: artikel yang sudah punya gambar tidak memicu commit apa pun", () => {
+  // Nol item berarti seluruh rantai di bawahnya tidak dieksekusi — ini yang membuat
+  // 45 artikel yang sudah ada tidak pernah tersentuh.
+  assert.deepEqual(susun({ ...RENCANA, hero: null }), []);
+});
+
+test("Susun commit: path dan URL raw dibentuk persis seperti 45 artikel yang ada", () => {
+  const j = susun()[0].json;
+  assert.equal(j.path_gambar, "articles/artikel-uji/hero.jpg");
+  assert.equal(
+    j.url_gambar,
+    "https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/artikel-uji/hero.jpg"
+  );
+  // Hero dicari lewat nama berkas, bukan indeks: urls juga memuat 5 slide.
+  assert.match(j.sumber, /hero\.jpg/);
+});
+
+test("Susun commit: menolak repo/folder yang bisa menulis ke path salah", () => {
+  for (const buruk of [
+    { repo: "" }, { repo: "tanpa-slash" }, { repo: "a/b/c" },
+    { folder: "../rahasia" }, { folder: "" }, { berkas_md: [] },
+  ]) {
+    assert.throws(() => susun({ ...RENCANA, ...buruk }), `${JSON.stringify(buruk)} lolos`);
+  }
+});
+
+test("Susun commit: hero disusun tapi tidak terender = berhenti, bukan commit URL 404", () => {
+  assert.throws(
+    () => susun(RENCANA, { urls: ["https://r/a/portofolio/artikel-uji/01.jpg"] }),
+    /tidak ada di balasan render-svc/
+  );
+});
+
+test("Pecah md: gambar gagal di-commit = markdown tidak disentuh", () => {
+  // Urutan ini yang mencegah markdown menunjuk URL yang masih 404.
+  const refs = { "Susun commit": susun()[0] };
+  assert.throws(
+    () => jalankan("Pecah md", { input: [{ json: { message: "Bad credentials" } }], refs }),
+    /markdown tidak disentuh/
+  );
+  // 422 "already exists" dianggap sukses: berkasnya ada, dan itu yang penting.
+  const lolos = jalankan("Pecah md", {
+    input: [{ json: { message: 'hero.jpg already exists' } }],
+    refs,
+  });
+  assert.equal(lolos.length, 2);
+  assert.deepEqual(lolos.map((i) => i.json.path), [
+    "articles/artikel-uji/artikel-uji-id.md",
+    "articles/artikel-uji/artikel-uji-en.md",
+  ]);
+});
+
+// -- sisip-gambar diuji terhadap artikel SUNGGUHAN --------------------------------
+const ARTIKEL = path.join(
+  import.meta.dirname, "..", "articles",
+  "automate-screenshot-playwright", "automate-screenshot-playwright-id.md"
+);
+
+/** Buang dua baris gambar dari artikel asli, jadi seolah artikel tanpa gambar. */
+function tanpaGambar(teks) {
+  return teks
+    .split("\n")
+    .filter((b) => !/^<!--\s*image:/i.test(b) && !/^<img[^>]+src=/i.test(b))
+    .join("\n");
+}
+
+const sisip = (isiAsli, url = "https://raw.githubusercontent.com/O/R/main/articles/f/hero.jpg") => {
+  const path_ = "articles/f/f-id.md";
+  return jalankan("Sisip gambar", {
+    input: [{ json: { path: path_, sha: "SHA1", content: Buffer.from(isiAsli, "utf8").toString("base64") } }],
+    refs: { "Pecah md": [{ json: { path: path_, url_gambar: url, repo: "O/R" } }] },
+  });
+};
+
+test("Sisip gambar: mengubah tepat dua baris, sisanya identik", () => {
+  const asli = fs.readFileSync(ARTIKEL, "utf8");
+  const kosong = tanpaGambar(asli);
+  const hasil = Buffer.from(sisip(kosong)[0].json.isi_b64, "base64").toString("utf8");
+
+  const baru = hasil.split("\n").filter((b) => !kosong.split("\n").includes(b) || b === "");
+  const ditambah = hasil.split("\n").length - kosong.split("\n").length;
+  assert.equal(ditambah, 2, `baris bertambah ${ditambah}, harusnya 2`);
+  // Berkas orang lain: setiap baris yang tidak disentuh harus tetap utuh, urut.
+  assert.deepEqual(
+    hasil.split("\n").filter((b) => !/^<!--\s*image:/i.test(b) && !/^<img/i.test(b)),
+    kosong.split("\n"),
+    "ada baris lain yang ikut berubah"
+  );
+  assert.ok(baru.length >= 0);
+});
+
+test("Sisip gambar: metadata setelah excerpt, <img> setelah judul H1", () => {
+  const kosong = tanpaGambar(fs.readFileSync(ARTIKEL, "utf8"));
+  const baris = Buffer.from(sisip(kosong)[0].json.isi_b64, "base64").toString("utf8").split("\n");
+  const iExcerpt = baris.findIndex((b) => /^<!--\s*excerpt:/i.test(b));
+  const iImageMeta = baris.findIndex((b) => /^<!--\s*image:/i.test(b));
+  const iJudul = baris.findIndex((b) => /^#\s+\S/.test(b));
+  const iImg = baris.findIndex((b) => /^<img/i.test(b));
+  assert.equal(iImageMeta, iExcerpt + 1, "baris metadata tidak tepat setelah excerpt");
+  assert.ok(iImg > iJudul, "<img> harus setelah judul H1, sama seperti artikel lain");
+  assert.ok(iImg < iJudul + 4, "<img> terlalu jauh dari judul");
+});
+
+test("Sisip gambar: alt di-escape, tidak bisa memecah atribut", () => {
+  const jahat = '<!-- title: Judul "kutip" & <tag> -->\n<!-- excerpt: x -->\n\n# Judul\n\nisi\n';
+  const hasil = Buffer.from(sisip(jahat)[0].json.isi_b64, "base64").toString("utf8");
+  assert.match(hasil, /alt="Judul &quot;kutip&quot; &amp; &lt;tag&gt;"/);
+});
+
+test("Sisip gambar: artikel yang sudah punya gambar dilewati, bukan ditimpa", () => {
+  // Kalau ada yang menambahkan gambar di antara publish dan commit, gambar pilihan
+  // manusia menang atas gambar mesin.
+  const asli = fs.readFileSync(ARTIKEL, "utf8");
+  const out = sisip(asli)[0].json;
+  assert.equal(out.lewati, true);
+  assert.equal(out.isi_b64, undefined, "berkas tetap ditulis padahal harus dilewati");
+});
+
+test("cabang commit tidak bisa menjatuhkan approval yang sedang menunggu", () => {
+  // Cabang ini berjalan berdampingan dengan Wait 48 jam. Satu node yang gagal keras
+  // di sini akan menjatuhkan eksekusi yang sedang menahan artikel orang.
+  for (const n of ["Ambil hero", "Simpan gambar", "Ambil md", "Simpan md"]) {
+    assert.equal(byName[n].onError, "continueRegularOutput", n);
+  }
+  // Dan cabangnya memang berangkat dari keluaran sukses Render, sejajar Kirim preview.
+  const dariRender = wf.connections["Render"].main[0].map((c) => c.node);
+  assert.deepEqual(dariRender.sort(), ["Kirim preview", "Susun commit"]);
+});
+
+test("commit ke GitHub memakai token dari Kredensial dan header API yang benar", () => {
+  for (const n of ["Simpan gambar", "Ambil md", "Simpan md"]) {
+    const h = Object.fromEntries(
+      byName[n].parameters.headerParameters.parameters.map((p) => [p.name, p.value])
+    );
+    assert.match(h.Authorization, /json\.github_token/, n);
+    assert.equal(h["X-GitHub-Api-Version"], "2022-11-28", n);
+  }
+  assert.equal(byName["Simpan gambar"].parameters.method, "PUT");
+  assert.equal(byName["Simpan md"].parameters.method, "PUT");
+  // Berkas baru tidak boleh mengirim sha; berkas yang ditimpa wajib.
+  assert.doesNotMatch(byName["Simpan gambar"].parameters.jsonBody, /sha:/);
+  assert.match(byName["Simpan md"].parameters.jsonBody, /sha: \$json\.sha/);
 });
 
 test("render punya loop retry 8x yang benar-benar mengubah input", () => {

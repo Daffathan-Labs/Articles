@@ -96,6 +96,10 @@ const FIELD = [
   // MEDIA_CREATOR, izin content_publish terbukti ada.
   ['ig_user_id', 'ISI_IG_USER_ID', asli('ig_user_id', 'ISI_IG_USER_ID')],
   ['ig_token', 'ISI_IG_ACCESS_TOKEN', asli('ig_token', 'ISI_IG_ACCESS_TOKEN')],
+  // PAT fine-grained: HANYA repo Articles, HANYA Contents read/write. Dipakai cabang
+  // commit balik untuk menulis hero.jpg dan dua berkas .md. Izin lain tidak dibutuhkan
+  // dan cuma memperbesar kerugian kalau bocor.
+  ['github_token', 'ISI_GITHUB_TOKEN', asli('github_token', 'ISI_GITHUB_TOKEN')],
   ['notify_email', 'ISI_EMAIL_TUJUAN', 'daffa.fathan9@gmail.com'],
 ];
 const kondisi = (leftValue, operator, rightValue) => ({
@@ -213,6 +217,16 @@ hubung('Respond delta', 'Ada artikel baru?');
 N('Siapkan brief', 'n8n-nodes-base.code', 2, [820, 460], { jsCode: baca('siapkan-brief.js') });
 hubung('Ada artikel baru?', 'Siapkan brief', 0);
 
+// Gambar artikel diunduh sekali di sini, lalu dipakai tiga kali: latar slide 1,
+// gambar tunggal LinkedIn, dan penentu perlu-tidaknya hero digenerate.
+// `cover` kosong (artikel tanpa gambar) bikin URL-nya invalid dan node ini gagal —
+// itu memang jalur normalnya, makanya onError meneruskan alih-alih menghentikan.
+N('Ambil cover', 'n8n-nodes-base.httpRequest', 4.2, [1040, 240], {
+  url: '={{ $json.cover }}',
+  options: { response: { response: { responseFormat: 'file', outputPropertyName: 'data' } } },
+}, { onError: 'continueRegularOutput' });
+hubung('Siapkan brief', 'Ambil cover');
+
 // ─────────────────────────────────────────────── 3. caption + slide
 N('Gemini copy', '@n8n/n8n-nodes-langchain.chainLlm', 1.7, [1040, 460], {
   promptType: 'define',
@@ -221,7 +235,7 @@ N('Gemini copy', '@n8n/n8n-nodes-langchain.chainLlm', 1.7, [1040, 460], {
   text: '=' + baca('prompt-copy.txt').replace('{{VOICE}}', bacaRoot('docs/voice.md')),
   hasOutputParser: true,
 }, { retryOnFail: true, maxTries: 5, waitBetweenTries: 5000 });
-hubung('Siapkan brief', 'Gemini copy');
+hubung('Ambil cover', 'Gemini copy');
 
 N('Gemini Flash', '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 1, [1000, 680], {
   modelName: 'models/gemini-3-flash-preview',
@@ -305,12 +319,97 @@ N('Render', 'n8n-nodes-base.httpRequest', 4.2, [2140, 460], http({
   headerParameters: { parameters: [bearer(`{{ ${K('render_token')} }}`)] },
   sendBody: true,
   specifyBody: 'json',
+  // Hero ikut menumpang panggilan yang sama, cuma kalau artikelnya tidak punya gambar.
+  // 1200x630 melayani og:image dan gambar tunggal LinkedIn sekaligus; slide tetap
+  // 1080x1350 karena tidak mengirim w/h.
   jsonBody:
     "={{ JSON.stringify({ brand: 'portofolio', code: $json.code, caption: $json.ig_caption, " +
-    "images: $json.slides.map((h, i) => ({ name: String(i + 1).padStart(2, '0'), html: h })) }) }}",
+    "images: $json.slides.map((h, i) => ({ name: String(i + 1).padStart(2, '0'), html: h }))" +
+    ".concat($json.hero ? [{ name: 'hero', html: $json.hero, w: 1200, h: 630 }] : []) }) }}",
   options: { timeout: 60000 },
 }), { onError: 'continueErrorOutput' });
 hubung('Rakit slide', 'Render');
+
+// ── commit balik: gambar hasil generate jadi milik repo, bukan cuma milik database
+// Dijalankan sejajar dengan `Kirim preview`, bukan setelah approval: gambar artikel
+// milik website dan tidak ada hubungannya dengan setuju/tidaknya posting ke sosmed.
+//
+// Commit ini SENGAJA memicu Action lagi — itu yang membuat website mendapat gambarnya,
+// lewat jalur publish yang sama seperti biasa, tanpa node publish tambahan. Loop-nya
+// berhenti sendiri: `classifyDiff` hanya menghitung status "A" sebagai artikel baru,
+// dan .md hasil commit ini berstatus "M", jadi `new_folders` kosong dan cabang sosmed
+// tidak jalan dua kali.
+//
+// SEMUA node di cabang ini memakai onError:continueRegularOutput. Cabang ini berjalan
+// berdampingan dengan approval yang menunggu sampai 48 jam; kegagalan di sini tidak
+// boleh menjatuhkan eksekusi yang sedang menahan artikel orang.
+const GH = () => [
+  bearer(`{{ ${K('github_token')} }}`),
+  { name: 'Accept', value: 'application/vnd.github+json' },
+  { name: 'X-GitHub-Api-Version', value: '2022-11-28' },
+];
+
+N('Susun commit', 'n8n-nodes-base.code', 2, [2360, 660], { jsCode: baca('susun-commit.js') });
+hubung('Render', 'Susun commit', 0);
+
+N('Ambil hero', 'n8n-nodes-base.httpRequest', 4.2, [2580, 660], {
+  url: '={{ $json.sumber }}',
+  options: { response: { response: { responseFormat: 'file', outputPropertyName: 'data' } } },
+}, { onError: 'continueRegularOutput' });
+hubung('Susun commit', 'Ambil hero');
+
+// Berkas baru, jadi tanpa `sha`. Kalau hero.jpg sudah ada, GitHub membalas 422
+// "already exists" — dan itu ditangani sebagai sukses di `Pecah md`, karena URL-nya
+// tetap benar dan yang penting bagi markdown cuma berkasnya ada.
+N('Simpan gambar', 'n8n-nodes-base.httpRequest', 4.2, [2800, 660], http({
+  method: 'PUT',
+  url: `=https://api.github.com/repos/{{ $('Susun commit').first().json.repo }}/contents/{{ $('Susun commit').first().json.path_gambar }}`,
+  sendHeaders: true,
+  headerParameters: { parameters: GH() },
+  sendBody: true,
+  specifyBody: 'json',
+  jsonBody:
+    "={{ JSON.stringify({ message: 'chore: gambar otomatis untuk ' + $('Susun commit').first().json.folder, " +
+    'content: $binary.data.data }) }}',
+}), { onError: 'continueRegularOutput' });
+hubung('Ambil hero', 'Simpan gambar');
+
+N('Pecah md', 'n8n-nodes-base.code', 2, [3020, 660], { jsCode: baca('pecah-md.js') });
+hubung('Simpan gambar', 'Pecah md');
+
+N('Ambil md', 'n8n-nodes-base.httpRequest', 4.2, [3240, 660], http({
+  url: "=https://api.github.com/repos/{{ $json.repo }}/contents/{{ $json.path }}",
+  sendHeaders: true,
+  headerParameters: { parameters: GH() },
+}), { onError: 'continueRegularOutput' });
+hubung('Pecah md', 'Ambil md');
+
+N('Sisip gambar', 'n8n-nodes-base.code', 2, [3460, 660], { jsCode: baca('sisip-gambar.js') });
+hubung('Ambil md', 'Sisip gambar');
+
+N('Simpan md', 'n8n-nodes-base.httpRequest', 4.2, [3680, 660], http({
+  method: 'PUT',
+  url: `=https://api.github.com/repos/{{ $('Susun commit').first().json.repo }}/contents/{{ $json.path }}`,
+  sendHeaders: true,
+  headerParameters: { parameters: GH() },
+  sendBody: true,
+  specifyBody: 'json',
+  jsonBody:
+    "={{ JSON.stringify({ message: 'chore: sisipkan gambar otomatis ke ' + $json.path, " +
+    'content: $json.isi_b64, sha: $json.sha }) }}',
+}), { onError: 'continueRegularOutput' });
+hubung('Sisip gambar', 'Simpan md');
+
+N('Lapor commit', 'n8n-nodes-base.gmail', 2.2, [3900, 660], gmail(
+  "=[Portofolio] Gambar otomatis: {{ $('Susun commit').first().json.folder }}",
+  '=<p>Artikel ini tidak punya gambar, jadi latar slide 1 dipromosikan jadi gambar artikel ' +
+    'dan di-commit balik ke repo.</p>' +
+    "<p><img src=\"{{ $('Susun commit').first().json.url_gambar }}\" style=\"max-width:480px\"></p>" +
+    '<pre style="white-space:pre-wrap">{{ JSON.stringify($input.all().map(i => i.json), null, 2).slice(0, 1200) }}</pre>' +
+    '<p>Commit ini memicu Action sekali lagi; itu yang memasang gambarnya di website. ' +
+    'Cabang sosmed <b>tidak</b> jalan dua kali — berkas .md-nya berstatus M, bukan A.</p>'
+), { credentials: GMAIL_CRED });
+hubung('Simpan md', 'Lapor commit');
 
 // ─────────────────────────────────────────────── 4. approval
 N('Kirim preview', 'n8n-nodes-base.gmail', 2.2, [2360, 360], gmail(
@@ -378,11 +477,22 @@ N('LinkedIn init upload', 'n8n-nodes-base.httpRequest', 4.2, [3020, 180], http({
 }), { onError: 'continueRegularOutput' });
 hubung('Approve?', 'LinkedIn init upload', 0);
 
-N('Ambil slide 01', 'n8n-nodes-base.httpRequest', 4.2, [3240, 180], {
-  url: "={{ $('Render').first().json.urls[0] }}",
+// LinkedIn mem-posting gambar artikel, bukan slide ber-teks — sama dengan yang tampil
+// sebagai thumbnail di website, jadi satu artikel punya satu wajah di semua tempat.
+// Urutannya: cover artikel, kalau tidak ada pakai hero hasil generate, dan kalau
+// dua-duanya tidak ada baru jatuh ke slide 01 seperti perilaku lama.
+//
+// Node ini tidak bisa dihapus walau `Ambil cover` sudah mengunduh gambar yang sama:
+// `LinkedIn upload` membaca binary dari ITEM MASUKANNYA, dan tidak ada ekspresi n8n
+// yang bisa menarik binary dari node lain.
+N('Ambil gambar LinkedIn', 'n8n-nodes-base.httpRequest', 4.2, [3240, 180], {
+  url:
+    "={{ $('Siapkan brief').first().json.cover " +
+    "|| $('Render').first().json.urls.find(u => u.includes('/hero.jpg')) " +
+    "|| $('Render').first().json.urls[0] }}",
   options: { response: { response: { responseFormat: 'file', outputPropertyName: 'data' } } },
 }, { onError: 'continueRegularOutput' });
-hubung('LinkedIn init upload', 'Ambil slide 01');
+hubung('LinkedIn init upload', 'Ambil gambar LinkedIn');
 
 N('LinkedIn upload', 'n8n-nodes-base.httpRequest', 4.2, [3460, 180], http({
   method: 'PUT',
@@ -393,7 +503,7 @@ N('LinkedIn upload', 'n8n-nodes-base.httpRequest', 4.2, [3460, 180], http({
   contentType: 'binaryData',
   inputDataFieldName: 'data',
 }), { onError: 'continueRegularOutput' });
-hubung('Ambil slide 01', 'LinkedIn upload');
+hubung('Ambil gambar LinkedIn', 'LinkedIn upload');
 
 N('LinkedIn post', 'n8n-nodes-base.httpRequest', 4.2, [3680, 180], http({
   method: 'POST',

@@ -7,3 +7,10 @@ package-lock.json
 # API key, dan token render yang asli — itu file yang di-import ke n8n.
 # Versi ter-commit (tanpa .local) memakai placeholder dan strukturnya identik.
 *.local.json
+
+# Ekspor mentah dari n8n. "Download" di n8n menulis nilai node Set apa adanya —
+# tidak ada penyamaran — jadi berkas hasil ekspor SELALU membawa kredensial hidup.
+# Konvensi .local.json di atas sudah gagal sekali persis karena ini: berkas ekspor
+# tidak dinamai .local, jadi lolos. Simpan hasil ekspor di luar repo.
+n8n/Portofolio.json
+n8n/*.export.json

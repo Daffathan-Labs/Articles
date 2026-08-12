@@ -10,10 +10,16 @@ if (!baru.length) return [];
 
 // Slug diambil dari respons API, bukan di-slugify sendiri. Server yang membuatnya
 // dari `title` (slugify strict), dan hasilnya sering beda dari tebakan.
+// `image` ikut diambil dari sana karena API mengembalikannya sudah absolut dan sudah
+// dikonversi ke WebP di /uploads — bukan URL raw.githubusercontent asli di markdown.
 const slugs = {};
+const gambar = {};
 for (const r of $('Publish artikel').all()) {
   const d = r.json && r.json.data;
-  if (d && d.id) slugs[`${d.id}|${d.locale}`] = d.slug;
+  if (d && d.id) {
+    slugs[`${d.id}|${d.locale}`] = d.slug;
+    if (d.image) gambar[`${d.id}|${d.locale}`] = d.image;
+  }
 }
 
 const SITE = String($('Kredensial').first().json.site_url || '').replace(/\/+$/, '');
@@ -51,6 +57,11 @@ const teks = String(utama.content || '')
   .trim()
   .slice(0, 4000);
 
+// Gambar artikel: satu identitas untuk website, LinkedIn, dan latar slide 1.
+// Kosong berarti artikelnya tidak punya gambar sama sekali — dan itu yang memicu
+// hero hasil Gemini di-commit balik ke repo nanti.
+const cover = gambar[`${folder}|id`] || gambar[`${folder}|en`] || null;
+
 return [{
   json: {
     folder,
@@ -63,6 +74,12 @@ return [{
     teks,
     url_en: urlEn,
     url_id: urlId,
+    cover,
+    // Dipakai cabang commit balik. `repo` dari GITHUB_REPOSITORY, `berkas_md` dari
+    // pembacaan folder di publish.js — dua-duanya metadata pipeline di level atas
+    // payload, bukan bagian dari CreateArticleDto.
+    repo: body.repo || '',
+    berkas_md: (body.md_files || {})[folder] || [],
     dilewat: baru.slice(1),
   },
 }];

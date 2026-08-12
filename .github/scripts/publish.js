@@ -199,11 +199,17 @@ async function main() {
 
   const articles = [];
   const newFolders = [];
+  // folder -> nama berkas .md-nya. n8n butuh ini kalau harus menulis balik gambar
+  // hasil generate ke markdown-nya. Nama berkasnya sengaja tidak ditebak dari nama
+  // folder: parseArticle menerima empat bentuk sufiks locale, dan menebak salah
+  // berarti commit balik menulis ke berkas yang tidak ada.
+  const mdFiles = {};
 
   for (const folder of folders) {
     const files = fs
       .readdirSync(path.join(dir, folder))
       .filter((f) => f.endsWith(".md"));
+    mdFiles[folder] = files;
     for (const file of files) {
       articles.push(parseArticle(dir, folder, file));
     }
@@ -226,6 +232,7 @@ async function main() {
     sha: process.env.SHA || "HEAD",
     repo: process.env.REPO || "",
     new_folders: newFolders,
+    md_files: mdFiles,
     // Bentuknya persis CreateArticleDto — n8n meneruskan array ini apa adanya ke
     // API. Jangan tambah field di sini: /articles pakai forbidNonWhitelisted,
     // satu field asing = 400. Metadata pipeline hidup di level atas payload.
