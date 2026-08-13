@@ -788,6 +788,28 @@ hubung('Approve?', 'Pecah URL slide', 0);
 // Caption dan children dikirim sebagai form body, bukan query string seperti workflow
 // aslinya: caption kita berisi baris baru, emoji, dan URL — encoding query string
 // gagalnya cuma sesekali, dan itu jenis bug yang paling susah dilacak.
+/**
+ * Coba ulang otomatis untuk SETIAP panggilan Meta di cabang Instagram dan Facebook.
+ *
+ * Gagalnya cabang ini hampir selalu sesaat: rate limit, 5xx, atau gambar yang belum
+ * sempat diambil Meta. Yang selama ini menyembuhkannya adalah menjalankan ulang dengan
+ * tangan — dan itu persis pekerjaan yang `retryOnFail` lakukan sendiri.
+ *
+ * 5 percobaan x 5 detik = sampai 20 detik menunggu per node, cuma kalau memang gagal.
+ * Itu batas atas n8n; tidak ada nilai yang lebih besar untuk dipilih.
+ *
+ * Tetap menggigit walau node-nya `onError: continueRegularOutput` — diuji langsung ke
+ * instance (2026-08-14) dengan node yang sengaja diarahkan ke URL 404: satu eksekusi
+ * memakan 4,2 detik untuk maxTries 3 x 2 detik, jadi jedanya benar-benar terjadi.
+ * Mesin n8n mencoba ulang DULU, `onError` baru berlaku setelah percobaan habis.
+ *
+ * Dipasang per node, bukan sebagai putaran balik ke kepala cabang: id container IG dan
+ * `media_fbid` yang sudah jadi tetap sah, jadi mengulang dari depan tidak membeli apa
+ * pun — dan di Facebook dia MENINGGALKAN JEJAK, karena tiap unggahan `published=false`
+ * yang tidak terpakai menumpuk di Halaman sebagai foto yatim.
+ */
+const ULANG = { retryOnFail: true, maxTries: 5, waitBetweenTries: 5000 };
+
 const igBody = (params) => http({
   method: 'POST',
   url: `=https://graph.instagram.com/v23.0/{{ ${K('ig_user_id')} }}/media`,
@@ -800,7 +822,7 @@ N('IG item container', 'n8n-nodes-base.httpRequest', 4.2, [3240, 460], igBody([
   { name: 'image_url', value: '={{ $json.url }}' },
   { name: 'is_carousel_item', value: 'true' },
   { name: 'access_token', value: `={{ ${K('ig_token')} }}` },
-]), { onError: 'continueRegularOutput' });
+]), { onError: 'continueRegularOutput', ...ULANG });
 hubung('Pecah URL slide', 'IG item container');
 
 N('Kumpulkan children', 'n8n-nodes-base.code', 2, [3460, 460], { jsCode: baca('kumpulkan-children.js') });
@@ -811,7 +833,7 @@ N('IG carousel container', 'n8n-nodes-base.httpRequest', 4.2, [3680, 460], igBod
   { name: 'children', value: '={{ $json.children }}' },
   { name: 'caption', value: "={{ $('Rakit slide').first().json.ig_caption }}" },
   { name: 'access_token', value: `={{ ${K('ig_token')} }}` },
-]), { onError: 'continueRegularOutput' });
+]), { onError: 'continueRegularOutput', ...ULANG });
 hubung('Kumpulkan children', 'IG carousel container');
 
 // Jeda yang dipandu status_code, bukan Wait node berdurasi tebakan: yang ditunggu adalah
@@ -832,7 +854,7 @@ N('IG publish', 'n8n-nodes-base.httpRequest', 4.2, [4120, 460], http({
       { name: 'access_token', value: `={{ ${K('ig_token')} }}` },
     ],
   },
-}), { onError: 'continueRegularOutput' });
+}), { onError: 'continueRegularOutput', ...ULANG });
 hubung('Tunggu IG matang', 'IG publish');
 
 N('IG permalink', 'n8n-nodes-base.httpRequest', 4.2, [4340, 460], http({
@@ -844,7 +866,7 @@ N('IG permalink', 'n8n-nodes-base.httpRequest', 4.2, [4340, 460], http({
       { name: 'access_token', value: `={{ ${K('ig_token')} }}` },
     ],
   },
-}), { onError: 'continueRegularOutput' });
+}), { onError: 'continueRegularOutput', ...ULANG });
 hubung('IG publish', 'IG permalink');
 
 // ─────────────────────────────────────────────── 5c. carousel Facebook
@@ -870,7 +892,7 @@ N('FB unggah foto', 'n8n-nodes-base.httpRequest', 4.2, [3240, 700], http({
       { name: 'access_token', value: `={{ ${K('fb_page_token')} }}` },
     ],
   },
-}), { onError: 'continueRegularOutput', ...fbNonaktif });
+}), { onError: 'continueRegularOutput', ...ULANG, ...fbNonaktif });
 if (FB_AKTIF) hubung('Pecah URL slide', 'FB unggah foto');
 
 N('Kumpulkan foto FB', 'n8n-nodes-base.code', 2, [3460, 700], {
@@ -903,7 +925,7 @@ N('FB posting', 'n8n-nodes-base.httpRequest', 4.2, [3680, 700], http({
       { name: 'access_token', value: `={{ ${K('fb_page_token')} }}` },
     ],
   },
-}), { onError: 'continueRegularOutput', ...fbNonaktif });
+}), { onError: 'continueRegularOutput', ...ULANG, ...fbNonaktif });
 if (FB_AKTIF) hubung('Kumpulkan foto FB', 'FB posting');
 
 // ─────────────────────────────────────────────── 6. lapor

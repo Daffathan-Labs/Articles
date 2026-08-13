@@ -888,6 +888,29 @@ test("penjaga kematangan IG tidak pernah membunuh cabangnya sendiri", async () =
   assert.equal(lama.diminta.length, 20, "batas ronde hilang — cabang bisa menggantung");
 });
 
+test("tiap panggilan Meta mencoba ulang sendiri, bukan menunggu dijalankan ulang tangan", () => {
+  // Gagalnya cabang IG/FB hampir selalu sesaat — rate limit, 5xx, gambar yang belum
+  // sempat diambil Meta — dan penyembuhnya selama ini "jalankan ulang". retryOnFail
+  // tetap menggigit walau node-nya onError:continueRegularOutput: diuji langsung ke
+  // instance dengan node yang diarahkan ke URL 404, maxTries 3 x 2 detik membuat satu
+  // eksekusi memakan 4,2 detik. Mesin mencoba ulang DULU, onError baru setelah habis.
+  //
+  // Disaring dari URL-nya, bukan daftar nama: node Meta yang ditambah nanti ikut
+  // terjaring sendiri, dan itu yang membuat test ini masih berguna tahun depan.
+  const meta = wf.nodes.filter(
+    (n) =>
+      n.type === "n8n-nodes-base.httpRequest" &&
+      /graph\.(instagram|facebook)\.com/.test(n.parameters.url || "")
+  );
+  assert.ok(meta.length >= 6, `cuma ${meta.length} node Meta terjaring — saringannya meleset`);
+  for (const n of meta) {
+    assert.equal(n.retryOnFail, true, `${n.name}: sekali gagal langsung menyerah`);
+    // 5 x 5 detik adalah batas atas n8n; tidak ada nilai lebih besar untuk dipilih.
+    assert.equal(n.maxTries, 5, `${n.name}: percobaan bukan batas atas n8n`);
+    assert.equal(n.waitBetweenTries, 5000, `${n.name}: jeda bukan batas atas n8n`);
+  }
+});
+
 test("Pecah URL slide: hero.jpg bukan slide, jadi tidak boleh masuk carousel", () => {
   // hero menumpang panggilan Render yang sama dan selalu jadi entri terakhir urls[].
   // Tanpa saringan dia jadi slide ke-6 di Instagram DAN foto ke-6 di Facebook —

@@ -760,6 +760,28 @@ env `PUBLIC_URL` **milik container itu**, bukan dari `render_url` yang kita kiri
 Kalau nanti service-nya dipindah ke domain ber-TLS, `PUBLIC_URL` di container harus
 ikut diubah — mengubah `render_url` saja membuat gambar tetap disajikan di alamat lama.
 
+### Gagal sesaat dicoba ulang sendiri
+
+Keenam node yang bicara ke `graph.instagram.com` / `graph.facebook.com` memakai
+`retryOnFail` **5 percobaan × 5 detik** — batas atas n8n. Gagalnya cabang ini hampir
+selalu sesaat (rate limit, 5xx, gambar yang belum sempat diambil Meta), dan penyembuhnya
+selama ini adalah menjalankan ulang dengan tangan.
+
+Dua hal yang diperiksa langsung ke instance, bukan dibaca dari dokumentasi:
+
+- `retryOnFail` **tetap menggigit** walau node-nya `onError: continueRegularOutput`. Node
+  yang diarahkan ke URL 404 dengan `maxTries: 3` dan jeda 2 detik membuat satu eksekusi
+  memakan **4,2 detik** — jedanya nyata. Mesin mencoba ulang dulu; `onError` baru berlaku
+  setelah percobaan habis.
+- Test menyaring node Meta dari **URL-nya**, bukan dari daftar nama, jadi node Meta yang
+  ditambah nanti ikut terjaring sendiri.
+
+> **Kenapa per node, bukan mengulang dari kepala cabang.** `media_fbid` dan id container
+> IG yang sudah jadi tetap sah, jadi mengulang `FB unggah foto` / `IG item container` dari
+> depan tidak membeli apa pun — dan di Facebook dia meninggalkan jejak: tiap unggahan
+> `published=false` yang tidak terpakai menumpuk di Halaman sebagai foto yatim yang tidak
+> pernah tayang dan tidak pernah dibersihkan.
+
 ### Carousel Instagram harus ditunggu matang
 
 `media_publish` yang dipanggil langsung setelah container dibuat dibalas **400 `Media ID
