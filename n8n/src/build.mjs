@@ -380,7 +380,11 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
           type: 'object',
           required: ['heading', 'body', 'image_prompt', 'image_mode'],
           properties: {
-            heading: { type: 'string', description: 'Bahasa Indonesia, MAKSIMAL 8 kata' },
+            // 6, bukan 8. Judulnya 74px HURUF BESAR di lebar 952px — sekitar 23 karakter
+            // per baris. Heading 8 kata jadi EMPAT baris dan slide-nya sesak; 6 kata
+            // ("Sadie Sink sebagai Jean Grey") duduk di dua baris. Angkanya harus sama
+            // dengan prompt-copy.txt dan maksKata di rakit-slide.js — ada test-nya.
+            heading: { type: 'string', description: 'Bahasa Indonesia, MAKSIMAL 6 kata, muat dua baris' },
             // 22-32, dan batas BAWAH-nya sama seriusnya. Panel teks tingginya tetap,
             // jadi body sembilan kata meninggalkan sepertiga slide sebagai bidang
             // kosong. Angkanya harus sama persis dengan prompt-copy.txt: skema dan

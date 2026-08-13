@@ -358,7 +358,7 @@ function rakit({
   potretDi = [],
 } = {}) {
   const slide = {
-    heading: heading ?? "Satu dua tiga empat lima enam tujuh delapan",
+    heading: heading ?? "Satu dua tiga empat lima enam",
     body: body ?? Array.from({ length: 32 }, (_, i) => `kata${i}`).join(" "),
     pakai_foto: fotoAsli,
   };
@@ -2402,14 +2402,25 @@ test("tahun film dikirim sebagai parameter sendiri, tidak ditempel ke judul", ()
   assert.match(byName["Gemini copy"].parameters.text, /TANPA TAHUN/, "prompt masih membolehkan tahun");
 });
 
-test("batas kata body sama di prompt dan di skema", () => {
+test("batas kata heading dan body sama di prompt, skema, DAN kode", () => {
   // Skema dan prompt yang berselisih tidak menimbulkan error apa pun — model mengikuti
   // skema, dan permintaan di prompt hilang tanpa jejak. Sudah kejadian: prompt minta
   // 22-32 kata sementara skema masih menulis "MAKSIMAL 25 kata", jadi panel teksnya
-  // tetap bolong walau promptnya sudah diperbaiki.
+  // tetap bolong walau promptnya sudah diperbaiki. Tiga tempat, satu angka.
   const skema = JSON.parse(byName["Skema copy"].parameters.inputSchema);
+  const prompt = byName["Gemini copy"].parameters.text;
+
   assert.match(skema.properties.slides.items.properties.body.description, /22-32 kata/);
-  assert.match(byName["Gemini copy"].parameters.text, /body: 22-32 KATA/);
+  assert.match(prompt, /body: 22-32 KATA/);
+
+  // Judul 74px huruf besar muat ~23 karakter per baris. 8 kata jadi EMPAT baris dan
+  // slide-nya sesak — itu yang bikin "Peter Parker benar-benar bertarung sendirian
+  // tanpa bantuan" menghabiskan separuh panel.
+  assert.match(skema.properties.slides.items.properties.heading.description, /MAKSIMAL 6 kata/);
+  assert.match(prompt, /heading: MAKSIMAL 6 KATA/);
+  const enam = Array.from({ length: 9 }, (_, i) => `kata${i}`).join(" ");
+  const judul = rakit({ ronde: 0, heading: enam }).slides[0].match(/<h1[^>]*>([^<]*)<\/h1>/)[1];
+  assert.equal(judul.replace("…", "").trim().split(/\s+/).length, 6, "kode masih memangkas di angka lain");
 });
 
 test("kunci TMDB dibaca lewat node Kredensial, bukan ditulis di URL", () => {

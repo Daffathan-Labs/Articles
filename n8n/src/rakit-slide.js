@@ -375,7 +375,10 @@ const slides = meta.map((m, i) => {
   // Slide terakhir memakai teks tetap; apa pun yang ditulis model untuk slide itu dibuang.
   const sumber = akhir ? CTA_AKHIR : m;
 
-  const heading = maksKata(polos(sumber.heading), Math.max(5, 8 - Math.floor(ronde / 2)));
+  // 6, bukan 8. Judul 74px huruf besar di lebar 952px muat ~23 karakter per baris, jadi
+  // 8 kata jadi empat baris dan slide-nya sesak. Angkanya harus sama dengan prompt dan
+  // skema — kalau berselisih, yang menang skema dan permintaannya hilang tanpa jejak.
+  const heading = maksKata(polos(sumber.heading), Math.max(5, 6 - Math.floor(ronde / 2)));
   // 32, bukan 25. Panel pias tingginya 742px dan body 25 kata cuma mengisi separuhnya —
   // sisanya bidang kosong. Batas ini jalan berpasangan dengan permintaan 22-32 kata di
   // prompt: menaikkan batas saja tidak menambah satu kata pun kalau modelnya tetap

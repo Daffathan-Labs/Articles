@@ -50,7 +50,11 @@ YANG HARUS DIHASILKAN
 5. slides — TEPAT 5 slide untuk carousel Instagram 1080x1350.
    Alurnya: [1] hook yang bikin berhenti scroll, [2][3][4] tiga poin konkret dari artikel,
    [5] penutup.
-   - heading: MAKSIMAL 8 KATA. Bahasa Indonesia. Kalimat, bukan judul bab.
+   - heading: MAKSIMAL 6 KATA. Bahasa Indonesia. Kalimat, bukan judul bab.
+     Judulnya dirender huruf besar dan sangat tebal, jadi 6 kata sudah memakan dua baris
+     penuh. Delapan kata jadi empat baris dan slide-nya terlihat sesak. Buang kata yang
+     tidak menambah arti: "Peter Parker benar-benar bertarung sendirian tanpa bantuan"
+     seharusnya "Peter Parker bertarung sendirian".
    - body: 22-32 KATA. Bahasa Indonesia. Boleh kosong untuk slide 1.
      Dua kalimat, bukan satu: satu kalimat menyebut faktanya, satu lagi kenapa itu penting.
      Batas BAWAH-nya sama seriusnya dengan batas atas. Panel teksnya tinggi tetap, jadi
