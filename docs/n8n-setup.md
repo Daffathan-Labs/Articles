@@ -365,6 +365,8 @@ bukan ulasan film). Dari situ tiga panggilan TMDB, **sekali per artikel bukan pe
 | `Cari film` | `search/movie` → id |
 | `Still film` | `movie/{id}/images` → backdrop |
 | `Pemain film` | `movie/{id}/credits` → nama pemain + nama karakter + foto |
+| `Siapkan kandidat` | saring backdrop polos, ambil 40, unduh w500, susun permintaan Gemini |
+| `Terangkan still` | Gemini membaca isi kesalinya: siapa yang terlihat di gambar ke berapa |
 
 Lalu satu gerbang **per artikel**, bukan per slide:
 
@@ -378,10 +380,39 @@ peduli gambarnya datang dari mana — dua-duanya cuma melihat binary. `pakai_fot
 **sama di kelima item**; IF dievaluasi per item, dan bendera yang berbeda antar item bakal
 membelah slide ke dua cabang lalu menghancurkan pasangan indeks slide↔gambar.
 
-**Slide yang menyebut pemain memakai foto ORANGNYA.** Backdrop tidak membawa keterangan
-isinya, jadi still untuk slide *"Sadie Sink sebagai Jean Grey"* pernah keluar sebagai
-adegan Punisher. TMDB membawa nama asli **dan** nama karakter, jadi teks slide dicocokkan
-ke dua-duanya. Tiga hal yang menjaganya dari cocok palsu, dan ketiganya ada test-nya:
+**Isi still dibaca dari gambarnya sendiri.** Backdrop TMDB tidak membawa keterangan siapa
+yang ada di dalamnya — itu akar dari dua bug berturut-turut: slide *"Sadie Sink sebagai
+Jean Grey"* mula-mula dapat adegan Punisher, lalu setelah ditambal daftar pemain dia dapat
+potret karpet merah alih-alih adegan filmnya. Padahal still-nya ada di kolam.
+
+`Siapkan kandidat` mengunduh 40 backdrop polos di ukuran w500 dan mengirim semuanya
+**dalam satu panggilan** ke Gemini bersama daftar pemain; modelnya menjawab per gambar:
+
+| Field | Isi | Kenapa ada |
+|---|---|---|
+| `tokoh` | semua tokoh yang terlihat | dasar pencocokan |
+| `utama` | satu tokoh yang jadi subjek frame | memisahkan "jadi subjek" dari "lewat di latar" |
+| `wajah` | wajah tokoh utama terlihat jelas | memisahkan "kelihatan" dari "cuma siluet" |
+
+Dua field terakhir yang menentukan mutunya. Tanpa `wajah`, slide Sadie Sink dapat sosok
+**bertudung yang wajahnya gelap total** — modelnya tidak salah, dia memang ada di frame,
+tapi tidak ada yang bisa mengenalinya. Nilainya 3 (subjek utama + wajah jelas) > 2 (subjek
+utama) > 1 (ada di frame), dan yang tertinggi menang — **bukan yang pertama cocok**.
+
+Angka 40 juga bukan hiasan: sempat 10, dan hasilnya still Sadie Sink yang ADA di antara 54
+backdrop polos tidak pernah ikut diperiksa. Cakupan yang bolong bikin fitur ini kelihatan
+gagal padahal yang salah cuma daftar yang dilihat. 40 gambar w500 ≈ 4,8 MB dan ~10 ribu
+token, sekali per artikel film.
+
+Yang dikirim ke model w500, yang dipasang di slide w1280 — sepuluh gambar w1280 saja sudah
+~5 MB dalam satu badan permintaan, dan yang ditanyakan cuma "siapa yang terlihat".
+
+**Potret publisitas jadi jaring pengaman TERAKHIR**, dipakai hanya kalau slide menyebut
+seorang pemain dan tidak ada satu pun still yang memuat dia. Slide yang menyebut nama tapi
+tidak dapat still **tidak** diisi still sembarang — itu yang mengundang balik adegan
+Punisher di bawah nama Sadie Sink. TMDB membawa nama asli **dan** nama karakter, jadi teks
+slide dicocokkan ke dua-duanya. Tiga hal yang menjaganya dari cocok palsu, dan ketiganya
+ada test-nya:
 
 - karakter dipecah di `/` — `"Frank Castle / Punisher"` tidak akan pernah kena kalau
   dicocokkan utuh;
@@ -404,13 +435,20 @@ fotonya `object-fit: contain`, dan tinggi kotaknya ikut bentuk fotonya:
 | Foto | Kotak | Hasil |
 |---|---|---|
 | Still 16:9 | 1080×**608** | pas persis, nol piksel dibuang |
-| Potret pemain 2:3 | 1080×**800** | potret 533×800 di tengah, sisanya bidang gradien aksen |
+| Potret pemain 2:3 | 1080×**780** | potret 520×780 di tengah, sisanya bidang gradien aksen |
+
+Teks duduk **tepat di bawah** kotak foto, bukan di dasar kanvas: `.wrap` dulu memakai
+`space-between` dan menyisakan lubang 228px antara tepi foto dan chip kategori.
+Perbaikannya menaikkan `padding-top` `.wrap` setinggi kotak foto — **bukan** memosisikan
+`.teks` secara absolut, karena `.teks` harus tetap di aliran normal supaya teks yang
+meluber tetap menambah `scrollHeight` dan render-svc masih bisa membalas 422.
 
 `cover` mengisi kotak dengan cara membuang bagian foto yang tidak muat, dan yang dibuang
 selalu tepi — kepala, bahu, dagu tepat di garis panel teks. Itu keluhan yang menutup
-desain sebelumnya. Angka 800 bukan sembarang: sisa 550px untuk panel teks, praktis sama
-dengan 567px yang sudah terbukti muat, jadi slide potret tidak memicu ronde penyusutan
-teks yang tidak perlu.
+desain sebelumnya. Angka 780 bukan sembarang: sisa 570px untuk panel teks, sedikit lebih
+lega dari 567px yang sudah terbukti muat. Sempat 800 dan render-svc membalas 422 *"konten
+1352px melebihi kanvas 1350px"* — meleset dua piksel, tapi cukup untuk memicu ronde
+penyusutan teks di setiap slide potret.
 
 **Panel bukan hitam rata.** `#0B0F14` dicampur aksen artikel (`tinta()` di
 `rakit-slide.js`) untuk panel pias, blok teks `blok-bawah`, dan scrim `tengah`. Porsinya

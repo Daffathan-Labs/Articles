@@ -214,14 +214,15 @@ const PIAS = 608;
  * itu tingginya harus 1620px, lebih tinggi dari kanvasnya sendiri. Jadi pilihannya cuma
  * dua, dan dua-dua-nya dirender lalu dilihat sebelum dipilih: dipotong jadi bujur sangkar
  * (ubun-ubunnya hilang) atau kotaknya ditinggikan sampai potretnya besar. Yang kedua yang
- * dipakai — 800px membuat potretnya 533px, bukan 405px, dan tidak ada satu piksel pun
+ * dipakai — 780px membuat potretnya 520px, bukan 405px, dan tidak ada satu piksel pun
  * yang dibuang.
  *
- * 800, bukan lebih: sisa 550px untuk panel teks, praktis sama dengan 567px yang sudah
- * terbukti muat di desain sebelumnya. Lebih tinggi dari ini dan tiap slide potret bakal
- * memicu ronde penyusutan teks yang sebenarnya tidak perlu.
+ * 780, bukan lebih: sisa 570px untuk panel teks, sedikit lebih lega dari 567px yang sudah
+ * terbukti muat di desain sebelumnya. Sempat dicoba 800 dan render-svc membalas 422
+ * "konten 1352px melebihi kanvas 1350px" — meleset dua piksel, tapi cukup untuk memicu
+ * ronde penyusutan teks di SETIAP slide potret.
  */
-const PIAS_POTRET = 800;
+const PIAS_POTRET = 780;
 
 /**
  * Campur dua warna. `t` = porsi warna kedua.
@@ -316,6 +317,16 @@ p{font-size:${px(34)}px;line-height:1.42;color:#D7DEE6;margin-top:${px(22)}px}
 /* Mulai dari transparan: pelindung teks yang menambah kontras di bagian bawah panel
    tanpa memunculkan kotak bersudut di atas gradien body. */
 .l-pias .teks{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.3) 100%);border-radius:0;padding-top:${px(40)}px}
+/* Teks duduk TEPAT di bawah foto, bukan di dasar kanvas.
+   .wrap memakai space-between, jadi .teks dulu terlempar ke bawah dan menyisakan
+   lubang 228px antara tepi foto dan chip kategori — persis "whitespace kejauhan".
+   Diperbaiki dengan menaikkan padding-atas .wrap setinggi kotak foto, bukan dengan
+   memosisikan .teks secara absolut: .teks HARUS tetap di aliran normal supaya teks
+   yang meluber tetap menambah scrollHeight dan render-svc masih bisa membalas 422.
+   Kepala dipindah ke absolut — dia memang cuma melayang di atas foto. */
+.l-pias .wrap{justify-content:flex-start;padding-top:${PIAS + px(36)}px}
+.l-pias.potret .wrap{padding-top:${PIAS_POTRET + px(36)}px}
+.l-pias .atas{position:absolute;top:${px(72)}px;left:${px(64)}px;right:${px(64)}px}
 /* Slide berfoto PEMAIN: kotaknya ditinggikan karena potret 2:3 arahnya berlawanan
    dengan still 16:9 — alasan lengkapnya di atas PIAS_POTRET. Kelasnya menempel di
    <html> yang sama dengan .l-pias, jadi tanpa spasi. */

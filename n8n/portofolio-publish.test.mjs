@@ -1655,14 +1655,74 @@ test("chip kategori diambil dari tag artikel, bukan dikarang model", () => {
 // Bukan memalsukan keluarannya — fixture yang memalsukan keluaran sebuah node tidak bisa
 // menangkap bug DI DALAM node itu, dan mutation test `ke-base64.js` yang pertama sempat
 // lolos diam-diam persis karena itu.
-const bagiFoto = ({
+const AsyncFn = Object.getPrototypeOf(async function () {}).constructor;
+
+/**
+ * Balasan `Terangkan still` palsu, dibungkus persis seperti balasan Gemini sungguhan —
+ * termasuk pagar ```json yang rutin dia tambahkan sendiri.
+ * `keterangan = null` berarti panggilannya GAGAL: itu jalur non-film dan jalur error,
+ * dan pembagian foto harus tetap jalan tanpa keterangan sama sekali.
+ */
+const balasanVisi = (keterangan) =>
+  keterangan === null
+    ? { json: {} }
+    : {
+        json: {
+          candidates: [{
+            content: {
+              parts: [{
+                text: "```json\n" + JSON.stringify(
+                  keterangan
+                    // Entri boleh ditulis sebagai array (cuma `tokoh`) atau objek penuh.
+                    .map((k, i) => ({
+                      i: i + 1,
+                      adegan: `adegan ${i}`,
+                      ...(Array.isArray(k) ? { tokoh: k, utama: k[0] || "", wajah: true } : k),
+                    }))
+                    // Sengaja DIBALIK urutannya. Model tidak dijamin menjawab berurutan —
+                    // dia rutin melompati nomor atau menukar urutan entri. Fixture yang
+                    // selalu urut bikin kode yang mengabaikan `i` dan sekadar menumpuk
+                    // hasil tetap lolos, dan yang tampil nanti keterangan milik gambar lain.
+                    .reverse()
+                ) + "\n```",
+              }],
+            },
+          }],
+        },
+      };
+
+const bagiFoto = async ({
   backdrops = [],
   film = "Spider-Man: Brand New Day",
   jumlahSlide = 5,
   cast = [],
   isiSlide = null,
+  // Keterangan isi tiap kandidat, seindeks dengan kolamnya. null = panggilan visi gagal.
+  keterangan = null,
 } = {}) => {
+  // `Siapkan kandidat` dijalankan APA ADANYA dari JSON hasil build, bukan dipalsukan
+  // keluarannya: dia yang menyaring backdrop berjudul dan mengambil selang, dan fixture
+  // yang memalsukan keluaran sebuah node tidak bisa menangkap bug DI DALAM node itu.
+  const $kand = (n) => ({
+    isExecuted: true,
+    first: () => ({
+      json: n === "Still film" ? (backdrops.length ? { backdrops } : {})
+        : n === "Pemain film" ? (cast.length ? { cast } : {})
+        : {},
+    }),
+    all: () => [],
+  });
+  const kandidat = (
+    await new AsyncFn("$", byName["Siapkan kandidat"].parameters.jsCode).call(
+      // Unduhan gambar diganti buffer kecil — yang diuji pembagiannya, bukan HTTP-nya.
+      { helpers: { httpRequest: async () => Buffer.from("gambar") } },
+      $kand
+    )
+  )[0].json;
+
   const palsu = {
+    "Siapkan kandidat": { json: kandidat },
+    "Terangkan still": balasanVisi(keterangan),
     "Siapkan brief": { json: { code: "uji" } },
     "Gemini copy": {
       json: {
@@ -1808,8 +1868,8 @@ test("panel bukan hitam rata: warnanya ikut aksen, kontras tetap aman", () => {
   }
 });
 
-test("kolam still dibagi tanpa pengulangan, dan tidak lima teratas berurutan", () => {
-  const slides = bagiFoto({ backdrops: backdropPalsu(30) });
+test("kolam still dibagi tanpa pengulangan, dan tidak lima teratas berurutan", async () => {
+  const slides = await bagiFoto({ backdrops: backdropPalsu(30) });
   const url = slides.map((s) => s.foto_url);
   assert.equal(url.filter(Boolean).length, 5, "ada slide yang tidak kebagian padahal stok banyak");
   assert.equal(new Set(url).size, 5, `still dipakai ulang: ${url.join(" | ")}`);
@@ -1823,17 +1883,17 @@ test("kolam still dibagi tanpa pengulangan, dan tidak lima teratas berurutan", (
   assert.doesNotMatch(url[1], /\/b1\.jpg$/, "diambil berurutan — adegannya bakal mirip semua");
 });
 
-test("kolam lebih sedikit dari slide: sisanya null, BUKAN foto slide lain", () => {
-  const url = bagiFoto({ backdrops: backdropPalsu(3) }).map((s) => s.foto_url);
+test("kolam lebih sedikit dari slide: sisanya null, BUKAN foto slide lain", async () => {
+  const url = (await bagiFoto({ backdrops: backdropPalsu(3) })).map((s) => s.foto_url);
   const ada = url.filter(Boolean);
   assert.equal(ada.length, 3, "slide kebagian lebih banyak dari stoknya");
   assert.equal(new Set(ada).size, 3, "still dipakai ulang untuk menambal");
   assert.deepEqual(url.slice(3), [null, null], "slide sisa tidak dikosongkan");
 });
 
-test("artikel bukan film: kolam kosong, gerbang jatuh ke Gemini", () => {
+test("artikel bukan film: kolam kosong, gerbang jatuh ke Gemini", async () => {
   for (const opsi of [{ film: "" }, { film: "Apa Pun", backdrops: [] }]) {
-    const slides = bagiFoto(opsi);
+    const slides = await bagiFoto(opsi);
     assert.equal(slides.length, 5, "jumlah slide ikut berubah");
     for (const s of slides) {
       assert.equal(s.pakai_foto, false, `pakai_foto salah untuk ${JSON.stringify(opsi)}`);
@@ -1844,12 +1904,12 @@ test("artikel bukan film: kolam kosong, gerbang jatuh ke Gemini", () => {
   }
 });
 
-test("pakai_foto sama di kelima item — kalau tidak, item terbelah dua cabang", () => {
+test("pakai_foto sama di kelima item — kalau tidak, item terbelah dua cabang", async () => {
   // Gerbang `Ada foto asli?` dievaluasi PER ITEM. Bendera yang berbeda antar item bikin
   // sebagian slide lewat `Ambil foto` dan sebagian lewat `Gemini gambar`, lalu keduanya
   // bertemu di `Jadi JPEG` dengan urutan yang tidak bisa dipercaya.
   for (const n of [0, 3, 30]) {
-    const nilai = bagiFoto({ backdrops: backdropPalsu(n) }).map((s) => s.pakai_foto);
+    const nilai = (await bagiFoto({ backdrops: backdropPalsu(n) })).map((s) => s.pakai_foto);
     assert.equal(new Set(nilai).size, 1, `pakai_foto tidak seragam saat stok ${n}`);
   }
 });
@@ -1862,10 +1922,133 @@ const CAST = [
   { name: "Jon Bernthal", character: "Frank Castle / Punisher", profile_path: "/jon.jpg" },
 ];
 
-test("slide yang menyebut pemain memakai foto ORANGNYA, bukan still acak", () => {
+// Teks slide yang dipakai di beberapa test: dua slide menyebut pemain, satu netral.
+const ISI_FILM = [
+  { heading: "Spider-Man kembali ke jalanan", body: "" },
+  { heading: "Sadie Sink sebagai Jean Grey", body: "Perannya bukan tempelan." },
+  { heading: "Aksi berayun yang diadaptasi", body: "Gerakannya terasa nyata." },
+  { heading: "Frank Castle muncul singkat", body: "" },
+  { heading: "penutup", body: "" },
+];
+
+test("yang dikirim ke model gambar KECIL, yang dipasang di slide yang besar", async () => {
+  // Sepuluh gambar w1280 jadi ~5 MB base64 dalam satu badan permintaan — mahal, lambat,
+  // dan gampang ditolak. w500 sudah cukup untuk mengenali kostum dan warna rambut, dan
+  // yang ditanyakan memang "siapa yang terlihat", bukan detail sehelai rambut.
+  const diminta = [];
+  const $ = (n) => ({
+    isExecuted: true,
+    first: () => ({
+      json: n === "Still film" ? { backdrops: backdropPalsu(10) }
+        : n === "Pemain film" ? { cast: CAST }
+        : {},
+    }),
+    all: () => [],
+  });
+  const hasil = (
+    await new AsyncFn("$", byName["Siapkan kandidat"].parameters.jsCode).call(
+      { helpers: { httpRequest: async ({ url }) => { diminta.push(url); return Buffer.from("g"); } } },
+      $
+    )
+  )[0].json;
+
+  assert.equal(diminta.length, 10, "jumlah gambar yang diunduh untuk model berubah");
+  // Cakupan yang bolong bikin pencocokan isi kelihatan gagal padahal yang salah cuma
+  // daftar yang diperiksa: still Sadie Sink ADA di antara 54 backdrop polos Brand New
+  // Day, tapi tidak masuk sepuluh kandidat pertama, jadi slide-nya jatuh ke potret.
+  const banyak = [];
+  const luas = (
+    await new AsyncFn("$", byName["Siapkan kandidat"].parameters.jsCode).call(
+      { helpers: { httpRequest: async ({ url }) => { banyak.push(url); return Buffer.from("g"); } } },
+      (n) => ({
+        isExecuted: true,
+        first: () => ({ json: n === "Still film" ? { backdrops: backdropPalsu(54) } : {} }),
+        all: () => [],
+      })
+    )
+  )[0].json;
+  assert.ok(luas.url.length >= 40, `cuma ${luas.url.length} dari 54 backdrop polos diperiksa`);
+  assert.equal(new Set(luas.url).size, luas.url.length, "ada kandidat kembar");
+
+  for (const u of diminta) assert.match(u, /\/t\/p\/w500\//, `dikirim ke model ukuran besar: ${u}`);
+  for (const u of hasil.url) assert.match(u, /\/t\/p\/w1280\//, `slide dipasangi ukuran kecil: ${u}`);
+  // Urutannya harus sejajar — kalau tidak, keterangan gambar ke-3 menempel di gambar lain.
+  assert.deepEqual(
+    diminta.map((u) => u.split("/").pop()),
+    hasil.url.map((u) => u.split("/").pop()),
+    "urutan gambar yang diperiksa beda dengan urutan yang dipasang"
+  );
+
+  // Daftar pemain ikut dikirim: tanpa itu model tidak punya nama untuk dipakai menjawab.
+  const prompt = hasil.body.contents[0].parts[0].text;
+  assert.match(prompt, /Sadie Sink sebagai Jean Grey/, "daftar pemain tidak ikut dikirim");
+  assert.equal(hasil.body.contents[0].parts.length, 11, "gambar tidak ikut terkirim");
+});
+
+test("still yang isinya cocok menang atas potret publisitas", async () => {
+  // Ini yang ditunggu sejak awal: still ADEGAN filmnya, bukan foto karpet merah. Still-nya
+  // selalu ada di kolam — /aJbVw1OdpuM8kVbnrROJxg5wn3O.jpg, Sadie Sink bertudung di dalam
+  // kereta — yang hilang cuma keterangan isinya. `Terangkan still` membacanya dari
+  // gambarnya sendiri, dan di sini keterangan itu yang menentukan pembagiannya.
+  const slides = await bagiFoto({
+    backdrops: backdropPalsu(10),
+    cast: CAST,
+    isiSlide: ISI_FILM,
+    // Seindeks dengan kolam: kandidat ke-3 Sadie Sink, ke-5 Punisher.
+    keterangan: [
+      ["Tom Holland", "Spider-Man"], [], ["Sadie Sink", "Jean Grey"], [],
+      ["Jon Bernthal", "Frank Castle"], [], [], [], [], [],
+    ],
+  });
+
+  assert.match(slides[1].foto_url, /w1280/, "slide Sadie Sink malah dapat potret, bukan adegan");
+  assert.equal(slides[1].foto_potret, false, "masih ditandai potret padahal dapat still 16:9");
+  assert.match(slides[3].foto_url, /w1280/, "slide Frank Castle tidak dapat adegannya");
+
+  // Yang penting bukan cuma "dapat still", tapi dapat still YANG BENAR — kalau nomornya
+  // diabaikan, test di atas tetap lolos sementara Sadie dapat adegan Punisher lagi.
+  const kolam = (await bagiFoto({ backdrops: backdropPalsu(10), cast: CAST, isiSlide: ISI_FILM }));
+  assert.notEqual(slides[1].foto_url, slides[3].foto_url, "dua slide berbagi still yang sama");
+  // Kolamnya diambil selang 3 dari b0..b9, jadi urutannya b0,b3,b6,b9,b1,b2,…
+  // Kandidat ke-3 = b6 (Sadie), ke-5 = b1 (Frank).
+  assert.ok(slides[1].foto_url.endsWith("/b6.jpg"), `Sadie dapat ${slides[1].foto_url}, bukan kandidat ke-3`);
+  assert.ok(slides[3].foto_url.endsWith("/b1.jpg"), `Frank dapat ${slides[3].foto_url}, bukan kandidat ke-5`);
+  // Tanpa keterangan, slide yang sama jatuh ke potret — itu perilaku cadangannya.
+  assert.match(kolam[1].foto_url, /\/sadie\.jpg$/);
+});
+
+test("still yang wajahnya kelihatan menang atas yang cuma siluet", async () => {
+  // Render uji: slide "Sadie Sink sebagai Jean Grey" dapat sosok BERTUDUNG yang wajahnya
+  // gelap total, cuma karena still itu lebih dulu di kolam. Modelnya tidak salah — dia
+  // memang ada di frame — tapi "ada di frame" dan "kelihatan siapa" itu dua hal berbeda,
+  // dan yang terbit jadi slide bernama orang tanpa orangnya.
+  const siluet = { tokoh: ["Sadie Sink", "Jean Grey"], utama: "Jean Grey", wajah: false };
+  const jelas = { tokoh: ["Sadie Sink", "Jean Grey"], utama: "Jean Grey", wajah: true };
+  const lewat = { tokoh: ["Sadie Sink"], utama: "Spider-Man", wajah: true };
+  const kosong = { tokoh: [], utama: "", wajah: false };
+
+  const slides = await bagiFoto({
+    backdrops: backdropPalsu(10),
+    cast: CAST,
+    isiSlide: ISI_FILM,
+    // Kandidat ke-1 dia cuma lewat, ke-2 siluet, ke-4 wajahnya jelas. Yang harus menang
+    // yang ke-4, walaupun dua yang lain lebih dulu di kolam.
+    keterangan: [lewat, siluet, kosong, jelas, kosong, kosong, kosong, kosong, kosong, kosong],
+  });
+
+  // Urutan kolam dari b0..b9 dengan selang 3: b0,b3,b6,b9,b1,… jadi kandidat ke-4 = b9.
+  assert.ok(
+    slides[1].foto_url.endsWith("/b9.jpg"),
+    `Sadie dapat ${slides[1].foto_url} — masih yang pertama cocok, bukan yang wajahnya kelihatan`
+  );
+});
+
+test("slide yang menyebut pemain memakai foto ORANGNYA, bukan still acak", async () => {
   // Backdrop tidak membawa keterangan isinya, jadi still untuk slide "Sadie Sink sebagai
   // Jean Grey" pernah keluar sebagai adegan Punisher di render uji. Ini yang menutupnya.
-  const slides = bagiFoto({
+  // Tanpa keterangan — panggilan visi gagal, atau tidak ada still yang memuat orangnya —
+  // slide bernama TIDAK boleh diisi still sembarang: itu mengundang balik bug pertama.
+  const slides = await bagiFoto({
     backdrops: backdropPalsu(30),
     cast: CAST,
     isiSlide: [
@@ -1899,7 +2082,7 @@ test("slide yang menyebut pemain memakai foto ORANGNYA, bukan still acak", () =>
   }
 });
 
-test("backdrop bertuliskan judul film dibuang dari kolam", () => {
+test("backdrop bertuliskan judul film dibuang dari kolam", async () => {
   // TMDB menandai gambar yang sudah ditempeli JUDUL cetak lewat `iso_639_1`: null berarti
   // polos, "tr"/"en"/"pt" berarti ada logo judul dalam bahasa itu. 31 dari 85 backdrop
   // Brand New Day bertuliskan judul, dan satu di antaranya ("ÖRÜMCEK-ADAM YEPYENİ BİR
@@ -1911,9 +2094,9 @@ test("backdrop bertuliskan judul film dibuang dari kolam", () => {
   const bertulisan = Array.from({ length: 20 }, (_, i) => ({
     file_path: `/teks${i}.jpg`, vote_average: 999, iso_639_1: "tr",
   }));
-  const url = bagiFoto({
+  const url = (await bagiFoto({
     backdrops: [...bertulisan, ...backdropPalsu(20)],
-  }).map((s) => s.foto_url);
+  })).map((s) => s.foto_url);
 
   assert.equal(url.filter(Boolean).length, 5, "kolam malah ikut kosong");
   for (const u of url) {
@@ -1922,14 +2105,14 @@ test("backdrop bertuliskan judul film dibuang dari kolam", () => {
 
   // Nol backdrop polos -> kolam kosong dan slide jatuh ke gambar generate. Itu memang
   // pilihan yang benar: judul cetak di raster lebih merusak daripada gambar buatan.
-  const cuma = bagiFoto({ backdrops: bertulisan });
+  const cuma = await bagiFoto({ backdrops: bertulisan });
   assert.equal(cuma[0].pakai_foto, false, "film tanpa backdrop polos tetap dipaksa pakai foto");
 });
 
-test("nama pendek dan penggalan kata tidak bikin cocok palsu", () => {
+test("nama pendek dan penggalan kata tidak bikin cocok palsu", async () => {
   // "MJ" (2 huruf) dan penggalan seperti "Grey" di dalam kata lain pernah jadi sumber
   // foto orang yang tidak dibahas sama sekali di slide itu.
-  const slides = bagiFoto({
+  const slides = await bagiFoto({
     backdrops: backdropPalsu(30),
     cast: CAST,
     isiSlide: [
@@ -1983,8 +2166,13 @@ test("cabang Google Custom Search tidak boleh hidup lagi", () => {
   // Satu-satunya sumber foto asli sekarang TMDB, jadi rantainya harus lurus.
   assert.deepEqual(
     wf.connections["Pemain film"].main[0].map((c) => c.node),
+    ["Siapkan kandidat"],
+    "rantai TMDB putus"
+  );
+  assert.deepEqual(
+    wf.connections["Terangkan still"].main[0].map((c) => c.node),
     ["Pecah slide"],
-    "TMDB tidak tersambung langsung ke Pecah slide"
+    "keterangan still tidak sampai ke pembagian foto"
   );
 });
 

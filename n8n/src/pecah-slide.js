@@ -46,82 +46,157 @@ const SUFIKS =
  * Spider-Man dan Sadie Sink tidak akan pernah keluar dari Gemini. Kalau artikelnya ulasan
  * film, fotonya diambil dari still resmi filmnya; artikel lain tetap digenerate.
  *
- * Diurutkan `vote_average` menurun lalu diambil SELANG, bukan lima teratas berurutan:
- * puluhan backdrop dari satu film hampir selalu memuat beberapa frame dari adegan yang
- * sama, dan lima teratas gampang jadi lima potongan adegan yang itu-itu juga — persis
- * keluhan yang baru saja ditutup.
- *
- * Poster sengaja tidak dipakai sama sekali: poster memuat judul, nama pemain, dan blok
- * kredit, dan seluruh desain ini berdiri di atas aturan sebaliknya — semua kata hidup di
- * HTML, nol di raster.
+ * Penyaringan dan pengurutannya hidup di `Siapkan kandidat`, bukan di sini — node itu
+ * yang harus mengunduh gambarnya untuk diperiksa, jadi dia juga yang memilih. Di sini
+ * tinggal membagikannya ke slide.
  */
-const LANGKAH = 3;
-const ambilSelang = (arr, n) => {
-  const out = [];
-  for (let i = 0; i < arr.length && out.length < n; i += LANGKAH) out.push(arr[i]);
-  // Selangnya kehabisan sebelum kuota penuh: sisanya diambil berurutan dari yang belum
-  // terpakai. Satu frame yang mirip masih lebih baik daripada satu slide tanpa foto.
-  for (let i = 0; i < arr.length && out.length < n; i += 1) {
-    if (!out.includes(arr[i])) out.push(arr[i]);
+const kandidat = $('Siapkan kandidat').first().json;
+const kolam = Array.isArray(kandidat && kandidat.url) ? kandidat.url : [];
+
+/**
+ * Keterangan isi tiap still, dibaca dari gambarnya sendiri oleh `Terangkan still`.
+ *
+ * Ini yang menutup lubang terakhir: backdrop TMDB tidak membawa keterangan siapa yang ada
+ * di dalamnya, jadi slide "Sadie Sink sebagai Jean Grey" pernah dapat adegan Punisher,
+ * lalu setelah ditambal daftar pemain dia dapat potret publisitas — bukan adegan filmnya.
+ * Padahal still-nya ada di kolam.
+ *
+ * Balasan model tidak dipercaya mentah-mentah: dia rutin membungkus JSON dengan pagar
+ * ```json, dan satu balasan aneh tidak boleh mematikan carousel. Gagal parse = tidak ada
+ * keterangan = pembagian jatuh balik ke urutan kolam, persis perilaku sebelum ini ada.
+ */
+const bacaKeterangan = () => {
+  try {
+    const teks = ($('Terangkan still').first().json.candidates || [])[0].content.parts
+      .map((p) => p.text || '')
+      .join('');
+    const kurung = teks.slice(teks.indexOf('['), teks.lastIndexOf(']') + 1);
+    const arr = JSON.parse(kurung);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
   }
-  return out;
 };
-
-const still = $('Still film').first().json;
-const backdrops = Array.isArray(still && still.backdrops) ? still.backdrops : [];
-
-/**
- * HANYA backdrop tanpa bahasa. Ini bukan penyaringan kosmetik.
- *
- * TMDB memakai `iso_639_1` untuk menandai gambar yang sudah ditempeli JUDUL FILM cetak:
- * null berarti polos, "tr"/"en"/"pt" berarti ada logo judul dalam bahasa itu. Brand New
- * Day punya 85 backdrop dan 31 di antaranya bertuliskan judul — salah satunya
- * ("ÖRÜMCEK-ADAM YEPYENİ BİR GÜN") persis kena selang yang dipakai carousel lima slide.
- *
- * Seluruh desain ini berdiri di atas satu aturan: semua kata hidup di HTML, nol di raster.
- * Judul cetak di dalam foto melanggarnya, dan yang terbaca jadi dua judul bertumpuk.
- * Kalau sebuah film tidak punya satu pun backdrop polos, kolamnya kosong dan slide-nya
- * jatuh ke gambar generate — itu memang pilihan yang benar, bukan kompromi.
- */
-const polos = backdrops.filter((b) => b && b.iso_639_1 == null);
-const kolam = ambilSelang(
-  polos.slice().sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0)),
-  slides.length
-).map((b) => `https://image.tmdb.org/t/p/w1280${b.file_path}`);
+// `i` dari model 1-based; disimpan per indeks kolam supaya pasangannya tidak bergeser
+// kalau model melewatkan satu nomor atau menukar urutan entri — dua-duanya biasa.
+const keterangan = [];
+for (const k of bacaKeterangan()) {
+  const i = Number(k && k.i) - 1;
+  if (i >= 0 && i < kolam.length) {
+    keterangan[i] = {
+      tokoh: (Array.isArray(k.tokoh) ? k.tokoh : []).filter((n) => typeof n === 'string'),
+      utama: typeof k.utama === 'string' ? k.utama : '',
+      wajah: k.wajah === true,
+    };
+  }
+}
 
 /**
- * Slide yang menyebut seorang pemain memakai foto ORANGNYA, bukan still acak.
+ * Nama yang boleh dipakai mencocokkan slide ke foto.
  *
- * Backdrop tidak membawa keterangan isinya, jadi still untuk slide "Sadie Sink sebagai
- * Jean Grey" bisa saja adegan Punisher — itu benar-benar keluar di render uji. TMDB
- * membawa nama asli DAN nama karakter tiap pemain, jadi teks slide bisa dicocokkan ke
- * dua-duanya. "Sadie Sink sebagai Jean Grey" kena lewat nama sekaligus karakter.
+ * Minimal 4 huruf dan harus utuh sebagai kata — tanpa itu "MJ" kena di kata lain dan
+ * "Grey" kena di "greyscale", dan yang tampil malah orang yang tidak dibahas di slide itu.
+ * Karakter TMDB sering ditulis "Frank Castle / Punisher", jadi dipecah di `/`: dicocokkan
+ * utuh dia tidak akan pernah kena, karena teks slide menyebut salah satunya saja.
  *
- * Cuma 20 nama teratas: di bawah itu isinya pemeran figuran yang namanya justru bikin
- * cocok palsu. Minimal 4 huruf dan harus utuh sebagai kata — tanpa itu "MJ" dan "Ned"
- * kena di kata lain, dan yang tampil malah foto orang yang tidak dibahas.
+ * Cuma 20 nama teratas: di bawah itu isinya figuran yang namanya justru bikin cocok palsu.
  */
 const cast = (($('Pemain film').first().json || {}).cast || [])
   .slice(0, 20)
   .flatMap((p) =>
-    // Karakter TMDB sering ditulis "Frank Castle / Punisher" atau "Peter Parker /
-    // Spider-Man". Dicocokkan utuh, tidak akan pernah kena — teks slide menyebut salah
-    // satunya saja.
     [p.name, ...String(p.character || '').split('/')]
       .filter((n) => typeof n === 'string' && n.trim().length >= 4)
       .map((n) => ({ nama: n.trim(), foto: p.profile_path }))
   )
-  .filter((x) => x.foto)
   // Nama terpanjang diperiksa duluan: "Jean Grey" harus menang atas "Jean" kalau
   // dua-duanya ada di daftar.
   .sort((a, b) => b.nama.length - a.nama.length);
 
 const lolosRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const cariOrang = (teks) => {
-  const t = String(teks || '');
-  for (const c of cast) {
-    if (new RegExp(`\\b${lolosRegex(c.nama)}\\b`, 'i').test(t)) return c.foto;
+const sebut = (teks, nama) => new RegExp(`\\b${lolosRegex(nama)}\\b`, 'i').test(String(teks || ''));
+/** Nama-nama dari daftar pemain yang disebut di sebuah teks. */
+const namaDi = (teks) => cast.filter((c) => sebut(teks, c.nama)).map((c) => c.nama);
+
+/**
+ * Bagikan kolam ke slide: yang cocok isinya duluan, sisanya berurutan.
+ *
+ * Slide 1 sengaja dilewati pencocokan — dia selalu ditimpa foto artikel di `Rakit slide`,
+ * jadi memberinya still yang cocok cuma membuang satu still dari kolam tanpa ada yang
+ * melihatnya.
+ */
+const namaSlide = slides.map((s, i) =>
+  i === 0 ? [] : namaDi(`${s.heading || ''} ${s.body || ''}`)
+);
+
+/**
+ * Nilai sebuah still untuk sebuah slide. Yang pertama cocok BUKAN yang terbaik.
+ *
+ * Render uji membuktikannya: slide "Sadie Sink sebagai Jean Grey" dapat sosok bertudung
+ * yang wajahnya gelap total, cuma karena still itu lebih dulu di kolam daripada adegan
+ * yang benar-benar memperlihatkan wajahnya. Modelnya tidak salah — dia memang ada di
+ * frame — tapi "ada di frame" dan "kelihatan siapa" itu dua hal berbeda.
+ *
+ *   3 = subjek utama frame DAN wajahnya kelihatan
+ *   2 = subjek utama frame
+ *   1 = ada di frame
+ */
+const nilaiStill = (k, nama) => {
+  const ket = keterangan[k];
+  if (!ket) return 0;
+  const kena = (t) => nama.some((n) => sebut(t, n) || sebut(n, t));
+  if (ket.utama && kena(ket.utama)) return ket.wajah ? 3 : 2;
+  return ket.tokoh.some(kena) ? 1 : 0;
+};
+
+const dipakai = new Set();
+const jatah = slides.map((s, i) => {
+  if (!namaSlide[i].length) return null;
+  let terbaik = -1;
+  let nilaiTerbaik = 0;
+  for (let k = 0; k < kolam.length; k += 1) {
+    if (dipakai.has(k)) continue;
+    const n = nilaiStill(k, namaSlide[i]);
+    // `>` bukan `>=`: seri dimenangkan yang lebih dulu di kolam, dan urutan kolam itu
+    // selang berdasarkan vote — jadi seri pun tetap deterministik, bukan acak.
+    if (n > nilaiTerbaik) {
+      nilaiTerbaik = n;
+      terbaik = k;
+    }
   }
+  if (terbaik < 0) return null;
+  dipakai.add(terbaik);
+  return kolam[terbaik];
+});
+
+/**
+ * Slide yang MENYEBUT seorang pemain tapi tidak ketemu still-nya sengaja dibiarkan
+ * kosong di sini, supaya dia jatuh ke potret orangnya di bawah.
+ *
+ * Ini yang menjaga bug pertama tetap tertutup: tanpa keterangan isi still — panggilan
+ * visinya gagal, atau memang tidak ada still yang memuat orang itu — mengisi slide
+ * "Sadie Sink sebagai Jean Grey" dengan still berikutnya berarti mengundang balik adegan
+ * Punisher di bawah namanya. Still yang tidak diketahui isinya cuma boleh dipakai di
+ * slide yang memang tidak menyebut siapa-siapa.
+ */
+let berikut = 0;
+for (let i = 0; i < jatah.length; i += 1) {
+  if (jatah[i] || namaSlide[i].length) continue;
+  while (berikut < kolam.length && dipakai.has(berikut)) berikut += 1;
+  if (berikut < kolam.length) {
+    dipakai.add(berikut);
+    jatah[i] = kolam[berikut];
+  }
+}
+
+/**
+ * Potret publisitas — jaring pengaman TERAKHIR, bukan pilihan pertama.
+ *
+ * Dipakai hanya kalau slide menyebut seorang pemain DAN tidak ada satu pun still yang
+ * memuat dia. Adegan filmnya selalu lebih baik: potret 2:3 harus dipasang di kotak yang
+ * lebih tinggi dan tetap menyisakan bidang kosong di kiri-kanan.
+ */
+const cariOrang = (teks) => {
+  for (const c of cast) if (c.foto && sebut(teks, c.nama)) return c.foto;
   return null;
 };
 
@@ -145,9 +220,9 @@ return slides.map((s, i) => {
     : ' Same visual series, same lighting and colour treatment as the other images in ' +
       'this set, but a clearly different scene, subject and camera angle.';
 
-  // Slide 1 selalu foto artikel, jadi mencocokkan pemain di situ cuma membuang satu
-  // nama dari kolam tanpa ada yang melihatnya.
-  const orang = i === 0 ? null : cariOrang(`${s.heading || ''} ${s.body || ''}`);
+  // Potret cuma dipakai kalau slide ini menyebut seorang pemain DAN tidak kebagian still
+  // sama sekali. Slide 1 dilewati: dia selalu ditimpa foto artikel di `Rakit slide`.
+  const orang = i === 0 || jatah[i] ? null : cariOrang(`${s.heading || ''} ${s.body || ''}`);
 
   return {
     json: {
@@ -169,7 +244,7 @@ return slides.map((s, i) => {
       // '50% 18%' supaya wajahnya tidak kepotong waktu di-crop. Itu menambal gejala:
       // foto asli sekarang dipasang `object-fit:contain`, jadi TIDAK ADA yang dipotong
       // dan tidak ada yang perlu digeser.
-      foto_url: orang ? `https://image.tmdb.org/t/p/w780${orang}` : kolam[i] || null,
+      foto_url: jatah[i] || (orang ? `https://image.tmdb.org/t/p/w780${orang}` : null),
       // Foto pemain itu potret 2:3, still film 16:9 — beda arah, jadi tidak bisa muat
       // utuh di kotak yang sama. Kotak potret ditinggikan di `Rakit slide`; tanpa itu
       // potretnya cuma jadi persegi panjang kecil mengambang di tengah bidang warna.

@@ -425,11 +425,44 @@ tmdb('Pemain film', [1320, 40],
   []);
 hubung('Still film', 'Pemain film');
 
+// Backdrop TMDB tidak membawa keterangan siapa yang ada di dalamnya — itu satu-satunya
+// alasan slide "Sadie Sink sebagai Jean Grey" pernah dapat adegan Punisher, lalu setelah
+// ditambal daftar pemain dapat potret publisitas alih-alih adegan filmnya. Keterangan itu
+// dibaca dari gambarnya sendiri: kandidat diunduh di sini, dikirim barengan ke Gemini,
+// dan modelnya menyebut tokoh mana yang terlihat di tiap gambar.
+N('Siapkan kandidat', 'n8n-nodes-base.code', 2, [1400, 40], {
+  jsCode: baca('siapkan-kandidat.js'),
+});
+hubung('Pemain film', 'Siapkan kandidat');
+
+// Dipanggil lewat HTTP biasa, bukan node Gemini: yang dikirim SEPULUH gambar dalam satu
+// `contents`, dan node Gemini bawaan cuma melayani satu gambar per item.
+// Artikel bukan film sampai di sini dengan `body: null` -> dibalas 400 -> diteruskan
+// onError. Nol token terbakar, dan itu jalur 45 dari 46 artikel.
+N('Terangkan still', 'n8n-nodes-base.httpRequest', 4.2, [1540, 40], {
+  method: 'POST',
+  url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
+  authentication: 'predefinedCredentialType',
+  nodeCredentialType: 'googlePalmApi',
+  sendBody: true,
+  specifyBody: 'json',
+  jsonBody: '={{ JSON.stringify($json.body) }}',
+  options: { timeout: 120000 },
+}, {
+  credentials: GEMINI_CRED,
+  onError: 'continueRegularOutput',
+  alwaysOutputData: true,
+  retryOnFail: true,
+  maxTries: 3,
+  waitBetweenTries: 3000,
+});
+hubung('Siapkan kandidat', 'Terangkan still');
+
 // Membaca `Gemini copy` lewat nama node, bukan $input: node-node TMDB di atas menyisip
 // di antaranya, dan seluruh workflow ini memang membaca lewat nama supaya penyisipan
 // seperti itu tidak diam-diam mengganti sumber datanya.
 N('Pecah slide', 'n8n-nodes-base.code', 2, [1260, 460], { jsCode: baca('pecah-slide.js') });
-hubung('Pemain film', 'Pecah slide');
+hubung('Terangkan still', 'Pecah slide');
 
 N('Gemini gambar', '@n8n/n8n-nodes-langchain.googleGemini', 1, [1480, 460], {
   resource: 'image',
