@@ -742,21 +742,47 @@ test("Rakit slide: sebagian gambar gagal — yang gagal TIDAK meminjam tetangga"
   }
 });
 
+// `Pecah URL slide` membaca dua node: `Render` untuk urls[] dan `Kredensial` untuk
+// render_url yang jadi acuan alamatnya.
+const pecah = (render) => (n) => ({
+  first: () => ({
+    json: n === "Render" ? render : { render_url: "http://103.197.190.40:7080" },
+  }),
+});
+
 test("Pecah URL slide membaca hasil Render, bukan $input", () => {
   // Node ini berjalan SETELAH Tunggu approval, jadi $input berisi data request
   // webhook resume (query/body/headers) — bukan urls[] dari render-svc.
   const kode = byName["Pecah URL slide"].parameters.jsCode;
   assert.doesNotMatch(tanpaKomentar(kode), /\$input/, "$input di sini pasti kosong dari urls[]");
 
-  const urls = ["a.jpg", "b.jpg", "c.jpg"];
-  const $ = (n) => ({ first: () => ({ json: n === "Render" ? { urls } : {} }) });
-  const hasil = new Function("$", kode)($);
+  const B = "http://103.197.190.40:7080";
+  const urls = [`${B}/a.jpg`, `${B}/b.jpg`, `${B}/c.jpg`];
+  const hasil = new Function("$", kode)(pecah({ urls }));
   assert.deepEqual(hasil.map((i) => i.json.url), urls);
   assert.deepEqual(hasil.map((i) => i.json.idx), [0, 1, 2]);
 
   // urls[] kosong harus gagal berisik, bukan menerbitkan carousel bolong.
-  const kosong = (n) => ({ first: () => ({ json: n === "Render" ? {} : {} }) });
-  assert.throws(() => new Function("$", kode)(kosong), /tidak mengembalikan urls/);
+  assert.throws(() => new Function("$", kode)(pecah({})), /tidak mengembalikan urls/);
+});
+
+test("alamat slide untuk Meta diambil dari render_url, bukan dari PUBLIC_URL container", () => {
+  // Yang mengunduh urls[] adalah server Instagram dan Facebook, bukan n8n. PUBLIC_URL
+  // container pernah meleset dua kali dalam satu jam — sekali nama internal Docker,
+  // sekali portnya — dan dua-duanya bikin render balas 200 sementara Halaman kosong.
+  const kode = byName["Pecah URL slide"].parameters.jsCode;
+  const hasil = new Function("$", kode)(
+    pecah({
+      urls: [
+        "http://render-svc:8080/a/portofolio/x/01.jpg?v=9",
+        "http://103.197.190.40:8080/a/portofolio/x/02.jpg?v=9",
+      ],
+    })
+  );
+  assert.deepEqual(hasil.map((i) => i.json.url), [
+    "http://103.197.190.40:7080/a/portofolio/x/01.jpg?v=9",
+    "http://103.197.190.40:7080/a/portofolio/x/02.jpg?v=9",
+  ]);
 });
 
 test("Pecah URL slide: hero.jpg bukan slide, jadi tidak boleh masuk carousel", () => {
@@ -769,9 +795,7 @@ test("Pecah URL slide: hero.jpg bukan slide, jadi tidak boleh masuk carousel", (
     "https://r/a/portofolio/x/02.jpg?v=1",
     "https://r/a/portofolio/x/hero.jpg?v=1",
   ];
-  const hasil = new Function("$", kode)((n) => ({
-    first: () => ({ json: n === "Render" ? { urls } : {} }),
-  }));
+  const hasil = new Function("$", kode)(pecah({ urls }));
   assert.equal(hasil.length, 2, "hero ikut terkirim sebagai slide");
   assert.deepEqual(hasil.map((i) => i.json.idx), [0, 1], "indeks harus rapat setelah disaring");
 });
@@ -1048,12 +1072,18 @@ const RENCANA = {
 };
 const URLS = {
   urls: [
-    "https://r/a/portofolio/artikel-uji/01.jpg?v=1",
-    "https://r/a/portofolio/artikel-uji/hero.jpg?v=1",
+    "http://r/a/portofolio/artikel-uji/01.jpg?v=1",
+    "http://r/a/portofolio/artikel-uji/hero.jpg?v=1",
   ],
 };
 const susun = (rakit = RENCANA, render = URLS) =>
-  jalankan("Susun commit", { refs: { "Rakit slide": { json: rakit }, Render: { json: render } } });
+  jalankan("Susun commit", {
+    refs: {
+      "Rakit slide": { json: rakit },
+      Render: { json: render },
+      Kredensial: { json: { render_url: "http://103.197.190.40:7080" } },
+    },
+  });
 
 test("Susun commit: artikel yang sudah punya gambar tidak memicu commit apa pun", () => {
   // Nol item berarti seluruh rantai di bawahnya tidak dieksekusi — ini yang membuat
@@ -1068,8 +1098,14 @@ test("Susun commit: path dan URL raw dibentuk persis seperti 45 artikel yang ada
     j.url_gambar,
     "https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/artikel-uji/hero.jpg"
   );
-  // Hero dicari lewat nama berkas, bukan indeks: urls juga memuat 5 slide.
-  assert.match(j.sumber, /hero\.jpg/);
+  // Hero dicari lewat nama berkas, bukan indeks: urls juga memuat 5 slide. Alamatnya
+  // disamakan dengan render_url — alasan yang sama dengan `Pecah URL slide`: yang ada
+  // di urls[] itu PUBLIC_URL container, dan dia pernah menunjuk port yang tidak terbit.
+  assert.equal(
+    j.sumber,
+    "http://103.197.190.40:7080/a/portofolio/artikel-uji/hero.jpg?v=1",
+    "sumber hero masih memakai origin dari PUBLIC_URL container"
+  );
 });
 
 test("Susun commit: menolak repo/folder yang bisa menulis ke path salah", () => {

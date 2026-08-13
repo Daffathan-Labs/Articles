@@ -745,7 +745,7 @@ Diverifikasi 2026-08-12: render brand `portofolio` balas 200, JPEG-nya asli
 (`FF D8 FF`), dan Meta berhasil mengambilnya lewat `http://` biasa di IP mentah —
 TLS ternyata tidak diwajibkan untuk `image_url`.
 
-**`render_url` harus base URL saja** — `http://34.128.95.69:8080`, **tanpa** `/render`.
+**`render_url` harus base URL saja** — `http://103.197.190.40:7080`, **tanpa** `/render`.
 Workflow yang menambahkan `/render`; kalau field-nya sudah memuatnya, hasilnya
 `/render/render` dan balasannya 404 tanpa menyebut sebabnya. Ada test yang menjaga ini.
 
@@ -754,34 +754,39 @@ env `PUBLIC_URL` **milik container itu**, bukan dari `render_url` yang kita kiri
 Kalau nanti service-nya dipindah ke domain ber-TLS, `PUBLIC_URL` di container harus
 ikut diubah — mengubah `render_url` saja membuat gambar tetap disajikan di alamat lama.
 
-### `PUBLIC_URL` tidak boleh nama internal Docker
+### `render_url` yang menentukan alamat gambar, bukan `PUBLIC_URL`
 
-Pernah diisi `http://render-svc:8080` supaya lalu lintasnya tidak keluar-masuk internet.
-Kelihatan masuk akal, dan render-nya memang tetap balas 200 — tapi seluruh cabang sosmed
-mati diam-diam. Sebabnya: `urls[]` itu tidak dipakai n8n untuk mengunduh gambar. Dia
-**dititipkan ke Meta**, dan server Instagram (`image_url`) serta Facebook (`url`) yang
-mengambil sendiri berkasnya dari internet. `render-svc` cuma bisa di-resolve dari dalam
-jaringan `n8n_default`, jadi Meta membalas gagal-ambil dan tautan pratinjau di e-mail
-membalas `ERR_NAME_NOT_RESOLVED` di browser.
+Dulu dua-duanya harus cocok, dan itu meleset **dua kali dalam satu jam**:
 
-Aturannya: **`PUBLIC_URL` harus alamat yang bisa dibuka orang asing dari internet.**
-Isi `render_url` dengan nilai yang sama persis — satu nilai, bukan dua. `uji-film.mjs`
-jalan dari laptop dan memakai `render_url`, jadi nilai internal juga mematikan harness
-pratinjau. Ada test yang menolak host tanpa titik.
+| Percobaan | `PUBLIC_URL` | Akibat |
+|---|---|---|
+| 1 | `http://render-svc:8080` | nama internal Docker — cuma resolve dari dalam `n8n_default` |
+| 2 | `http://103.197.190.40:8080` | port `8080` tidak terbit; container publish `7080` |
 
-Ikutannya di `docker-compose.yml`: port harus terbit ke publik. `127.0.0.1:8070:8080`
-menutup rapat dari luar, dan itu berarti nol gambar untuk Meta.
+Dua-duanya gagal **senyap**: render balas 200, workflow sukses, Halaman kosong. Sebabnya
+`urls[]` bukan n8n yang mengunduh — dia **dititipkan ke Meta**, dan server Instagram
+(`image_url`) serta Facebook (`url`) yang mengambil sendiri berkasnya dari internet.
+Gagalnya cuma muncul sebagai pesan error Meta yang tidak menyebut-nyebut `PUBLIC_URL`.
+
+Sekarang `Pecah URL slide` dan `Susun commit` **menulis ulang origin-nya dari
+`render_url`**, path dan `?v=` dibiarkan apa adanya. `render_url` sudah pasti hidup dan
+publik: node `Render` baru saja berhasil memakainya, dan ada test yang menolak host tanpa
+titik. Jadi `PUBLIC_URL` yang salah tidak lagi bisa mematikan posting — dia cuma menyisakan
+satu gejala, dan gejala yang **berisik**: tautan `previewUrl` di e-mail jadi mati waktu
+diklik. Itu memang dibiarkan; yang perlu ditutup rapat cuma yang gagal tanpa suara.
+
+Tetap isi `PUBLIC_URL` dengan alamat publik yang sama supaya tautan pratinjau hidup:
 
 ```yaml
     environment:
-      - PUBLIC_URL=http://<ip-publik>:8080   # sama persis dengan render_url di n8n
+      - PUBLIC_URL=http://103.197.190.40:7080   # samakan dengan port yang di-publish
     ports:
-      - "8080:8080"                          # bukan 127.0.0.1:...
+      - "7080:8080"
 ```
 
 `http://` di IP mentah sudah cukup — diverifikasi 2026-08-12, Meta tidak mewajibkan TLS
-untuk `image_url`. Kalau mau rapi, arahkan subdomain ber-TLS ke `127.0.0.1:8070` lewat
-proxy yang sama dengan `workflow.` dan `api.`, lalu pakai domain itu di kedua tempat.
+untuk `image_url`. Kalau mau rapi, arahkan subdomain ber-TLS ke port itu lewat proxy yang
+sama dengan `workflow.` dan `api.`, lalu pakai domain itu di `render_url`.
 
 Dua hal yang harus dipastikan sebelum posting pertama:
 
