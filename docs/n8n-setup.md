@@ -754,6 +754,35 @@ env `PUBLIC_URL` **milik container itu**, bukan dari `render_url` yang kita kiri
 Kalau nanti service-nya dipindah ke domain ber-TLS, `PUBLIC_URL` di container harus
 ikut diubah — mengubah `render_url` saja membuat gambar tetap disajikan di alamat lama.
 
+### `PUBLIC_URL` tidak boleh nama internal Docker
+
+Pernah diisi `http://render-svc:8080` supaya lalu lintasnya tidak keluar-masuk internet.
+Kelihatan masuk akal, dan render-nya memang tetap balas 200 — tapi seluruh cabang sosmed
+mati diam-diam. Sebabnya: `urls[]` itu tidak dipakai n8n untuk mengunduh gambar. Dia
+**dititipkan ke Meta**, dan server Instagram (`image_url`) serta Facebook (`url`) yang
+mengambil sendiri berkasnya dari internet. `render-svc` cuma bisa di-resolve dari dalam
+jaringan `n8n_default`, jadi Meta membalas gagal-ambil dan tautan pratinjau di e-mail
+membalas `ERR_NAME_NOT_RESOLVED` di browser.
+
+Aturannya: **`PUBLIC_URL` harus alamat yang bisa dibuka orang asing dari internet.**
+Isi `render_url` dengan nilai yang sama persis — satu nilai, bukan dua. `uji-film.mjs`
+jalan dari laptop dan memakai `render_url`, jadi nilai internal juga mematikan harness
+pratinjau. Ada test yang menolak host tanpa titik.
+
+Ikutannya di `docker-compose.yml`: port harus terbit ke publik. `127.0.0.1:8070:8080`
+menutup rapat dari luar, dan itu berarti nol gambar untuk Meta.
+
+```yaml
+    environment:
+      - PUBLIC_URL=http://<ip-publik>:8080   # sama persis dengan render_url di n8n
+    ports:
+      - "8080:8080"                          # bukan 127.0.0.1:...
+```
+
+`http://` di IP mentah sudah cukup — diverifikasi 2026-08-12, Meta tidak mewajibkan TLS
+untuk `image_url`. Kalau mau rapi, arahkan subdomain ber-TLS ke `127.0.0.1:8070` lewat
+proxy yang sama dengan `workflow.` dan `api.`, lalu pakai domain itu di kedua tempat.
+
 Dua hal yang harus dipastikan sebelum posting pertama:
 
 ```bash

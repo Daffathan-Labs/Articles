@@ -209,6 +209,16 @@ test("nilai di .local.json masuk akal (kalau file-nya ada)", () => {
   }
   if (!v("render_url").startsWith("ISI_")) {
     assert.doesNotMatch(v("render_url"), /\/render$/, "render_url harus base URL saja");
+    // Host tanpa titik = nama service Docker (`render-svc`), dan itu cuma bisa
+    // di-resolve dari dalam jaringan n8n_default. Dua pemakai render_url ada DI LUAR
+    // jaringan itu: `uji-film.mjs` yang jalan dari laptop, dan — lewat PUBLIC_URL yang
+    // harus disamakan — server Instagram dan Facebook yang MENGAMBIL SENDIRI gambarnya
+    // dari image_url. Nama internal bikin render tetap 200 tapi carousel-nya kosong.
+    assert.match(
+      new URL(v("render_url")).hostname,
+      /\./,
+      "render_url pakai nama internal Docker; IG/FB dan harness lokal tidak bisa menjangkaunya"
+    );
   }
   if (!v("linkedin_urn").startsWith("ISI_")) {
     assert.match(v("linkedin_urn"), /^urn:li:person:/, "person URN wajib lengkap dengan prefiks");
