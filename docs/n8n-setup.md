@@ -1147,6 +1147,32 @@ hal dari luar `n8n/src/`:
 | Logo hexagon | `icons/icon-192.png` | placeholder `{{LOGO}}` di `rakit-slide.js`, sebagai data URI |
 
 Keduanya disisipkan saat build supaya tidak ada salinan kedua yang diam-diam berbeda.
+
+### Code node tidak jalan di Node biasa
+
+Sandbox Code node n8n punya global yang **lebih sedikit** daripada Node. `new URL()`
+lolos parse, lolos seluruh unit test — dan mati di produksi dengan
+`ReferenceError: URL is not defined`, karena test berjalan di Node yang punya `URL`
+sementara sandbox-nya tidak. Cabang Instagram berhenti di `Pecah URL slide` dan tidak ada
+satu pun test yang merah.
+
+Diperiksa langsung ke instance (2026-08-14) lewat Code node sementara yang menanyakan
+`typeof` satu per satu, lalu dihapus:
+
+| | |
+|---|---|
+| **Ada** | `setTimeout` `clearTimeout` `Promise` `Buffer` `JSON` `Math` `Date` `RegExp` `Set` `Map` `TextEncoder` `console` `require` `Intl` `encodeURIComponent` |
+| **Hilang** | `URL` `URLSearchParams` `fetch` `process` `structuredClone` `AbortController` |
+
+Test *"Code node cuma memakai global yang benar-benar ada di sandbox n8n"* memindai
+seluruh Code node terhadap daftar yang hilang itu. Untuk HTTP dari dalam Code node,
+pakai `this.helpers.httpRequest` — bukan `fetch`.
+
+Kalau ragu sebuah node benar-benar jalan di sana, jalankan kodenya **di dalam n8n**:
+buat workflow sementara berisi Webhook → Code → Respond, tempel `jsCode` aslinya dengan
+`$` dan `$json` tiruan yang dideklarasikan ulang di scope yang sama (itu membayangi milik
+sandbox, bukan menabraknya), lalu **hapus workflow-nya di `finally`**. Pola yang sama
+dipakai `n8n/uji-film.mjs`.
 Ubah `docs/voice.md`, jalankan build, prompt ikut berubah.
 
 Catatan soal `docs/voice.md`: **seluruh isinya** dikirim ke model. Tulis sebagai aturan

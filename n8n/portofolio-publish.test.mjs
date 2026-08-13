@@ -73,6 +73,33 @@ test("Code node lolos parse sebagai JavaScript", () => {
   }
 });
 
+test("Code node cuma memakai global yang benar-benar ada di sandbox n8n", () => {
+  // `new URL()` lolos SELURUH test lalu mati di produksi: Node punya global `URL`,
+  // sandbox Code node n8n tidak. Balasannya `ReferenceError: URL is not defined`, dan
+  // cabang Instagram berhenti di situ — parse test di atas pun hijau, karena kodenya
+  // memang sah sebagai JavaScript. Yang beda cuma lingkungannya.
+  //
+  // Daftar ini BUKAN tebakan. Diperiksa langsung ke instance (2026-08-14) lewat Code
+  // node sementara yang menanyakan `typeof` satu per satu, lalu dihapus:
+  //   ada    : setTimeout clearTimeout Promise Buffer JSON Math Date RegExp Set Map
+  //            Array Object String Number Error TextEncoder console require Intl
+  //            encodeURIComponent
+  //   hilang : URL URLSearchParams fetch process structuredClone AbortController
+  const HILANG = [
+    "URL", "URLSearchParams", "fetch", "process", "structuredClone", "AbortController",
+  ];
+  for (const n of wf.nodes.filter((x) => x.type === "n8n-nodes-base.code")) {
+    const kode = tanpaKomentar(n.parameters.jsCode);
+    for (const g of HILANG) {
+      assert.doesNotMatch(
+        kode,
+        new RegExp(`\\b${g}\\b`),
+        `Code node "${n.name}" memakai global \`${g}\` yang tidak ada di sandbox n8n`
+      );
+    }
+  }
+});
+
 test("setiap node terjangkau dari Webhook", () => {
   const lihat = new Set();
   (function jalan(n) {

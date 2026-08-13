@@ -24,10 +24,14 @@ const hasil = $('Render').first().json;
  * dan ada test yang menolak host tanpa titik. Jadi PUBLIC_URL berhenti jadi nilai yang
  * harus benar untuk urusan posting.
  */
-const asal = new URL($('Kredensial').first().json.render_url).origin;
+// Dipotong dengan regex, BUKAN `new URL()`: sandbox Code node n8n tidak punya global
+// `URL` — dia dibalas `ReferenceError: URL is not defined` dan mematikan node ini.
+// Test biasa tidak menangkapnya karena Node punya `URL`; yang menjaga sekarang test
+// `Code node cuma memakai global yang benar-benar ada di sandbox n8n`.
+const asal = String($('Kredensial').first().json.render_url).replace(/\/+$/, '');
 const samakan = (u) => {
-  const p = new URL(u, asal);
-  return asal + p.pathname + p.search;
+  const sisa = String(u).replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*/i, '');
+  return asal + (sisa.charAt(0) === '/' ? sisa : `/${sisa}`);
 };
 
 // hero.jpg menumpang panggilan Render yang sama, tapi dia gambar artikel 1200x630 —

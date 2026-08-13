@@ -19,10 +19,11 @@ const mentah = urls.find((u) => u.includes('/hero.jpg'));
 // Origin disamakan dengan `render_url`, alasannya di `pecah-url.js`: alamat di `urls[]`
 // datang dari PUBLIC_URL container, dan yang bisa menjangkau render-svc adalah alamat
 // yang baru saja dipakai node `Render`.
-const asal = new URL($('Kredensial').first().json.render_url).origin;
-const alamat = mentah && new URL(mentah, asal);
+const asal = String($('Kredensial').first().json.render_url).replace(/\/+$/, '');
 // `?v=` ikut dibawa: itu pembatal cache dari render-svc, dan hero baru saja ditulis ulang.
-const sumber = alamat && asal + alamat.pathname + alamat.search;
+// Regex, bukan `new URL()` — sandbox Code node n8n tidak punya global `URL`.
+const sisa = mentah && String(mentah).replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*/i, '');
+const sumber = sisa && asal + (sisa.charAt(0) === '/' ? sisa : `/${sisa}`);
 if (!sumber) {
   throw new Error(
     `hero disusun tapi tidak ada di balasan render-svc. urls = ${JSON.stringify(urls).slice(0, 300)}`
