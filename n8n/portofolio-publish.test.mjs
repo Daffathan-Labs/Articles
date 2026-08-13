@@ -1952,7 +1952,26 @@ test("yang dikirim ke model gambar KECIL, yang dipasang di slide yang besar", as
     )
   )[0].json;
 
-  assert.equal(diminta.length, 10, "jumlah gambar yang diunduh untuk model berubah");
+  // 10 still + 4 foto acuan wajah pemain. Tanpa foto acuan modelnya cuma punya daftar
+  // NAMA dan menebak dari konteks: satu render memberi slide "Sadie Sink sebagai Jean
+  // Grey" sebuah still berisi perempuan berambut cokelat yang sebetulnya MJ.
+  assert.equal(diminta.length, 10 + CAST.length, "jumlah gambar yang diunduh untuk model berubah");
+  const still = diminta.slice(0, 10);
+  const wajah = diminta.slice(10);
+  for (const u of wajah) assert.match(u, /\/t\/p\/w185\//, `foto acuan bukan ukuran kecil: ${u}`);
+  assert.deepEqual(
+    wajah.map((u) => u.split("/").pop()),
+    CAST.map((p) => p.profile_path.slice(1)),
+    "urutan foto acuan tidak sama dengan urutan nama di prompt"
+  );
+  assert.match(
+    hasilAwalPrompt(),
+    new RegExp(`ke-11 sampai ke-${10 + CAST.length}`),
+    "nomor foto acuan di prompt tidak cocok dengan yang benar-benar dikirim"
+  );
+  function hasilAwalPrompt() {
+    return hasil.body.contents[0].parts[0].text;
+  }
   // Cakupan yang bolong bikin pencocokan isi kelihatan gagal padahal yang salah cuma
   // daftar yang diperiksa: still Sadie Sink ADA di antara 54 backdrop polos Brand New
   // Day, tapi tidak masuk sepuluh kandidat pertama, jadi slide-nya jatuh ke potret.
@@ -1970,11 +1989,11 @@ test("yang dikirim ke model gambar KECIL, yang dipasang di slide yang besar", as
   assert.ok(luas.url.length >= 40, `cuma ${luas.url.length} dari 54 backdrop polos diperiksa`);
   assert.equal(new Set(luas.url).size, luas.url.length, "ada kandidat kembar");
 
-  for (const u of diminta) assert.match(u, /\/t\/p\/w500\//, `dikirim ke model ukuran besar: ${u}`);
+  for (const u of still) assert.match(u, /\/t\/p\/w500\//, `dikirim ke model ukuran besar: ${u}`);
   for (const u of hasil.url) assert.match(u, /\/t\/p\/w1280\//, `slide dipasangi ukuran kecil: ${u}`);
   // Urutannya harus sejajar — kalau tidak, keterangan gambar ke-3 menempel di gambar lain.
   assert.deepEqual(
-    diminta.map((u) => u.split("/").pop()),
+    still.map((u) => u.split("/").pop()),
     hasil.url.map((u) => u.split("/").pop()),
     "urutan gambar yang diperiksa beda dengan urutan yang dipasang"
   );
@@ -1982,7 +2001,34 @@ test("yang dikirim ke model gambar KECIL, yang dipasang di slide yang besar", as
   // Daftar pemain ikut dikirim: tanpa itu model tidak punya nama untuk dipakai menjawab.
   const prompt = hasil.body.contents[0].parts[0].text;
   assert.match(prompt, /Sadie Sink sebagai Jean Grey/, "daftar pemain tidak ikut dikirim");
-  assert.equal(hasil.body.contents[0].parts.length, 11, "gambar tidak ikut terkirim");
+  // 1 teks + 10 still + 4 foto acuan.
+  assert.equal(hasil.body.contents[0].parts.length, 1 + 10 + CAST.length, "gambar tidak ikut terkirim");
+  // Tanpa sampul, tidak ada yang perlu dibandingkan — jangan menyuruh model mengarang.
+  assert.doesNotMatch(prompt, /sama_sampul/, "minta banding sampul padahal sampulnya tidak ada");
+
+  // Sampul artikel ikut dikirim DI BELAKANG, supaya penomoran still tetap 1..N dan tidak
+  // ada pergeseran indeks yang harus diingat waktu sampulnya kebetulan tidak ada.
+  const berSampul = (
+    await new AsyncFn("$", byName["Siapkan kandidat"].parameters.jsCode).call(
+      { helpers: { httpRequest: async () => Buffer.from("g") } },
+      (n) => ({
+        isExecuted: true,
+        first: () => ({
+          json: n === "Still film" ? { backdrops: backdropPalsu(10) }
+            : n === "Pemain film" ? { cast: CAST }
+            : n === "Cover base64" ? { b64: "U0FNUFVM", mime: "image/webp" }
+            : {},
+        }),
+        all: () => [],
+      })
+    )
+  )[0].json;
+  const bagian = berSampul.body.contents[0].parts;
+  // 1 teks + 10 still + 4 foto acuan + 1 sampul.
+  assert.equal(bagian.length, 1 + 10 + CAST.length + 1, "sampul tidak ikut terkirim");
+  assert.equal(bagian[bagian.length - 1].inline_data.data, "U0FNUFVM", "sampul bukan gambar terakhir");
+  assert.match(bagian[0].text, /sama_sampul/, "model tidak diminta membandingkan sampul");
+  assert.equal(berSampul.url.length, 10, "sampul ikut terhitung sebagai kandidat still");
 });
 
 test("still yang isinya cocok menang atas potret publisitas", async () => {
@@ -2015,6 +2061,32 @@ test("still yang isinya cocok menang atas potret publisitas", async () => {
   assert.ok(slides[3].foto_url.endsWith("/b1.jpg"), `Frank dapat ${slides[3].foto_url}, bukan kandidat ke-5`);
   // Tanpa keterangan, slide yang sama jatuh ke potret — itu perilaku cadangannya.
   assert.match(kolam[1].foto_url, /\/sadie\.jpg$/);
+});
+
+test("still yang adegannya sama dengan sampul artikel dibuang", async () => {
+  // Slide 1 SELALU memakai sampul artikel, dan untuk ulasan film sampulnya sering diambil
+  // dari still film yang sama: di render uji slide 1 dan slide 5 keluar sebagai adegan
+  // rooftop yang sama persis. Berkasnya beda, jadi aturan "satu slide satu gambar" tidak
+  // dilanggar — tapi yang dilihat orang tetap satu gambar diulang.
+  const kembar = { tokoh: [], utama: "", wajah: false, sama_sampul: true };
+  const lain = { tokoh: [], utama: "", wajah: false, sama_sampul: false };
+  const url = (
+    await bagiFoto({
+      backdrops: backdropPalsu(10),
+      // Tiga kandidat pertama kembaran sampul; tidak satu pun boleh muncul.
+      keterangan: [kembar, kembar, kembar, lain, lain, lain, lain, lain, lain, lain],
+    })
+  ).map((s) => s.foto_url);
+
+  // Kolam b0..b9 selang 3 -> b0,b3,b6,b9,b1,… jadi tiga yang dibuang b0, b3, b6.
+  for (const dibuang of ["/b0.jpg", "/b3.jpg", "/b6.jpg"]) {
+    assert.ok(
+      !url.some((u) => u && u.endsWith(dibuang)),
+      `${dibuang} kembaran sampul tapi tetap dipakai: ${url.join(" | ")}`
+    );
+  }
+  // Slide tetap kebagian — yang dibuang digantikan, bukan bikin lubang.
+  assert.equal(url.filter(Boolean).length, 5, "slide kehilangan foto gara-gara pembuangan");
 });
 
 test("still yang wajahnya kelihatan menang atas yang cuma siluet", async () => {

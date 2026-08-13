@@ -80,9 +80,15 @@ const bacaKeterangan = () => {
 // `i` dari model 1-based; disimpan per indeks kolam supaya pasangannya tidak bergeser
 // kalau model melewatkan satu nomor atau menukar urutan entri — dua-duanya biasa.
 const keterangan = [];
+const buang = new Set();
 for (const k of bacaKeterangan()) {
   const i = Number(k && k.i) - 1;
   if (i >= 0 && i < kolam.length) {
+    // Still yang adegannya sama dengan sampul artikel dibuang dari kolam sama sekali,
+    // bukan sekadar diberi nilai rendah. Slide 1 SELALU memakai sampul, jadi kembarannya
+    // di slide mana pun terbaca sebagai satu gambar yang diulang — persis keluhan yang
+    // menutup dua desain lalu. Berkasnya memang beda, tapi yang menilai mata.
+    if (k.sama_sampul === true) buang.add(i);
     keterangan[i] = {
       tokoh: (Array.isArray(k.tokoh) ? k.tokoh : []).filter((n) => typeof n === 'string'),
       utama: typeof k.utama === 'string' ? k.utama : '',
@@ -142,7 +148,7 @@ const namaSlide = slides.map((s, i) =>
  */
 const nilaiStill = (k, nama) => {
   const ket = keterangan[k];
-  if (!ket) return 0;
+  if (!ket || buang.has(k)) return 0;
   const kena = (t) => nama.some((n) => sebut(t, n) || sebut(n, t));
   if (ket.utama && kena(ket.utama)) return ket.wajah ? 3 : 2;
   return ket.tokoh.some(kena) ? 1 : 0;
@@ -181,7 +187,7 @@ const jatah = slides.map((s, i) => {
 let berikut = 0;
 for (let i = 0; i < jatah.length; i += 1) {
   if (jatah[i] || namaSlide[i].length) continue;
-  while (berikut < kolam.length && dipakai.has(berikut)) berikut += 1;
+  while (berikut < kolam.length && (dipakai.has(berikut) || buang.has(berikut))) berikut += 1;
   if (berikut < kolam.length) {
     dipakai.add(berikut);
     jatah[i] = kolam[berikut];

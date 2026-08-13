@@ -393,6 +393,13 @@ potret karpet merah alih-alih adegan filmnya. Padahal still-nya ada di kolam.
 | `tokoh` | semua tokoh yang terlihat | dasar pencocokan |
 | `utama` | satu tokoh yang jadi subjek frame | memisahkan "jadi subjek" dari "lewat di latar" |
 | `wajah` | wajah tokoh utama terlihat jelas | memisahkan "kelihatan" dari "cuma siluet" |
+| `sama_sampul` | adegannya sama dengan sampul artikel | slide 1 selalu sampul; kembarannya = satu gambar diulang |
+
+**Urutan gambar dalam permintaan adalah kontraknya**, dan prompt menyebut nomornya apa
+adanya: still `1..N`, lalu **foto acuan wajah pemain** (8 teratas, w185), lalu sampul
+artikel. Menukar urutannya bikin model menilai gambar yang salah tanpa satu pun error
+muncul — ada test yang mengunci ketiganya. Foto acuan ada supaya modelnya tidak menebak
+dari nama: tanpa itu dia cuma punya daftar teks dan tidak tahu Sadie Sink yang mana.
 
 Dua field terakhir yang menentukan mutunya. Tanpa `wajah`, slide Sadie Sink dapat sosok
 **bertudung yang wajahnya gelap total** — modelnya tidak salah, dia memang ada di frame,
