@@ -13,7 +13,7 @@ const hasil = $('Render').first().json;
  * `urls[]` disusun render-svc dari env `PUBLIC_URL` MILIKNYA SENDIRI — nilai kedua yang
  * harus diingat cocok dengan `render_url`. Dua kali dalam satu jam dia meleset: sekali
  * host-nya (`http://render-svc:8080`, nama internal Docker yang cuma bisa di-resolve
- * dari dalam jaringan n8n), sekali portnya (`:8080` padahal container terbit di `:7080`).
+ * dari dalam jaringan n8n), sekali portnya (`:8080` padahal container terbit di port lain).
  *
  * Dua-duanya gagal SENYAP: render balas 200, workflow sukses, tapi Halaman-nya kosong.
  * Sebabnya `urls[]` ini bukan kita yang mengunduh — server Instagram (`image_url`) dan

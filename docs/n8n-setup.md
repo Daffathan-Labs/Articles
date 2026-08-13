@@ -751,7 +751,7 @@ Diverifikasi 2026-08-12: render brand `portofolio` balas 200, JPEG-nya asli
 (`FF D8 FF`), dan Meta berhasil mengambilnya lewat `http://` biasa di IP mentah —
 TLS ternyata tidak diwajibkan untuk `image_url`.
 
-**`render_url` harus base URL saja** — `http://103.197.190.40:7080`, **tanpa** `/render`.
+**`render_url` harus base URL saja** — `http://103.197.190.40:8070`, **tanpa** `/render`.
 Workflow yang menambahkan `/render`; kalau field-nya sudah memuatnya, hasilnya
 `/render/render` dan balasannya 404 tanpa menyebut sebabnya. Ada test yang menjaga ini.
 
@@ -793,7 +793,7 @@ Dulu dua-duanya harus cocok, dan itu meleset **dua kali dalam satu jam**:
 | Percobaan | `PUBLIC_URL` | Akibat |
 |---|---|---|
 | 1 | `http://render-svc:8080` | nama internal Docker — cuma resolve dari dalam `n8n_default` |
-| 2 | `http://103.197.190.40:8080` | port `8080` tidak terbit; container publish `7080` |
+| 2 | `http://103.197.190.40:8080` | port `8080` tidak terbit; container publish port lain |
 
 Dua-duanya gagal **senyap**: render balas 200, workflow sukses, Halaman kosong. Sebabnya
 `urls[]` bukan n8n yang mengunduh — dia **dititipkan ke Meta**, dan server Instagram
@@ -811,9 +811,9 @@ Tetap isi `PUBLIC_URL` dengan alamat publik yang sama supaya tautan pratinjau hi
 
 ```yaml
     environment:
-      - PUBLIC_URL=http://103.197.190.40:7080   # samakan dengan port yang di-publish
+      - PUBLIC_URL=http://103.197.190.40:8070   # samakan dengan port yang di-publish
     ports:
-      - "7080:8080"
+      - "8070:8080"
 ```
 
 `http://` di IP mentah sudah cukup — diverifikasi 2026-08-12, Meta tidak mewajibkan TLS

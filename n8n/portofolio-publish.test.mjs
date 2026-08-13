@@ -746,7 +746,7 @@ test("Rakit slide: sebagian gambar gagal — yang gagal TIDAK meminjam tetangga"
 // render_url yang jadi acuan alamatnya.
 const pecah = (render) => (n) => ({
   first: () => ({
-    json: n === "Render" ? render : { render_url: "http://103.197.190.40:7080" },
+    json: n === "Render" ? render : { render_url: "http://103.197.190.40:8070" },
   }),
 });
 
@@ -756,7 +756,7 @@ test("Pecah URL slide membaca hasil Render, bukan $input", () => {
   const kode = byName["Pecah URL slide"].parameters.jsCode;
   assert.doesNotMatch(tanpaKomentar(kode), /\$input/, "$input di sini pasti kosong dari urls[]");
 
-  const B = "http://103.197.190.40:7080";
+  const B = "http://103.197.190.40:8070";
   const urls = [`${B}/a.jpg`, `${B}/b.jpg`, `${B}/c.jpg`];
   const hasil = new Function("$", kode)(pecah({ urls }));
   assert.deepEqual(hasil.map((i) => i.json.url), urls);
@@ -780,8 +780,8 @@ test("alamat slide untuk Meta diambil dari render_url, bukan dari PUBLIC_URL con
     })
   );
   assert.deepEqual(hasil.map((i) => i.json.url), [
-    "http://103.197.190.40:7080/a/portofolio/x/01.jpg?v=9",
-    "http://103.197.190.40:7080/a/portofolio/x/02.jpg?v=9",
+    "http://103.197.190.40:8070/a/portofolio/x/01.jpg?v=9",
+    "http://103.197.190.40:8070/a/portofolio/x/02.jpg?v=9",
   ]);
 });
 
@@ -1157,7 +1157,7 @@ const susun = (rakit = RENCANA, render = URLS) =>
     refs: {
       "Rakit slide": { json: rakit },
       Render: { json: render },
-      Kredensial: { json: { render_url: "http://103.197.190.40:7080" } },
+      Kredensial: { json: { render_url: "http://103.197.190.40:8070" } },
     },
   });
 
@@ -1179,7 +1179,7 @@ test("Susun commit: path dan URL raw dibentuk persis seperti 45 artikel yang ada
   // di urls[] itu PUBLIC_URL container, dan dia pernah menunjuk port yang tidak terbit.
   assert.equal(
     j.sumber,
-    "http://103.197.190.40:7080/a/portofolio/artikel-uji/hero.jpg?v=1",
+    "http://103.197.190.40:8070/a/portofolio/artikel-uji/hero.jpg?v=1",
     "sumber hero masih memakai origin dari PUBLIC_URL container"
   );
 });
