@@ -644,7 +644,7 @@ test("hero adalah foto polos — nol teks, nol logo, nol veil", () => {
   // Ini gambar artikel, bukan slide. Teks apa pun di sini ikut jadi thumbnail
   // website dan og:image, dan tidak bisa dihapus tanpa commit baru.
   const { hero } = rakit();
-  for (const jejak of ["<h1", "<p", "veil", "Daffathan Labs", "class=\"logo\"", "nomor"]) {
+  for (const jejak of ["<h1", "<p", "veil", "Daffathan Labs", "class=\"logo\""]) {
     assert.ok(!hero.includes(jejak), `hero memuat ${jejak}`);
   }
 });
@@ -1703,7 +1703,11 @@ test("pagar lama tetap berdiri di ketiga layout", () => {
       assert.doesNotMatch(isi, /https?:|daffathan-labs\.my\.id/, `${layout} slide ${i + 1}: ada URL`);
       const m = s.match(/<img class="logo" src="data:image\/png;base64,([^"]*)"/);
       assert.ok(m && m[1].length > 1000, `${layout} slide ${i + 1}: logo hilang atau kosong`);
-      assert.match(s, new RegExp(`${i + 1} / 5`), `${layout} slide ${i + 1}: nomor hilang`);
+      // Nomor slide sengaja dibuang: "3 / 5" bikin pembaca berhenti sebelum slide
+      // terakhir, dan slide terakhir itu yang membawa CTA.
+      // Dicek lewat kelasnya, bukan pola "3 / 5": base64 raster memuat digit dan
+      // garis miring, jadi pola itu cocok dengan gambar apa pun dan selalu merah.
+      assert.doesNotMatch(s, /class="nomor"/, `${layout} slide ${i + 1}: nomor slide balik lagi`);
     }
     assert.match(r.slides[4], /link bio/i, `${layout}: slide 5 bukan CTA`);
     assert.doesNotMatch(r.slides[4], /Satu dua tiga empat/, `${layout}: teks model tidak ditimpa`);

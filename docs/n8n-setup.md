@@ -685,8 +685,11 @@ Tiga layout, bukan bebas: tiap bentuk harus bisa dibuktikan tidak meluber lewat 
 
 ### Yang tidak pernah berubah
 
-Logo DF + wordmark, nomor slide, slide 5 sebagai CTA tetap, dan **nol URL di raster mana
-pun**. Keempatnya dikunci test yang dijalankan ulang di ketiga layout.
+Logo DF + wordmark, slide 5 sebagai CTA tetap, **nol URL di raster mana pun**, dan **tidak
+ada nomor slide**. Keempatnya dikunci test yang dijalankan ulang di ketiga layout.
+
+Nomor "3 / 5" dulu ada di pojok kanan atas dan sekarang dilarang: dia memberi tahu pembaca
+berapa banyak yang tersisa, dan yang tersisa itu justru slide CTA-nya.
 
 ### Nol foto = kartu warna, bukan lubang
 

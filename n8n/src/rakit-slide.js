@@ -289,7 +289,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0B0F14;c
 .atas{display:flex;justify-content:space-between;align-items:center;font-size:${px(24)}px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
 .merek{display:flex;align-items:center;gap:${px(16)}px;background:rgba(11,15,20,.72);padding:${px(12)}px ${px(22)}px ${px(12)}px ${px(12)}px;border-radius:999px}
 .logo{height:${px(46)}px;width:auto;display:block;flex:none}
-.nomor{background:rgba(11,15,20,.72);padding:${px(12)}px ${px(20)}px;border-radius:999px;color:#C3CCD6;letter-spacing:.1em}
 /* Zona teks. Sengaja TANPA overflow:hidden — teks yang meluber harus menambah
    scrollHeight supaya render-svc bisa membalas 422 aturan 11 dan loop ronde
    memperkecilnya. Ditutup di sini berarti teks terpotong diam-diam. */
@@ -406,7 +405,6 @@ ${latar[i] ? '<div class="redup"></div>' : ''}
 <div class="wrap">
   <div class="atas">
     <span class="merek"><img class="logo" src="${LOGO}" alt="">Daffathan Labs</span>
-    <span class="nomor">${i + 1} / ${meta.length}</span>
   </div>
   ${layout === 'tengah' ? `<div class="tengahkan">${teks}</div>` : teks}
 </div>
