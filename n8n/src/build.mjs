@@ -329,7 +329,7 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
     type: 'object',
     required: [
       'linkedin_caption', 'ig_caption', 'fb_caption', 'hashtags', 'slides',
-      'image_series', 'accent', 'layout', 'image_mood', 'film',
+      'image_series', 'accent', 'layout', 'image_mood', 'film', 'film_tahun',
     ],
     properties: {
       linkedin_caption: { type: 'string', description: 'Bahasa Inggris, 120-200 kata, diakhiri URL EN' },
@@ -359,9 +359,19 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
       },
       // Satu-satunya field baru untuk jalur foto asli. Kosong = artikelnya bukan tentang
       // film, dan seluruh cabang TMDB langsung jatuh ke generasi Gemini seperti biasa.
+      // Judul dan tahun DIPISAH, dan itu bukan kerapian belaka. TMDB search mencocokkan
+      // string judul apa adanya, jadi tahun yang ikut menempel di query justru merusak
+      // pencariannya: "Fantastic Four: First Steps 2025" dan "Mortal Kombat II 2026"
+      // dua-duanya mengembalikan NOL hasil, dan "Superman 2025" mendarat di sebuah entri
+      // bernama "Superman (2025) In a Nutshell" yang punya nol backdrop. Tahunnya punya
+      // parameter sendiri di API-nya; di situ dia menyaring, bukan mengacaukan.
       film: {
         type: 'string',
-        description: 'Judul RESMI film atau serial yang diulas, bahasa Inggris, boleh diikuti tahun. String KOSONG kalau artikelnya bukan ulasan film/serial',
+        description: 'Judul RESMI film/serial yang diulas, bahasa Inggris, TANPA tahun dan tanpa tambahan kata apa pun. String KOSONG kalau artikelnya bukan ulasan film/serial',
+      },
+      film_tahun: {
+        type: 'string',
+        description: 'Tahun rilis film tersebut, 4 angka saja, mis. "2026". String KOSONG kalau tidak yakin atau artikelnya bukan ulasan film',
       },
       slides: {
         type: 'array',
@@ -371,7 +381,12 @@ N('Skema copy', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [1180, 6
           required: ['heading', 'body', 'image_prompt', 'image_mode'],
           properties: {
             heading: { type: 'string', description: 'Bahasa Indonesia, MAKSIMAL 8 kata' },
-            body: { type: 'string', description: 'Bahasa Indonesia, MAKSIMAL 25 kata, boleh kosong di slide 1' },
+            // 22-32, dan batas BAWAH-nya sama seriusnya. Panel teks tingginya tetap,
+            // jadi body sembilan kata meninggalkan sepertiga slide sebagai bidang
+            // kosong. Angkanya harus sama persis dengan prompt-copy.txt: skema dan
+            // prompt yang berselisih dimenangkan skema, dan "maksimal 25" di sini
+            // sempat membatalkan permintaan 22-32 di prompt tanpa satu pun error.
+            body: { type: 'string', description: 'Bahasa Indonesia, 22-32 kata (dua kalimat), boleh kosong di slide 1' },
             image_prompt: { type: 'string', description: 'Inggris, 1-2 kalimat, foto latar saja, dilarang ada teks di gambar' },
             image_mode: { type: 'string', enum: ['konseptual', 'tekstur', 'dokumenter', 'tempat', 'properti'] },
           },
@@ -407,6 +422,9 @@ const tmdb = (nama, posisi, url, param) =>
 
 tmdb('Cari film', [1040, 40], 'https://api.themoviedb.org/3/search/movie', [
   { name: 'query', value: "={{ $('Gemini copy').first().json.output.film }}" },
+  // Tahun lewat parameter sendiri, TIDAK ikut menempel di query — alasan lengkapnya di
+  // atas field `film_tahun`. Kosong pun aman: TMDB mengabaikan `year=` yang kosong.
+  { name: 'year', value: "={{ $('Gemini copy').first().json.output.film_tahun || '' }}" },
 ]);
 hubung('Gemini copy', 'Cari film');
 

@@ -94,12 +94,18 @@ YANG HARUS DIHASILKAN
    tampil utuh, bukan sekadar latar samar, jadi tiap artikel memang harus terlihat beda.
 
 10. film — judul RESMI film atau serial yang diulas, bahasa Inggris, persis seperti judul
-    rilisnya, boleh diikuti tahun. Contoh: "Spider-Man: Brand New Day".
+    rilisnya, TANPA TAHUN. Contoh: "Spider-Man: Brand New Day", "Mortal Kombat II".
     KOSONGKAN ("") kalau artikelnya bukan ulasan film atau serial — catatan teknis,
     tutorial, dan cerita keseharian semuanya dikosongkan.
     Ini dipakai mencari foto ASLI dari filmnya, jadi judul yang meleset berarti fotonya
     tidak ketemu dan slide-nya jatuh ke gambar generate. Jangan menerjemahkan judulnya,
-    jangan menambahi kata sendiri.
+    jangan menambahi kata sendiri, dan JANGAN menempelkan tahun di belakangnya —
+    "Mortal Kombat II 2026" mengembalikan nol hasil, "Mortal Kombat II" ketemu.
+
+11. film_tahun — tahun rilis film itu, EMPAT ANGKA saja, misalnya "2026". Tahunnya dipakai
+    sebagai penyaring terpisah, dan di situ dia membantu: "Superman" sendirian bisa kena
+    film 1978. KOSONGKAN ("") kalau artikelnya bukan ulasan film atau kalau tahunnya tidak
+    disebut di artikel — menebak tahun yang salah lebih buruk daripada mengosongkannya.
 
 ATURAN GAMBAR — KERAS
 DILARANG meminta teks, tulisan, angka, huruf, label, logo, atau elemen antarmuka

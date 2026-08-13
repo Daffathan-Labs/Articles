@@ -2353,6 +2353,65 @@ test("cabang Google Custom Search tidak boleh hidup lagi", () => {
   );
 });
 
+test("harness pratinjau film masih menunjuk node yang benar-benar ada", () => {
+  // uji-film.mjs menjalankan Code node ASLI dan menyalin node Gemini apa adanya, semuanya
+  // lewat NAMA. Satu node yang di-rename bikin harness-nya mati dengan "cannot read
+  // properties of undefined" — dan yang paling mungkin terjadi: seseorang merapikan nama
+  // node di build.mjs, test workflow tetap hijau, lalu harness-nya baru ketahuan rusak
+  // berbulan-bulan kemudian tepat waktu mau dipakai untuk film berikutnya.
+  const kode = fs.readFileSync(new URL("./uji-film.mjs", import.meta.url), "utf8");
+  const dirujuk = new Set(
+    [...kode.matchAll(/\b(?:node|src|salin)\('([^']+)'/g)].map((m) => m[1])
+  );
+  assert.ok(dirujuk.size >= 8, `cuma ${dirujuk.size} node yang dirujuk — regexnya yang rusak?`);
+  for (const n of dirujuk) {
+    assert.ok(byName[n], `uji-film.mjs memanggil node "${n}" yang sudah tidak ada di workflow`);
+  }
+  // Harness-nya harus menghapus workflow sementaranya walau di tengah jalan gagal:
+  // webhook yang meneruskan ke kredensial Gemini itu pintu terbuka ke kuota orang.
+  assert.match(kode, /\bfinally\s*\{/, "penghapusan workflow sementara tidak dijamin");
+  assert.match(kode, /method: 'DELETE'/, "workflow sementara tidak pernah dihapus");
+  // Dan dia tidak boleh menyentuh produksi: render masuk ke brand uji, bukan daffathan.
+  assert.match(kode, /brand: 'uji'/, "harness merender ke brand produksi");
+});
+
+test("tahun film dikirim sebagai parameter sendiri, tidak ditempel ke judul", () => {
+  // Ini yang bikin jalur foto asli diam-diam mati untuk film SELAIN yang pertama diuji.
+  // TMDB search mencocokkan string judul apa adanya, jadi tahun yang menempel di query
+  // justru merusak pencariannya — diukur langsung ke API-nya:
+  //
+  //   "Fantastic Four: First Steps 2025" -> NOL hasil
+  //   "Mortal Kombat II 2026"            -> NOL hasil
+  //   "Superman 2025"                    -> "Superman (2025) In a Nutshell", 0 backdrop
+  //   "Superman" + year=2025             -> Superman (2025), benar
+  //
+  // Nol hasil tidak melempar apa pun: kolamnya kosong, slide-nya jatuh ke kartu warna,
+  // dan tidak ada satu pun error yang muncul. Persis bentuk kegagalan yang paling mahal.
+  const q = byName["Cari film"].parameters.queryParameters.parameters;
+  const query = q.find((x) => x.name === "query");
+  const year = q.find((x) => x.name === "year");
+  assert.ok(year, "tahun tidak dikirim sebagai parameter TMDB");
+  assert.match(query.value, /output\.film\b/, "query bukan judul film");
+  assert.doesNotMatch(query.value, /film_tahun/, "tahun ikut menempel di query — nol hasil");
+  assert.match(year.value, /output\.film_tahun/, "parameter year tidak diisi dari model");
+
+  const skema = JSON.parse(byName["Skema copy"].parameters.inputSchema);
+  assert.ok(skema.required.includes("film_tahun"), "film_tahun tidak wajib di skema");
+  assert.match(skema.properties.film.description, /TANPA tahun/, "skema masih membolehkan tahun di judul");
+  // Prompt dan skema harus sepakat: yang berselisih dimenangkan skema, diam-diam.
+  assert.match(byName["Gemini copy"].parameters.text, /TANPA TAHUN/, "prompt masih membolehkan tahun");
+});
+
+test("batas kata body sama di prompt dan di skema", () => {
+  // Skema dan prompt yang berselisih tidak menimbulkan error apa pun — model mengikuti
+  // skema, dan permintaan di prompt hilang tanpa jejak. Sudah kejadian: prompt minta
+  // 22-32 kata sementara skema masih menulis "MAKSIMAL 25 kata", jadi panel teksnya
+  // tetap bolong walau promptnya sudah diperbaiki.
+  const skema = JSON.parse(byName["Skema copy"].parameters.inputSchema);
+  assert.match(skema.properties.slides.items.properties.body.description, /22-32 kata/);
+  assert.match(byName["Gemini copy"].parameters.text, /body: 22-32 KATA/);
+});
+
 test("kunci TMDB dibaca lewat node Kredensial, bukan ditulis di URL", () => {
   for (const n of ["Cari film", "Still film"]) {
     const q = byName[n].parameters.queryParameters.parameters;

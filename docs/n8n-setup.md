@@ -357,12 +357,13 @@ promptnya diputar, Spider-Man dan Sadie Sink tidak akan pernah keluar dari Gemin
 keluar sosok berjubah dengan orb energi. Jadi untuk artikel film, fotonya diambil, bukan
 dibuat.
 
-Model mengisi satu field baru, `film` (judul resmi, atau string kosong kalau artikelnya
-bukan ulasan film). Dari situ tiga panggilan TMDB, **sekali per artikel bukan per slide**:
+Model mengisi dua field, `film` (judul resmi **tanpa tahun**) dan `film_tahun` (empat
+angka). Dua-duanya kosong kalau artikelnya bukan ulasan film. Dari situ tiga panggilan
+TMDB, **sekali per artikel bukan per slide**:
 
 | Node | Isi |
 |---|---|
-| `Cari film` | `search/movie` → id |
+| `Cari film` | `search/movie?query=<judul>&year=<tahun>` → id |
 | `Still film` | `movie/{id}/images` → backdrop |
 | `Pemain film` | `movie/{id}/credits` → nama pemain + nama karakter + foto |
 | `Siapkan kandidat` | saring backdrop polos, ambil 40, unduh w780, susun permintaan Gemini |
@@ -407,6 +408,25 @@ yang tertinggi menang — **bukan yang pertama cocok**.
 Angka 40 juga bukan hiasan: sempat 10, dan hasilnya still Sadie Sink yang ADA di antara 54
 backdrop polos tidak pernah ikut diperiksa. Cakupan yang bolong bikin fitur ini kelihatan
 gagal padahal yang salah cuma daftar yang dilihat.
+
+**Tahun tidak boleh menempel di judul.** TMDB `search/movie` mencocokkan string judul apa
+adanya, jadi tahun di dalam query justru merusak pencariannya. Diukur langsung ke API-nya:
+
+| Query | Hasil |
+|---|---|
+| `Fantastic Four: First Steps 2025` | **nol hasil** |
+| `Mortal Kombat II 2026` | **nol hasil** |
+| `Superman 2025` | *"Superman (2025) In a Nutshell"* — **0 backdrop** |
+| `Superman` + `year=2025` | Superman (2025), 277 backdrop |
+
+Nol hasil tidak melempar apa pun: kolamnya kosong, slide-nya jatuh ke kartu warna, dan
+tidak ada satu pun error yang muncul. Karena itu judul dan tahun jadi **dua field
+terpisah** dan tahunnya masuk ke parameter `year` — di situ dia menyaring (`Superman`
+sendirian bisa kena film 1978), bukan mengacaukan. `year=` kosong diabaikan TMDB, jadi
+model yang tidak yakin tahunnya cukup mengosongkannya.
+
+Bug ini cuma ketahuan karena jalurnya dicoba untuk film **kedua**. Satu film yang berhasil
+tidak membuktikan apa pun tentang film berikutnya.
 
 ### Dua jebakan di jalur ini, dua-duanya menerbitkan orang yang salah
 
@@ -636,6 +656,30 @@ Render langsung ke render-svc dengan `brand` dan `code` sekali pakai, lalu buka
 ```
 POST /render  { brand: "uji", code: "desain-blok", images: [...] }
 ```
+
+### Pratinjau satu artikel film utuh: `n8n/uji-film.mjs`
+
+Buat waktu mau merilis carousel untuk film LAIN yang artikelnya sudah ada — dan buat
+memeriksa perubahan desain sebelum ada satu e-mail approval pun terkirim.
+
+```
+node n8n/uji-film.mjs                                      # daftar 21 artikel review
+node n8n/uji-film.mjs review-superman-2025                 # jalankan satu
+```
+
+Yang dijalankan adalah Code node **asli** dari `portofolio-publish.local.json` — bukan
+salinannya — plus panggilan TMDB, Gemini, dan render-svc yang sungguhan. Keluarannya:
+judul film yang dikenali, jumlah backdrop polos, foto yang dapat slide mana, **ketiga
+caption utuh lengkap dengan jumlah katanya**, lalu `previewUrl`.
+
+Kunci Gemini hidup di kredensial n8n dan tidak pernah menyentuh disk, jadi skrip ini
+membuat satu workflow sekali pakai, memakainya, lalu **menghapusnya lagi** — juga kalau di
+tengah jalan gagal (`try/finally`). Webhook yang meneruskan ke kredensial Gemini itu pintu
+terbuka ke kuota orang; dia tidak boleh menginap. Render-nya masuk ke brand `uji`, dan
+tidak ada e-mail, commit, maupun posting yang tersentuh.
+
+Ada test yang memeriksa harness ini masih menunjuk node yang benar-benar ada. Tanpa itu
+satu node yang di-rename baru ketahuan berbulan-bulan kemudian, tepat waktu mau dipakai.
 
 ## 4. render-svc
 
