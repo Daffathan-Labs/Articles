@@ -69,17 +69,25 @@ const ambilSelang = (arr, n) => {
 
 const still = $('Still film').first().json;
 const backdrops = Array.isArray(still && still.backdrops) ? still.backdrops : [];
-const dariTmdb = ambilSelang(
-  backdrops.slice().sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0)),
+
+/**
+ * HANYA backdrop tanpa bahasa. Ini bukan penyaringan kosmetik.
+ *
+ * TMDB memakai `iso_639_1` untuk menandai gambar yang sudah ditempeli JUDUL FILM cetak:
+ * null berarti polos, "tr"/"en"/"pt" berarti ada logo judul dalam bahasa itu. Brand New
+ * Day punya 85 backdrop dan 31 di antaranya bertuliskan judul — salah satunya
+ * ("ÖRÜMCEK-ADAM YEPYENİ BİR GÜN") persis kena selang yang dipakai carousel lima slide.
+ *
+ * Seluruh desain ini berdiri di atas satu aturan: semua kata hidup di HTML, nol di raster.
+ * Judul cetak di dalam foto melanggarnya, dan yang terbaca jadi dua judul bertumpuk.
+ * Kalau sebuah film tidak punya satu pun backdrop polos, kolamnya kosong dan slide-nya
+ * jatuh ke gambar generate — itu memang pilihan yang benar, bukan kompromi.
+ */
+const polos = backdrops.filter((b) => b && b.iso_639_1 == null);
+const kolam = ambilSelang(
+  polos.slice().sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0)),
   slides.length
 ).map((b) => `https://image.tmdb.org/t/p/w1280${b.file_path}`);
-
-// Disisipkan build.mjs: ekspresi asli kalau GOOGLE_AKTIF, `[]` kalau tidak. Node yang
-// tidak dipasang tidak bisa dirujuk `$('...')` — ekspresinya melempar, bukan mengembalikan
-// undefined. Pola yang sama dipakai untuk {{LOGO}}.
-const dariGoogle = {{GOOGLE}};
-
-const kolam = dariTmdb.length ? dariTmdb : dariGoogle;
 
 /**
  * Slide yang menyebut seorang pemain memakai foto ORANGNYA, bukan still acak.
@@ -156,10 +164,16 @@ return slides.map((s, i) => {
       pakai_foto: kolam.length > 0,
       // Slide yang kehabisan kolam dapat null: node `Ambil foto` gagal untuk item itu,
       // dan slide-nya jatuh ke kartu berpola. Bukan foto slide lain.
+      //
+      // Tidak ada titik fokus yang ikut dikirim. Sempat ada — potret 2:3 digeser ke
+      // '50% 18%' supaya wajahnya tidak kepotong waktu di-crop. Itu menambal gejala:
+      // foto asli sekarang dipasang `object-fit:contain`, jadi TIDAK ADA yang dipotong
+      // dan tidak ada yang perlu digeser.
       foto_url: orang ? `https://image.tmdb.org/t/p/w780${orang}` : kolam[i] || null,
-      // Foto orang itu potret 2:3; dipasang di tengah, wajahnya kepotong. Titik fokusnya
-      // dinaikkan supaya kepala tetap masuk frame. Still 16:9 tidak perlu digeser.
-      foto_fokus: orang ? '50% 18%' : '50% 50%',
+      // Foto pemain itu potret 2:3, still film 16:9 — beda arah, jadi tidak bisa muat
+      // utuh di kotak yang sama. Kotak potret ditinggikan di `Rakit slide`; tanpa itu
+      // potretnya cuma jadi persegi panjang kecil mengambang di tengah bidang warna.
+      foto_potret: Boolean(orang),
     },
   };
 });

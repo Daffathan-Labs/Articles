@@ -53,7 +53,7 @@ jadi path `/webhook/portofolio` tidak berubah.
 
 | Node | Jenis kredensial | Kredensial n8n |
 |---|---|---|
-| `Gemini Flash`, `Gemini gambar` | Google Gemini (`googlePalmApi`) | `Google Gemini(PaLM) Api account 2` |
+| `Gemini Flash`, `Gemini gambar` | Google Gemini (`googlePalmApi`) | `Google Gemini(PaLM) Api account` (`tpUqnrdzmryxe2ps`) — **bukan** "account 2", yang project-nya tanpa billing dan membalas `free_tier … limit: 0` |
 | `Kirim preview`, `Email hasil`, `Lapor render gagal`, `Lapor dilewati`, `Lapor commit` | Gmail OAuth2 | `Gmail account` |
 
 **ID kredensial di berkas ini nilai asli, dan itu disengaja.** ID-nya bukan rahasia —
@@ -95,8 +95,6 @@ Buka node itu di n8n, isi yang masih `ISI_...`, simpan. Selesai.
 | `fb_page_id` | → [credentials-facebook.md](credentials-facebook.md) |
 | `fb_page_token` | idem. **Tidak kedaluwarsa** selama kamu tetap admin Halamannya |
 | `tmdb_api_key` | API Key (v3 auth) dari themoviedb.org → Settings → API. Gratis, dipakai mengambil still + daftar pemain untuk artikel film |
-| `google_cse_key` | **opsional**, cadangan. API key Google Cloud dengan Custom Search API aktif. Boleh kosong selama `GOOGLE_AKTIF = false` |
-| `google_cse_cx` | **opsional**, cadangan. Search Engine ID dari programmablesearchengine.google.com, disetel "Search the entire web" + Image search ON |
 | `github_token` | PAT untuk commit balik gambar. Yang terpasang sekarang PAT **klasik** (`ghp_`) — berlaku untuk **semua** repo akunmu. Yang dibutuhkan cuma repo `Articles` + **Contents: Read and write**, jadi ganti ke **fine-grained** kalau sempat |
 | `notify_email` | alamat **penerima** e-mail; pengirimnya selalu akun Gmail di kredensial |
 
@@ -391,17 +389,42 @@ ke dua-duanya. Tiga hal yang menjaganya dari cocok palsu, dan ketiganya ada test
   `"Grey"` kena di `"greyscale"`;
 - cuma 20 nama teratas — di bawah itu isinya figuran yang namanya justru bikin cocok palsu.
 
-**Rasio.** Backdrop 16:9, foto pemain 2:3, kanvas 4:5. Karena itu layout **dipaksa
-`pias-bawah`** begitu ada foto asli: di `blok-bawah` foto mengisi 1080×1350 dan
-`object-fit: cover` membuang 55% lebarnya, sementara `pias-bawah` cuma membuang 22%. Foto
-pemain juga digeser fokusnya ke `50% 18%` — dipasang di tengah, wajahnya kepotong.
+**Cuma backdrop tanpa bahasa.** TMDB menandai gambar yang sudah ditempeli **judul film
+cetak** lewat `iso_639_1`: `null` berarti polos, `"tr"`/`"en"`/`"pt"` berarti ada logo
+judul dalam bahasa itu. Brand New Day punya 85 backdrop dan **31 di antaranya bertuliskan
+judul** — salah satunya (*"ÖRÜMCEK-ADAM YEPYENİ BİR GÜN"*) persis kena selang yang dipakai
+carousel lima slide. Seluruh desain ini berdiri di atas aturan sebaliknya: semua kata hidup
+di HTML, nol di raster. Film tanpa satu pun backdrop polos → kolam kosong → slide-nya jatuh
+ke gambar generate, dan itu memang pilihan yang benar.
 
-**Google Custom Search** ada sebagai cadangan di balik `GOOGLE_AKTIF`, **default mati**.
-Google tidak punya API Google Images; yang ada Custom Search, hasilnya tautan ke gambar
-yang di-host situs orang lain, jadi kualitasnya tidak terkendali dan tautannya gampang
-mati. Jatahnya juga 100 panggilan per hari. TMDB praktis punya semua film bioskop, jadi
-cabang ini jarang perlu. Menyalakan: isi `google_cse_key` + `google_cse_cx`, ubah
-`GOOGLE_AKTIF` jadi `true`, build ulang.
+**Rasio: foto tidak pernah dipotong.** Backdrop 16:9, foto pemain 2:3, kanvas 4:5 — tidak
+ada satu kotak yang muat dua-duanya. Layout **dipaksa `pias-bawah`** begitu ada foto asli,
+fotonya `object-fit: contain`, dan tinggi kotaknya ikut bentuk fotonya:
+
+| Foto | Kotak | Hasil |
+|---|---|---|
+| Still 16:9 | 1080×**608** | pas persis, nol piksel dibuang |
+| Potret pemain 2:3 | 1080×**800** | potret 533×800 di tengah, sisanya bidang gradien aksen |
+
+`cover` mengisi kotak dengan cara membuang bagian foto yang tidak muat, dan yang dibuang
+selalu tepi — kepala, bahu, dagu tepat di garis panel teks. Itu keluhan yang menutup
+desain sebelumnya. Angka 800 bukan sembarang: sisa 550px untuk panel teks, praktis sama
+dengan 567px yang sudah terbukti muat, jadi slide potret tidak memicu ronde penyusutan
+teks yang tidak perlu.
+
+**Panel bukan hitam rata.** `#0B0F14` dicampur aksen artikel (`tinta()` di
+`rakit-slide.js`) untuk panel pias, blok teks `blok-bawah`, dan scrim `tengah`. Porsinya
+dipatok maksimal `.40`; test memeriksa kontras teks tetap ≥7:1 (judul putih) dan ≥4,5:1
+(body) untuk beberapa aksen sekaligus — memeriksa satu aksen gelap saja bikin batas
+porsinya tidak dijaga sama sekali.
+
+**Google Custom Search: tidak ada, dan tidak bisa ada.** Cadangannya dulu direncanakan
+lewat Custom Search JSON API yang disetel *"Search the entire web"*. Google mengumumkan
+**20 Januari 2026** bahwa mesin telusur baru cuma boleh mendaftar maksimal 50 domain —
+opsi entire-web tidak bisa dinyalakan lagi untuk mesin baru, dan mesin lama wajib pindah
+sebelum **1 Januari 2027**. Penggantinya berbayar lewat formulir minat. Jadi cabangnya
+dihapus, bukan disimpan di balik saklar: kode mati yang menyamar sebagai fitur yang
+tinggal disetel cuma menipu orang yang membacanya nanti.
 
 > Hak cipta, singkat: still film tetap milik studionya. Memakainya untuk ulasan adalah
 > praktik editorial yang lumrah — itu memang alasan studio merilis still publisitas — tapi

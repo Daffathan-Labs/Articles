@@ -119,19 +119,19 @@ const asli = (k, fallback) => RAHASIA[k] || fallback;
  */
 const FB_AKTIF = true;
 
-/**
- * Cadangan Google Custom Search untuk foto film yang tidak ketemu di TMDB.
+/*
+ * Cadangan Google Custom Search DIHAPUS, bukan sekadar dimatikan.
  *
- * Dimatikan default, dan itu disengaja. Google tidak punya API Google Images — yang ada
- * Custom Search, hasilnya tautan ke gambar yang di-host situs orang lain, jadi kualitasnya
- * tidak terkendali dan tautannya gampang mati. Jatahnya juga cuma 100 panggilan per hari.
- * TMDB praktis punya semua film yang tayang bioskop, jadi cabang ini memang jarang perlu.
+ * Rencananya dulu: kalau film tidak ketemu di TMDB, cari fotonya lewat Custom Search JSON
+ * API yang disetel "Search the entire web". Opsi itu sudah tidak ada. Google mengumumkan
+ * 20 Januari 2026 bahwa mesin telusur BARU cuma boleh mendaftar maksimal 50 domain —
+ * "Search the entire web" tidak bisa dinyalakan lagi untuk mesin yang baru dibuat, dan
+ * yang lama pun wajib pindah sebelum 1 Januari 2027. Penggantinya berbayar dan harus
+ * lewat formulir minat.
  *
- * Menyalakan: isi google_cse_key + google_cse_cx di secrets.local.json, ubah baris ini
- * jadi true, build ulang. Sama seperti FB_AKTIF, saklar ini sekaligus memutus
- * sambungannya — cabang nonaktif yang masih tersambung pernah menggantung pipeline.
+ * Jadi cabang ini tidak akan pernah bisa dinyalakan. Saklar yang menjaga kode mati yang
+ * mustahil hidup cuma menipu orang yang membacanya nanti — termasuk aku sendiri.
  */
-const GOOGLE_AKTIF = false;
 
 const FIELD = [
   ['article_api_url', 'https://api.daffathan-labs.my.id', 'https://api.daffathan-labs.my.id'],
@@ -162,10 +162,6 @@ const FIELD = [
   // Gemini — satu-satunya jalan ke foto yang benar-benar menampilkan subjeknya adalah
   // mengambil yang memang sudah ada. TMDB gratis dan memang dibangun untuk ini.
   ['tmdb_api_key', 'ISI_TMDB_API_KEY', asli('tmdb_api_key', 'ISI_TMDB_API_KEY')],
-  // Cadangan kalau filmnya tidak ketemu di TMDB. Boleh kosong: GOOGLE_AKTIF yang
-  // menentukan node-nya dipasang atau tidak, bukan ada-tidaknya kunci ini.
-  ['google_cse_key', 'ISI_GOOGLE_CSE_KEY', asli('google_cse_key', 'ISI_GOOGLE_CSE_KEY')],
-  ['google_cse_cx', 'ISI_GOOGLE_CSE_CX', asli('google_cse_cx', 'ISI_GOOGLE_CSE_CX')],
   ['notify_email', 'ISI_EMAIL_TUJUAN', 'daffa.fathan9@gmail.com'],
 ];
 const kondisi = (leftValue, operator, rightValue) => ({
@@ -429,54 +425,11 @@ tmdb('Pemain film', [1320, 40],
   []);
 hubung('Still film', 'Pemain film');
 
-if (GOOGLE_AKTIF) {
-  N('Perlu Google?', 'n8n-nodes-base.if', 2.2, [1320, 40], {
-    conditions: kondisi(
-      "={{ ($('Still film').first().json.backdrops || []).length }}",
-      { type: 'number', operation: 'equals' },
-      0
-    ),
-    options: {},
-  });
-  hubung('Pemain film', 'Perlu Google?');
-
-  // SATU panggilan per artikel, bukan per slide: num=10 sudah cukup untuk lima slide,
-  // dan jatah Custom Search cuma 100 per hari.
-  N('Cari Google', 'n8n-nodes-base.httpRequest', 4.2, [1460, 40], {
-    url: 'https://www.googleapis.com/customsearch/v1',
-    sendQuery: true,
-    queryParameters: {
-      parameters: [
-        { name: 'key', value: `={{ ${K('google_cse_key')} }}` },
-        { name: 'cx', value: `={{ ${K('google_cse_cx')} }}` },
-        { name: 'searchType', value: 'image' },
-        { name: 'num', value: '10' },
-        { name: 'q', value: "={{ $('Gemini copy').first().json.output.film }}" },
-      ],
-    },
-    options: {},
-  }, { onError: 'continueRegularOutput', alwaysOutputData: true });
-  hubung('Perlu Google?', 'Cari Google', 0);
-  hubung('Cari Google', 'Pecah slide');
-  // TMDB sudah punya isi: Google dilewati sama sekali. Ini yang menjaga jatah 100/hari.
-  hubung('Perlu Google?', 'Pecah slide', 1);
-}
-
 // Membaca `Gemini copy` lewat nama node, bukan $input: node-node TMDB di atas menyisip
 // di antaranya, dan seluruh workflow ini memang membaca lewat nama supaya penyisipan
 // seperti itu tidak diam-diam mengganti sumber datanya.
-// {{GOOGLE}} disisipkan di sini, bukan dijaga di dalam Code node: node yang tidak
-// dipasang tidak bisa dirujuk `$('Cari Google')` — ekspresinya MELEMPAR, bukan
-// mengembalikan undefined, jadi tidak ada penjaga runtime yang bisa menyelamatkannya.
-N('Pecah slide', 'n8n-nodes-base.code', 2, [1260, 460], {
-  jsCode: baca('pecah-slide.js').replace(
-    '{{GOOGLE}}',
-    GOOGLE_AKTIF
-      ? "($('Cari Google').isExecuted ? ($('Cari Google').first().json.items || []) : []).map((x) => x.link)"
-      : '[]'
-  ),
-});
-if (!GOOGLE_AKTIF) hubung('Pemain film', 'Pecah slide');
+N('Pecah slide', 'n8n-nodes-base.code', 2, [1260, 460], { jsCode: baca('pecah-slide.js') });
+hubung('Pemain film', 'Pecah slide');
 
 N('Gemini gambar', '@n8n/n8n-nodes-langchain.googleGemini', 1, [1480, 460], {
   resource: 'image',

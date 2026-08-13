@@ -197,6 +197,54 @@ const layout = adaFotoAsli
   : LAYOUT.includes(copy.layout) ? copy.layout : LAYOUT[0];
 
 /**
+ * Tinggi pias = 1080 / (16/9). Backdrop TMDB semuanya 16:9 — diverifikasi, 85 backdrop
+ * Brand New Day rasionya 1,775-1,784 tanpa kecuali — jadi di kotak setinggi ini sebuah
+ * still masuk PERSIS, tanpa satu piksel pun dibuang.
+ *
+ * Itu yang membedakannya dari versi sebelumnya: kotaknya dulu 783px, jadi `cover`
+ * membesarkan still sampai lebarnya 1391px dan membuang 22% sisi kiri-kanan. Yang
+ * terlihat: orang yang dagunya berhenti di garis panel teks.
+ */
+const PIAS = 608;
+
+/**
+ * Kotak untuk foto PEMAIN, yang bentuknya potret 2:3 — arah yang berlawanan dengan still.
+ *
+ * Potret 2:3 tidak akan pernah memenuhi kotak selebar 1080 tanpa dipotong: untuk selebar
+ * itu tingginya harus 1620px, lebih tinggi dari kanvasnya sendiri. Jadi pilihannya cuma
+ * dua, dan dua-dua-nya dirender lalu dilihat sebelum dipilih: dipotong jadi bujur sangkar
+ * (ubun-ubunnya hilang) atau kotaknya ditinggikan sampai potretnya besar. Yang kedua yang
+ * dipakai — 800px membuat potretnya 533px, bukan 405px, dan tidak ada satu piksel pun
+ * yang dibuang.
+ *
+ * 800, bukan lebih: sisa 550px untuk panel teks, praktis sama dengan 567px yang sudah
+ * terbukti muat di desain sebelumnya. Lebih tinggi dari ini dan tiap slide potret bakal
+ * memicu ronde penyusutan teks yang sebenarnya tidak perlu.
+ */
+const PIAS_POTRET = 800;
+
+/**
+ * Campur dua warna. `t` = porsi warna kedua.
+ *
+ * Ada karena panelnya dulu hitam rata (#0B0F14) di SEMUA artikel: aksen cuma muncul di
+ * chip kecil, jadi review film dan catatan teknis sama-sama keluar sebagai kotak hitam
+ * bertulisan putih. Sekarang aksen ikut menginti panel, blok, dan pias di belakang foto.
+ * Dicampur ke arah hitam, bukan dipakai mentah: porsinya dipatok maksimal .40 supaya
+ * kontras teks putih tidak pernah turun di bawah 8:1 — dijaga test, bukan dikira-kira.
+ */
+const GELAP = '#0B0F14';
+const campur = (a, b, t) => {
+  const n = (h, i) => parseInt(h.slice(i, i + 2), 16);
+  return (
+    '#' +
+    [1, 3, 5]
+      .map((i) => Math.round(n(a, i) * (1 - t) + n(b, i) * t).toString(16).padStart(2, '0'))
+      .join('')
+  );
+};
+const tinta = (t) => campur(GELAP, aksen, t);
+
+/**
  * Foto tampil UTUH — opacity 1, dan tidak ada satu pun lapisan yang menutup seluruh
  * kanvas. Versi sebelumnya memasang foto di opacity .42 lalu menimpanya dengan veil
  * .62–.96 sekanvas; yang sampai ke mata tinggal 16% di ujung atas dan 1,7% di bawah,
@@ -245,15 +293,34 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0B0F14;c
 h1{font-size:${px(74)}px;line-height:1.08;font-weight:800;letter-spacing:-.02em;text-transform:uppercase}
 h1.cta{font-size:${px(58)}px;text-transform:none}
 p{font-size:${px(34)}px;line-height:1.42;color:#D7DEE6;margin-top:${px(22)}px}
-/* blok-bawah: pola HEROID — foto utuh, teks di dalam blok pekat di bawah. */
+/* blok-bawah: pola HEROID — foto utuh, teks di dalam blok pekat di bawah. Bloknya
+   berinti aksen, bukan hitam: ini satu dari tiga tempat warna artikel benar-benar
+   terlihat. F0 = 94% — cukup pekat untuk duduk di atas foto seterang apa pun. */
 .l-blok .wrap{justify-content:space-between}
-.l-blok .teks{background:rgba(9,12,16,.9);border-radius:${px(20)}px;border-left:${px(10)}px solid ${aksen}}
-/* pias-bawah: foto 58% atas, panel warna solid 42% bawah. */
-.l-pias .bg{height:783px;bottom:auto}
-.l-pias .kartu{height:783px;bottom:auto}
-.l-pias .redup{height:783px;bottom:auto}
-.l-pias body,.l-pias{background:#0B0F14}
-.l-pias .teks{background:#0B0F14;border-top:${px(8)}px solid ${aksen};border-radius:0;padding-top:${px(40)}px}
+.l-blok .teks{background:linear-gradient(155deg,${tinta(0.36)}F0 0%,${tinta(0.1)}F0 100%);border-radius:${px(20)}px;border-left:${px(10)}px solid ${aksen}}
+/* pias-bawah: foto UTUH di kotak 16:9 atas, panel bertinta aksen di bawah.
+   object-fit contain, bukan cover — inilah bedanya. cover mengisi kotak dengan cara
+   membuang bagian foto yang tidak muat, dan yang dibuang selalu tepi: kepala, bahu,
+   tangan yang sedang menembakkan jaring. contain memuat SELURUH foto lalu menyisakan
+   ruang; ruang sisa itu diisi gradien aksen di .fotolayer, bukan hitam. Untuk still
+   16:9 tidak ada ruang sisa sama sekali — pas persis. */
+.l-pias .fotolayer{height:${PIAS}px;bottom:auto;background:linear-gradient(200deg,${tinta(0.4)} 0%,${tinta(0.12)} 100%);box-shadow:inset 0 -${px(8)}px 0 ${aksen}}
+.l-pias .bg{height:${PIAS}px;object-fit:contain}
+.l-pias .kartu{height:${PIAS}px;bottom:auto}
+/* Teks pias tidak pernah berdiri di atas foto, jadi redup sekanvas cuma memudarkan
+   fotonya tanpa menjaga apa pun. */
+.l-pias .redup{display:none}
+/* Panel dipasang di body supaya warnanya menyambung dari tepi foto sampai dasar
+   kanvas tanpa sambungan yang terlihat. 45% ≈ tepi bawah foto. */
+.l-pias body{background:linear-gradient(180deg,${tinta(0.34)} 45%,${tinta(0.06)} 100%)}
+/* Mulai dari transparan: pelindung teks yang menambah kontras di bagian bawah panel
+   tanpa memunculkan kotak bersudut di atas gradien body. */
+.l-pias .teks{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.3) 100%);border-radius:0;padding-top:${px(40)}px}
+/* Slide berfoto PEMAIN: kotaknya ditinggikan karena potret 2:3 arahnya berlawanan
+   dengan still 16:9 — alasan lengkapnya di atas PIAS_POTRET. Kelasnya menempel di
+   <html> yang sama dengan .l-pias, jadi tanpa spasi. */
+.l-pias.potret .fotolayer{height:${PIAS_POTRET}px}
+.l-pias.potret .bg{height:${PIAS_POTRET}px}
 /* tengah: judul di tengah, scrim gradien terbatas di zona teksnya saja. */
 /* tengah: scrim harus BENAR-BENAR sampai transparan sebelum tepi kotaknya, kalau
    tidak yang terlihat kotak abu-abu bersudut, bukan bayangan lembut. Karena itu
@@ -262,7 +329,7 @@ p{font-size:${px(34)}px;line-height:1.42;color:#D7DEE6;margin-top:${px(22)}px}
    text-shadow: dua lapis pelindung, dan yang kedua tidak bergantung ukuran kotak. */
 .l-tengah .wrap{justify-content:space-between}
 .l-tengah .tengahkan{flex:1;display:flex;align-items:center}
-.l-tengah .teks{background:radial-gradient(72% 54% at 50% 50%,rgba(9,12,16,.93) 0%,rgba(9,12,16,.74) 46%,rgba(9,12,16,0) 72%);text-align:center;padding:${px(104)}px ${px(72)}px}
+.l-tengah .teks{background:radial-gradient(72% 54% at 50% 50%,${tinta(0.28)}ED 0%,${tinta(0.16)}BD 46%,${tinta(0.1)}00 72%);text-align:center;padding:${px(104)}px ${px(72)}px}
 .l-tengah .kicker{margin-left:auto;margin-right:auto}
 .l-tengah h1,.l-tengah p{text-shadow:0 ${px(2)}px ${px(20)}px rgba(0,0,0,.9)}
 `.trim();
@@ -295,11 +362,13 @@ const slides = meta.map((m, i) => {
     `</div>`;
 
   return `<!doctype html>
-<html lang="id" class="${KELAS[layout]}"><head><meta charset="utf-8"><style>${CSS}</style></head><body>
+<html lang="id" class="${KELAS[layout]}${m.foto_potret ? ' potret' : ''}"><head><meta charset="utf-8"><style>${CSS}</style></head><body>
 ${latar[i]
-      // Foto artikel di slide 1 diturunkan sedikit titik fokusnya: subjek foto banner
-      // hampir selalu duduk di atas tengah, dan blok teks memakan sepertiga bawah.
-      ? `<div class="fotolayer"><img class="bg" style="object-position:${i === 0 && coverB64 ? '50% 30%' : m.foto_fokus || '50% 50%'}" src="${latar[i]}"></div>`
+      // Titik fokus cuma berpengaruh di layout yang memotong (blok-bawah, tengah).
+      // Foto artikel di slide 1 diturunkan sedikit: subjek foto banner hampir selalu
+      // duduk di atas tengah, dan blok teks memakan sepertiga bawah. Di pias-bawah
+      // fotonya `contain`, tidak ada yang dipotong, jadi nilai ini tidak dipakai.
+      ? `<div class="fotolayer"><img class="bg" style="object-position:${i === 0 && coverB64 ? '50% 30%' : '50% 50%'}" src="${latar[i]}"></div>`
       : `<div class="kartu k${i % 4}"></div>`}
 ${latar[i] ? '<div class="redup"></div>' : ''}
 <div class="wrap">

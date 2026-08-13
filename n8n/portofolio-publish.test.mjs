@@ -278,7 +278,7 @@ test("file ter-commit tidak membawa kredensial hidup", () => {
   // Nilai asli hidup di portofolio-publish.local.json yang di-gitignore.
   // Daftar ini ditulis tangan, jadi rahasia baru yang lupa didaftarkan TIDAK dijaga
   // siapa pun. Tiap tambah field rahasia di FIELD, tambah juga namanya di sini.
-  for (const f of ["article_api_key", "render_url", "render_token", "linkedin_token", "ig_user_id", "ig_token", "notify_email", "tmdb_api_key", "google_cse_key", "google_cse_cx"]) {
+  for (const f of ["article_api_key", "render_url", "render_token", "linkedin_token", "ig_user_id", "ig_token", "notify_email", "tmdb_api_key"]) {
     assert.match(kred(f), PLACEHOLDER, `${f} membawa nilai asli`);
   }
   // Yang boleh nyata: bukan rahasia, dan mengisinya menghemat langkah setup.
@@ -354,6 +354,8 @@ function rakit({
   cover = null,
   // true = artikel film, gambarnya still asli dari TMDB. Ini yang memaksa layout.
   fotoAsli = false,
+  // Indeks slide yang fotonya POTRET pemain (2:3), bukan still 16:9.
+  potretDi = [],
 } = {}) {
   const slide = {
     heading: heading ?? "Satu dua tiga empat lima enam tujuh delapan",
@@ -397,7 +399,11 @@ function rakit({
     isExecuted: true,
     first: () => palsu[n],
     all: () => {
-      if (n === "Pecah slide") return Array.from({ length: 5 }, () => ({ json: slide }));
+      if (n === "Pecah slide") {
+        return Array.from({ length: 5 }, (_, i) => ({
+          json: { ...slide, foto_potret: potretDi.includes(i) },
+        }));
+      }
       // `Slide base64` SELALU mengeluarkan satu item per slide, termasuk yang gagal
       // (`b64: null`). Itu yang menjaga slide ke-4 tidak memakai gambar milik slide
       // ke-1 saat sebagian gambar gagal.
@@ -1697,6 +1703,111 @@ test("still film memaksa layout pias-bawah, apa pun pilihan model", () => {
   assert.match(rakit({ layout: "blok-bawah" }).slides[0], /class="l-blok"/);
 });
 
+test("foto asli tampil UTUH — contain, dan kotaknya persis 16:9", () => {
+  // Keluhannya: "gambarnya kepotong ama tulisan tulisan di dalam konten nya". Sadie Sink
+  // berhenti di dagu, Tom Holland berhenti di dagu — karena kotak fotonya 1080x783
+  // (rasio 1,38) sementara still-nya 16:9, jadi `cover` membesarkan foto sampai lebarnya
+  // 1391px dan membuang 22% sisi kiri-kanan.
+  //
+  // Dua hal yang memperbaikinya, dan dua-duanya harus tetap ada:
+  const css = gaya(rakit({ layout: "blok-bawah", fotoAsli: true }).slides[0]);
+
+  // 1. `contain` — memuat SELURUH foto, tidak pernah membuang tepi.
+  const bg = css.match(/\.l-pias \.bg\{([^}]*)\}/)[1];
+  assert.match(bg, /object-fit:\s*contain/, "foto asli di-crop lagi");
+  assert.doesNotMatch(bg, /object-fit:\s*cover/, "cover balik — tepi foto dibuang lagi");
+
+  // 2. Kotaknya 1080 / (16/9) = 607, jadi still 16:9 masuk PERSIS tanpa ruang sisa.
+  //    85 backdrop Brand New Day rasionya 1,775-1,784 tanpa kecuali — diverifikasi.
+  const tinggi = (sel) => Number(css.match(new RegExp(`\\${sel}\\{[^}]*height:(\\d+)px`))[1]);
+  assert.equal(tinggi(".l-pias .bg"), Math.round(1080 / (16 / 9)));
+  assert.equal(tinggi(".l-pias .fotolayer"), tinggi(".l-pias .bg"), "foto dan kotaknya beda tinggi");
+
+  // Titik fokus tidak boleh dipakai lagi untuk menambal crop di jalur foto asli.
+  assert.doesNotMatch(
+    rakit({ layout: "blok-bawah", fotoAsli: true }).slides[1],
+    /object-position:50% 18%/,
+    "geser fokus balik — itu menambal gejala, bukan berhenti memotong"
+  );
+
+  // Foto PEMAIN bentuknya potret 2:3, arahnya berlawanan dengan still 16:9. Di kotak
+  // 608 dia cuma 405px lebar — persegi panjang kecil mengambang di tengah bidang warna.
+  // Kotaknya ditinggikan supaya potretnya besar, tetap tanpa satu piksel pun dibuang.
+  assert.match(css, /\.l-pias\.potret \.bg\{[^}]*height:(\d+)px/, "kotak potret tidak dibedakan");
+  const potret = Number(css.match(/\.l-pias\.potret \.bg\{[^}]*height:(\d+)px/)[1]);
+  assert.ok(potret > tinggi(".l-pias .bg"), "kotak potret tidak lebih tinggi dari kotak still");
+  // Panelnya tidak boleh ikut habis: 567px terbukti muat di desain sebelumnya, dan
+  // panel yang lebih sempit dari itu memicu ronde penyusutan teks di TIAP slide potret.
+  assert.ok(1350 - potret >= 520, `panel teks tinggal ${1350 - potret}px — teks bakal meluber`);
+  assert.equal(
+    css.match(/\.l-pias\.potret \.fotolayer\{[^}]*height:(\d+)px/)[1],
+    String(potret),
+    "foto potret dan kotaknya beda tinggi"
+  );
+});
+
+test("kelas potret cuma menempel di slide yang fotonya potret", () => {
+  // Kalau kelasnya nempel di semua slide, still 16:9 ikut dipasang di kotak setinggi
+  // potret dan yang muncul pias hitam di atas-bawah foto — di setiap slide.
+  const r = rakit({ layout: "blok-bawah", fotoAsli: true, potretDi: [2] });
+  assert.match(r.slides[2], /<html lang="id" class="l-pias potret"/, "slide potret tidak ditandai");
+  for (const i of [0, 1, 3, 4]) {
+    assert.match(r.slides[i], /<html lang="id" class="l-pias"/, `slide ${i + 1} ikut jadi potret`);
+  }
+  // Artikel non-film tidak punya foto potret sama sekali.
+  assert.doesNotMatch(rakit({ layout: "tengah" }).slides[0], /class="[^"]*potret/);
+});
+
+test("panel bukan hitam rata: warnanya ikut aksen, kontras tetap aman", () => {
+  // Keluhannya: "jangan sampai statis warna hitam dan tulisan putih aja". Panelnya dulu
+  // #0B0F14 di SEMUA artikel — aksen cuma muncul di chip kecil, jadi review film dan
+  // catatan teknis sama-sama keluar sebagai kotak hitam bertulisan putih.
+  const lum = (hex) =>
+    [1, 3, 5]
+      .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+      .reduce((a, v, i) => a + [0.2126, 0.7152, 0.0722][i] * v, 0);
+  const rasio = (a, b) => {
+    const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+    return (x + 0.05) / (y + 0.05);
+  };
+  // HANYA warna di deklarasi `background`. Garis aksen (box-shadow, border-left) memang
+  // memakai aksen mentah dan memang boleh terang — tidak ada teks yang duduk di atas
+  // garis setebal 8px, jadi memeriksanya cuma bikin desain yang benar ditolak.
+  // Hex 6 digit; alpha 2 digit di belakangnya (mis. #24465AF0) ikut ditelan, tidak
+  // disalahartikan jadi warna lain.
+  const warnaDi = (css, sel) =>
+    [...css.match(new RegExp(`\\${sel}\\{[^}]*background:([^;}]*)`))[1]
+      .matchAll(/#([0-9a-fA-F]{6})(?:[0-9a-fA-F]{2})?\b/g)].map((m) => "#" + m[1].toUpperCase());
+
+  const ZONA = [
+    ["pias-bawah", ".l-pias body"],
+    ["pias-bawah", ".l-pias .fotolayer"],
+    ["blok-bawah", ".l-blok .teks"],
+    ["tengah", ".l-tengah .teks"],
+  ];
+  // Diperiksa untuk BEBERAPA aksen, bukan satu. Aksen sendiri sudah dijamin >= 4,5:1
+  // terhadap putih, jadi tinta dari aksen gelap seperti #1B4FA8 aman berapa pun
+  // porsinya — memeriksa dia saja bikin batas porsinya tidak dijaga sama sekali.
+  // Teal terang #0E7490 yang menangkapnya: dipakai penuh, judul putih tinggal 5,9:1.
+  const AKSEN = ["#1B4FA8", "#0E7490", "#3730A3"];
+  for (const [layout, sel] of ZONA) {
+    const palet = AKSEN.map((accent) =>
+      warnaDi(gaya(rakit({ layout, accent, fotoAsli: layout === "pias-bawah" }).slides[0]), sel)
+    );
+    assert.ok(palet[0].length >= 2, `${sel}: tidak ada gradien warna sama sekali`);
+    assert.notDeepEqual(palet[0], palet[1], `${sel}: warnanya sama untuk aksen berbeda — masih statis`);
+    assert.ok(palet[0].some((w) => w !== "#0B0F14"), `${sel}: masih hitam rata`);
+
+    // Yang tidak boleh ikut hilang: teks tetap terbaca di atasnya. Judul putih AAA (7:1),
+    // body #D7DEE6 minimal AA (4.5:1). Ini yang menahan tinta dinaikkan sampai pucat.
+    for (const w of palet.flat()) {
+      assert.ok(rasio(w, "#FFFFFF") >= 7, `${sel} ${w}: judul putih cuma ${rasio(w, "#FFFFFF").toFixed(1)}:1`);
+      assert.ok(rasio(w, "#D7DEE6") >= 4.5, `${sel} ${w}: body cuma ${rasio(w, "#D7DEE6").toFixed(1)}:1`);
+    }
+  }
+});
+
 test("kolam still dibagi tanpa pengulangan, dan tidak lima teratas berurutan", () => {
   const slides = bagiFoto({ backdrops: backdropPalsu(30) });
   const url = slides.map((s) => s.foto_url);
@@ -1772,9 +1883,47 @@ test("slide yang menyebut pemain memakai foto ORANGNYA, bukan still acak", () =>
   // Slide 1 selalu foto artikel — mencocokkan pemain di situ cuma membuang satu nama.
   assert.match(slides[0].foto_url, /w1280/, "slide 1 memakai foto orang padahal ditimpa cover");
 
-  // Potret 2:3 dipasang di tengah bikin wajahnya kepotong; fokusnya harus dinaikkan.
-  assert.equal(slides[1].foto_fokus, "50% 18%");
-  assert.equal(slides[2].foto_fokus, "50% 50%", "still 16:9 tidak boleh ikut digeser");
+  // Penanda potret harus IKUT kecocokan, bukan dipasang di semua slide: still 16:9 di
+  // kotak setinggi potret menyisakan pias hitam di atas dan bawah foto.
+  assert.deepEqual(
+    slides.map((s) => s.foto_potret),
+    [false, true, false, true, false],
+    "penanda potret tidak mengikuti slide mana yang benar-benar memakai foto pemain"
+  );
+
+  // Titik fokus sudah tidak dikirim sama sekali. Dia dulu menggeser potret 2:3 ke atas
+  // supaya wajahnya tidak kepotong waktu di-crop — menambal gejala. Fotonya sekarang
+  // `contain`, jadi tidak ada yang dipotong. Field yang kembali berarti crop-nya balik.
+  for (const s of slides) {
+    assert.equal(s.foto_fokus, undefined, "titik fokus balik — berarti foto dipotong lagi");
+  }
+});
+
+test("backdrop bertuliskan judul film dibuang dari kolam", () => {
+  // TMDB menandai gambar yang sudah ditempeli JUDUL cetak lewat `iso_639_1`: null berarti
+  // polos, "tr"/"en"/"pt" berarti ada logo judul dalam bahasa itu. 31 dari 85 backdrop
+  // Brand New Day bertuliskan judul, dan satu di antaranya ("ÖRÜMCEK-ADAM YEPYENİ BİR
+  // GÜN") persis kena selang yang dipakai carousel lima slide — ketahuan karena
+  // gambarnya diunduh dan dilihat, bukan dari error apa pun.
+  //
+  // Seluruh desain ini berdiri di atas satu aturan: semua kata hidup di HTML, nol di
+  // raster. Judul cetak di dalam foto bikin dua judul bertumpuk di satu slide.
+  const bertulisan = Array.from({ length: 20 }, (_, i) => ({
+    file_path: `/teks${i}.jpg`, vote_average: 999, iso_639_1: "tr",
+  }));
+  const url = bagiFoto({
+    backdrops: [...bertulisan, ...backdropPalsu(20)],
+  }).map((s) => s.foto_url);
+
+  assert.equal(url.filter(Boolean).length, 5, "kolam malah ikut kosong");
+  for (const u of url) {
+    assert.doesNotMatch(u, /teks\d+\.jpg/, `backdrop berjudul lolos ke slide: ${u}`);
+  }
+
+  // Nol backdrop polos -> kolam kosong dan slide jatuh ke gambar generate. Itu memang
+  // pilihan yang benar: judul cetak di raster lebih merusak daripada gambar buatan.
+  const cuma = bagiFoto({ backdrops: bertulisan });
+  assert.equal(cuma[0].pakai_foto, false, "film tanpa backdrop polos tetap dipaksa pakai foto");
 });
 
 test("nama pendek dan penggalan kata tidak bikin cocok palsu", () => {
@@ -1815,28 +1964,28 @@ test("balasan TMDB aneh tidak mematikan carousel", () => {
   }
 });
 
-test("saklar Google konsisten: node, gerbang, rujukan, dan sambungan sejalan", () => {
-  // Cabang nonaktif yang masih tersambung pernah menggantung seluruh pipeline (Facebook).
-  // Dan node yang TIDAK dipasang tidak bisa dirujuk `$('...')` dari Code node —
-  // ekspresinya MELEMPAR, bukan mengembalikan undefined. Jadi dua-duanya harus sejalan.
-  const kode = byName["Pecah slide"].parameters.jsCode;
-  if (byName["Cari Google"]) {
-    assert.ok(byName["Perlu Google?"], "node Google ada tapi gerbangnya tidak");
-    assert.match(kode, /\$\('Cari Google'\)\.isExecuted/, "dirujuk tanpa penjaga isExecuted");
-    assert.deepEqual(
-      (wf.connections["Perlu Google?"]?.main?.[0] ?? []).map((c) => c.node),
-      ["Cari Google"],
-      "cabang 'perlu' salah tujuan"
-    );
-  } else {
-    assert.equal(byName["Perlu Google?"], undefined, "gerbang Google ada tapi node-nya tidak");
-    assert.doesNotMatch(kode, /Cari Google/, "merujuk node yang tidak dipasang");
-    assert.deepEqual(
-      wf.connections["Pemain film"].main[0].map((c) => c.node),
-      ["Pecah slide"],
-      "TMDB tidak tersambung langsung ke Pecah slide saat Google mati"
-    );
+test("cabang Google Custom Search tidak boleh hidup lagi", () => {
+  // Google mengumumkan 20 Januari 2026 bahwa mesin telusur BARU cuma boleh mendaftar
+  // maksimal 50 domain: "Search the entire web" tidak bisa dinyalakan lagi, dan mesin
+  // lama pun wajib pindah sebelum 1 Januari 2027. Jadi cabang ini bukan "dimatikan
+  // sementara" — dia mustahil dinyalakan, dan kode mati yang menyamar sebagai fitur
+  // yang tinggal disetel cuma menipu orang yang membacanya nanti.
+  for (const n of ["Cari Google", "Perlu Google?"]) {
+    assert.equal(byName[n], undefined, `node ${n} hidup lagi padahal Google menutup jalurnya`);
   }
+  const kode = byName["Pecah slide"].parameters.jsCode;
+  assert.doesNotMatch(kode, /Cari Google|customsearch|google_cse/i, "masih merujuk Google");
+  assert.doesNotMatch(
+    JSON.stringify(wf),
+    /customsearch|google_cse/i,
+    "sisa kunci atau URL Custom Search masih ter-build"
+  );
+  // Satu-satunya sumber foto asli sekarang TMDB, jadi rantainya harus lurus.
+  assert.deepEqual(
+    wf.connections["Pemain film"].main[0].map((c) => c.node),
+    ["Pecah slide"],
+    "TMDB tidak tersambung langsung ke Pecah slide"
+  );
 });
 
 test("kunci TMDB dibaca lewat node Kredensial, bukan ditulis di URL", () => {
