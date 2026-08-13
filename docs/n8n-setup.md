@@ -245,16 +245,19 @@ Instagram sependek itu karena feed memotong di ±125 karakter, dan URL-nya tidak
 dibuat-buat pun tidak bisa diklik. Facebook tidak memotong sependek itu dan tautannya
 hidup, jadi di sana URL-nya ditulis utuh.
 
-## 3d. Workflow kedua: kirim ulang tanpa LinkedIn
+## 3d. Workflow kedua: posting tanpa LinkedIn
 
-Untuk artikel yang **sudah terlanjur ada di LinkedIn** tapi belum di Instagram/Facebook —
-misalnya artikel yang terbit sebelum pipeline ini ada. `Approve?` bercabang ke semua
-platform tanpa syarat, jadi `[repost:]` lewat workflow normal berarti LinkedIn kena
-dua kali.
+Dipakai untuk **artikel lama** — apa pun jenisnya, review film maupun catatan teknis.
+Sebagian besar sudah terlanjur ada di LinkedIn (terbit sebelum pipeline ini ada), dan
+`Approve?` bercabang ke semua platform tanpa syarat, jadi `[repost:]` lewat workflow
+normal berarti LinkedIn kena dua kali.
+
+Prosedur lengkapnya di [Mem-posting artikel LAMA ke Instagram + Facebook](#mem-posting-artikel-lama-ke-instagram--facebook)
+di bawah.
 
 | | Portofolio Publish | Portofolio Ulang |
 |---|---|---|
-| Node | 50 | 46 |
+| Node | 59 | 55 |
 | Platform | LinkedIn + Instagram + Facebook | Instagram + Facebook |
 | Subject e-mail | `[Portofolio] …` | **`[ULANG] [Portofolio] …`** |
 | `path` webhook | `portofolio` | `portofolio` — **sama** |
@@ -270,26 +273,57 @@ yang tersambung, jadi input 0 yang tidak pernah terisi bikin `Email hasil` mengg
 selamanya — tanpa pesan error apa pun. Ada test yang mengunci indeksnya rapat di **kedua**
 workflow.
 
-### Prosedur kirim ulang
+### Mem-posting artikel LAMA ke Instagram + Facebook
+
+Berlaku untuk artikel apa pun yang sudah terbit di website — review film maupun bukan.
+Tidak perlu menyentuh n8n, tidak perlu menyentuh kode. Dua perintah:
 
 ```bash
-# 1. di n8n: nonaktifkan "Portofolio Publish", aktifkan "Portofolio Ulang"
-# 2. picu:
 git commit --allow-empty -m "[repost: nama-folder-artikel]"
 git push
-# 3. approve dari e-mail  -> subject HARUS berawalan [ULANG]
-# 4. di n8n: kembalikan — nonaktifkan yang Ulang, aktifkan yang Publish
 ```
 
-`path` webhook sengaja sama, jadi `WEBHOOK_URL` di secret GitHub tidak perlu disentuh:
-yang menjawab adalah workflow yang sedang aktif. n8n juga **menolak** dua workflow aktif
-berbagi path yang sama — jadi "cuma satu yang aktif" dipaksa n8n, bukan kedisiplinan yang
-harus diingat.
+Lalu tunggu e-mail approval dan klik **Approve**. Selesai.
 
-Awalan `[ULANG]` di subject itu penjaga satu-satunya jebakan yang tersisa: kalau lupa
-langkah 4, artikel berikutnya diam-diam tidak naik ke LinkedIn. Dengan awalan itu,
-e-mail preview-nya sendiri yang memberi tahu workflow mana yang berjalan — **sebelum**
-tombol Approve diklik.
+`nama-folder-artikel` adalah nama direktori di `articles/`, apa adanya — misalnya
+`review-supergirl`, `n8n-webhook-bridge`, `docker-to-kubernetes`. Salah ketik
+**menggagalkan Action dengan pesan jelas** (`[repost: xxx] — folder articles/xxx tidak
+ada. Cek ejaannya.`), bukan diam-diam tidak melakukan apa-apa.
+
+**Tanpa terminal?** Commit apa pun lewat GitHub web — ubah satu baris di `docs/`, apa saja —
+asal pesan commit-nya memuat `[repost: nama-folder]`. Action-nya sengaja tanpa filter
+`paths` justru supaya ini bisa jalan.
+
+**Yang TIDAK bisa dipakai:** tombol *Run workflow* di GitHub. Itu mode `sync`, dan `sync`
+sengaja tidak pernah memicu posting sama sekali — kalau tidak, satu klik bisa mengantre
+puluhan postingan.
+
+Mau mengintip hasilnya dulu tanpa memicu e-mail apa pun:
+
+```bash
+node n8n/uji-film.mjs                    # daftar artikel yang ada
+node n8n/uji-film.mjs review-supergirl   # caption + link pratinjau, nol e-mail, nol posting
+```
+
+**Kenapa cukup dua perintah:** `Portofolio Ulang` adalah workflow yang **aktif secara
+tetap**, bukan mode sementara yang harus dinyalakan lalu dimatikan lagi. Semua yang lewat
+webhook `portofolio` — artikel lama maupun artikel baru — naik ke Instagram + Facebook.
+Awalan `[ULANG]` di subject e-mail yang memberi tahu workflow mana yang berjalan,
+**sebelum** tombol Approve diklik.
+
+Harganya, dan ini disengaja: selama ini yang aktif, **artikel baru pun tidak naik ke
+LinkedIn**. Kedua workflow mendengarkan `path` webhook yang sama, jadi n8n sendiri yang
+memaksa cuma satu boleh aktif — "jangan lupa matikan yang satu" bukan kedisiplinan yang
+harus diingat. Mau LinkedIn ikut? Tukar yang aktif di n8n sebelum push:
+
+| Mau | Aktifkan | Matikan |
+|---|---|---|
+| IG + FB saja | `Portofolio Ulang` (`QWTpbHLwKNrDXx14`) | `Portofolio Publish` |
+| Semua sosmed | `Portofolio Publish` (`qrjc4O4wKrfFKZfEWvJvv`) | `Portofolio Ulang` |
+
+Selama keduanya berbagi `path`, "artikel baru ke semua sosmed" dan "artikel lama ke IG+FB
+saja" tidak bisa berlaku bersamaan. Memisahkannya butuh `path` webhook sendiri untuk
+`Portofolio Ulang` dan `publish.js` yang memilih tujuan — belum dikerjakan.
 
 > **Satu artikel per eksekusi.** `siapkan-brief.js` cuma memproses `baru[0]`; sisanya
 > masuk daftar `dilewat` dan **tidak disimpan di mana pun**. Jadi menyusulkan banyak
@@ -841,6 +875,12 @@ baris yang sama. Ganti judul juga aman — `slug` bukan bagian dari kunci, jadi 
 ter-update di baris itu.
 
 ### `[repost: nama-folder]`
+
+Dua kegunaan, dan yang pertama justru yang paling sering dipakai:
+
+1. **Mem-posting artikel lama** yang sudah terbit di website tapi belum masuk sosmed —
+   prosedurnya di [3d](#mem-posting-artikel-lama-ke-instagram--facebook).
+2. Menyusulkan artikel yang posting-nya gagal, di bawah ini.
 
 Git tahu artikel mana yang baru, tapi tidak tahu artikel mana yang **berhasil**
 diposting. Tiga keadaan bikin satu artikel hangus permanen tanpa penanda ini:
