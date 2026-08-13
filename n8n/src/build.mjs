@@ -913,8 +913,25 @@ hubung('LinkedIn post', barrier, 0, 'main', 0);
 hubung('IG permalink', barrier, 0, 'main', 1);
 if (FB_AKTIF) hubung('FB posting', barrier, 0, 'main', 2);
 
+/**
+ * Subject ikut menyebut kalau ada platform yang GAGAL.
+ *
+ * Dulu selalu "Terbit:", dan itu yang menyembunyikan cabang Facebook yang mati sejak node
+ * `FB posting` pertama dibuat: statusnya memang selalu ada di badan e-mail, lengkap dengan
+ * pesan errornya — tapi tidak ada yang membuka e-mail yang subject-nya bilang sudah
+ * terbit. Gagalnya baru ketahuan waktu Halaman-nya dilihat sendiri dan ternyata kosong.
+ *
+ * Cabang yang sengaja dimatikan tidak dihitung gagal: `isExecuted` false berarti node-nya
+ * memang tidak dijalankan, bukan dijalankan lalu meleset.
+ */
+const SEMUA_TERBIT =
+  "$('LinkedIn post').first().json.id && " +
+  "$('IG permalink').first().json.permalink && " +
+  "(!$('FB posting').isExecuted || $('FB posting').first().json.id)";
+
 N('Email hasil', 'n8n-nodes-base.gmail', 2.2, [4560, 320], gmail(
-  "=[Portofolio] Terbit: {{ $('Rakit slide').first().json.folder }}",
+  `=[Portofolio] {{ ${SEMUA_TERBIT} ? 'Terbit' : 'SEBAGIAN GAGAL' }}: ` +
+    "{{ $('Rakit slide').first().json.folder }}",
   baca('email-hasil.html')
 ), { credentials: GMAIL_CRED });
 hubung(barrier, 'Email hasil');
@@ -1007,6 +1024,13 @@ const tanpaLinkedIn = (sumber, nama) => {
     node('Email hasil').parameters.message,
     (t) => buangBaris(t, /<li>LinkedIn:/),
     'baris status LinkedIn di e-mail hasil'
+  );
+  // Subject juga memeriksa LinkedIn. Dibiarkan, dia merujuk node yang sudah dibuang dan
+  // yang hilang bukan satu kata di subject tapi seluruh e-mail hasil.
+  node('Email hasil').parameters.subject = wajibUbah(
+    node('Email hasil').parameters.subject,
+    (t) => t.replace("$('LinkedIn post').first().json.id && ", ''),
+    'cek LinkedIn di subject e-mail hasil'
   );
 
   const pv = node('Kirim preview');

@@ -911,6 +911,30 @@ test("caption dipisah per platform, hashtag hanya ke Instagram", () => {
   assert.doesNotMatch(fbMsg, /\.ig_caption/);
 });
 
+test("subject e-mail hasil menyebut GAGAL, tidak selalu 'Terbit'", () => {
+  // Ini yang menyembunyikan cabang Facebook yang mati sejak awal: badan e-mail memang
+  // selalu menulis "Facebook: GAGAL" lengkap dengan errornya, tapi subject-nya bilang
+  // "Terbit" — dan e-mail yang subject-nya bilang sudah terbit tidak dibuka siapa pun.
+  const s = byName["Email hasil"].parameters.subject;
+  assert.match(s, /SEBAGIAN GAGAL/, "subject tidak pernah bisa menyebut kegagalan");
+  assert.match(s, /IG permalink'\)\.first\(\)\.json\.permalink/, "Instagram tidak ikut diperiksa");
+  assert.match(s, /FB posting'\)\.isExecuted/, "Facebook tidak ikut diperiksa");
+  assert.match(s, /LinkedIn post'\)\.first\(\)\.json\.id/, "LinkedIn tidak ikut diperiksa");
+  // Cabang yang sengaja dimatikan bukan kegagalan — kalau tidak, tiap artikel dengan FB
+  // nonaktif selamanya berlabel GAGAL dan labelnya berhenti berarti apa-apa.
+  assert.match(s, /!\$\('FB posting'\)\.isExecuted \|\|/, "FB nonaktif ikut dihitung gagal");
+
+  // Di Portofolio Ulang node LinkedIn sudah tidak ada — subject yang masih merujuk dia
+  // menghancurkan seluruh e-mail, bukan cuma satu katanya.
+  const ulang = JSON.parse(
+    fs.readFileSync(path.join(import.meta.dirname, "portofolio-ulang.json"), "utf8")
+  );
+  const su = ulang.nodes.find((n) => n.name === "Email hasil").parameters.subject;
+  assert.doesNotMatch(su, /LinkedIn/, "subject Ulang masih merujuk node LinkedIn");
+  assert.match(su, /SEBAGIAN GAGAL/, "subject Ulang kehilangan status kegagalannya");
+  assert.match(su, /^=\[ULANG\] /, "awalan [ULANG] hilang dari subject");
+});
+
 test("e-mail hasil tetap terkirim walau cabang FB nonaktif", () => {
   // `$('FB posting').first()` pada node yang belum dieksekusi melempar "Referenced
   // node is unexecuted", dan yang hilang bukan satu baris tapi seluruh e-mail.
