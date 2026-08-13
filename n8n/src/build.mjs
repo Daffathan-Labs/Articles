@@ -871,20 +871,31 @@ N('Kumpulkan foto FB', 'n8n-nodes-base.code', 2, [3460, 700], {
 }, fbNonaktif);
 if (FB_AKTIF) hubung('FB unggah foto', 'Kumpulkan foto FB');
 
-// specifyBody:'json' di atas form-urlencoded, bukan keypair: jumlah lampiran ikut
-// jumlah slide, dan daftar bodyParameters di n8n panjangnya harus tetap saat build.
-// Objeknya di-form-encode per kunci, jadi yang keluar di kabel tetap
-// `attached_media[0]=...&attached_media[1]=...` persis seperti dokumentasi Meta.
+// Keypair biasa, TIGA field tetap — sama seperti `FB unggah foto` dan `IG carousel
+// container`, dua node yang memang sudah terbukti jalan.
+//
+// Sebelumnya `specifyBody:'json'` di atas `contentType:'form-urlencoded'`, dan itu
+// kombinasi yang TIDAK didukung n8n: `jsonBody` cuma hidup di bawah contentType 'json',
+// jadi node-nya membalas "JSON parameter needs to be valid JSON" dan Facebook tidak
+// pernah sekali pun kebagian post. n8n sendiri menandainya dengan segitiga merah di
+// dropdown-nya; yang menyembunyikannya berminggu-minggu adalah onError di bawah — cabang
+// FB gagal diam-diam sementara LinkedIn dan Instagram lanjut.
+//
+// Yang membuat keypair bisa dipakai sekarang: `attached_media` jadi SATU field berisi
+// array JSON, bukan `attached_media[0..n]` yang jumlah kuncinya ikut jumlah slide.
+// Alasannya di kumpulkan-foto-fb.js.
 N('FB posting', 'n8n-nodes-base.httpRequest', 4.2, [3680, 700], http({
   method: 'POST',
   url: `=https://graph.facebook.com/v25.0/{{ ${K('fb_page_id')} }}/feed`,
   sendBody: true,
   contentType: 'form-urlencoded',
-  specifyBody: 'json',
-  jsonBody:
-    '={{ JSON.stringify(Object.assign({ ' +
-    "message: $('Rakit slide').first().json.fb_caption, " +
-    `access_token: ${K('fb_page_token')} }, $json.body)) }}`,
+  bodyParameters: {
+    parameters: [
+      { name: 'message', value: "={{ $('Rakit slide').first().json.fb_caption }}" },
+      { name: 'attached_media', value: '={{ $json.attached_media }}' },
+      { name: 'access_token', value: `={{ ${K('fb_page_token')} }}` },
+    ],
+  },
 }), { onError: 'continueRegularOutput', ...fbNonaktif });
 if (FB_AKTIF) hubung('Kumpulkan foto FB', 'FB posting');
 

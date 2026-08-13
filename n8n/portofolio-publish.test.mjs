@@ -821,16 +821,13 @@ test("tiap foto FB diunggah published=false", () => {
   assert.equal(p.find((x) => x.name === "url").value, "={{ $json.url }}");
 });
 
-test("Kumpulkan foto FB: bentuk attached_media[n] persis dokumentasi Meta", () => {
+test("Kumpulkan foto FB: id angka ikut jadi string di dalam JSON-nya", () => {
+  // Graph menolak media_fbid non-string. Bentuk lengkapnya diperiksa di test FB posting,
+  // bareng field yang benar-benar dikirim node-nya.
   const hasil = jalankan("Kumpulkan foto FB", {
-    input: [{ json: { id: "111" } }, { json: { id: 222 } }, { json: { id: "333" } }],
+    input: [{ json: { id: "111" } }, { json: { id: 222 } }],
   });
-  assert.deepEqual(hasil[0].json.body, {
-    "attached_media[0]": '{"media_fbid":"111"}',
-    "attached_media[1]": '{"media_fbid":"222"}',
-    "attached_media[2]": '{"media_fbid":"333"}',
-  });
-  assert.equal(hasil[0].json.jumlah, 3);
+  assert.equal(hasil[0].json.attached_media, '[{"media_fbid":"111"},{"media_fbid":"222"}]');
 });
 
 test("Kumpulkan foto FB: foto gagal dibuang bukan jadi media_fbid undefined", () => {
@@ -848,15 +845,50 @@ test("Kumpulkan foto FB: foto gagal dibuang bukan jadi media_fbid undefined", ()
   );
 });
 
-test("FB posting mengirim body form-urlencoded hasil Kumpulkan, bukan keypair tetap", () => {
-  // Jumlah lampiran ikut jumlah slide; daftar bodyParameters di n8n panjangnya tetap
-  // saat build, jadi keypair tidak bisa dipakai di sini.
+test("FB posting: keypair tiga field, lampiran jadi SATU array JSON", () => {
+  // Bentuk lamanya `specifyBody:'json'` di atas `contentType:'form-urlencoded'` — dan itu
+  // kombinasi yang tidak didukung n8n, jadi Facebook tidak pernah sekali pun kebagian
+  // post. Yang membuat keypair bisa dipakai: `attached_media` jadi satu field berisi array
+  // JSON, panjangnya tetap satu kunci berapa pun jumlah fotonya.
   const p = byName["FB posting"].parameters;
   assert.equal(p.contentType, "form-urlencoded");
-  assert.equal(p.specifyBody, "json");
-  assert.match(p.jsonBody, /\$json\.body/, "body lampiran tidak ikut terkirim");
-  assert.match(p.jsonBody, /fb_caption/, "FB memakai caption yang salah");
+  assert.equal(p.specifyBody, undefined, "specifyBody balik dipakai di form-urlencoded");
   assert.match(p.url, /\/feed$/);
+
+  const f = Object.fromEntries(p.bodyParameters.parameters.map((x) => [x.name, x.value]));
+  assert.deepEqual(Object.keys(f), ["message", "attached_media", "access_token"]);
+  assert.match(f.message, /fb_caption/, "FB memakai caption yang salah");
+  assert.match(f.attached_media, /\$json\.attached_media/, "lampiran tidak ikut terkirim");
+  assert.match(f.access_token, /fb_page_token/);
+
+  // Dan `Kumpulkan foto FB` harus benar-benar mengeluarkan field itu — kalau namanya
+  // bergeser, yang terkirim `attached_media=undefined` dan Graph menolaknya.
+  const keluar = jalankan("Kumpulkan foto FB", {
+    input: [{ json: { id: "11" } }, { json: { id: "22" } }, { json: { id: "33" } }],
+  })[0].json;
+  assert.equal(
+    keluar.attached_media,
+    '[{"media_fbid":"11"},{"media_fbid":"22"},{"media_fbid":"33"}]',
+    "bentuk lampiran bukan array JSON, atau urutannya tidak mengikuti slide"
+  );
+  assert.equal(keluar.jumlah, 3);
+});
+
+test("tidak ada node HTTP yang menyeberangkan form-urlencoded ke jsonBody", () => {
+  // Kelas bug-nya, bukan cuma satu kejadiannya. `jsonBody` di n8n cuma hidup di bawah
+  // `contentType: 'json'`; dipasang di atas form-urlencoded, node-nya membalas "JSON
+  // parameter needs to be valid JSON". n8n menandainya segitiga merah di UI, tapi tidak
+  // ada yang membaca UI saat build — dan di FB gagalnya diam karena onError meneruskan.
+  for (const wf of [JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "portofolio-publish.json"), "utf8")),
+                    JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "portofolio-ulang.json"), "utf8"))]) {
+    for (const n of wf.nodes) {
+      const p = n.parameters || {};
+      if (p.contentType && p.contentType !== "json") {
+        assert.notEqual(p.specifyBody, "json", `${wf.name} / ${n.name}: ${p.contentType} + specifyBody json`);
+        assert.equal(p.jsonBody, undefined, `${wf.name} / ${n.name}: jsonBody di luar contentType json`);
+      }
+    }
+  }
 });
 
 test("caption dipisah per platform, hashtag hanya ke Instagram", () => {
@@ -874,7 +906,9 @@ test("caption dipisah per platform, hashtag hanya ke Instagram", () => {
     (x) => x.name === "caption"
   ).value;
   assert.match(igCap, /\.ig_caption/);
-  assert.doesNotMatch(byName["FB posting"].parameters.jsonBody, /\.ig_caption/);
+  const fbMsg = byName["FB posting"].parameters.bodyParameters.parameters
+    .find((x) => x.name === "message").value;
+  assert.doesNotMatch(fbMsg, /\.ig_caption/);
 });
 
 test("e-mail hasil tetap terkirim walau cabang FB nonaktif", () => {

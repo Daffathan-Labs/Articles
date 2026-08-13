@@ -19,12 +19,23 @@ if (ids.length !== items.length) {
 }
 if (ids.length < 2) throw new Error(`Post FB butuh minimal 2 foto, dapat ${ids.length}.`);
 
-// Bentuk kunci ber-indeks `attached_media[0]` adalah bentuk yang didokumentasikan
-// Meta, dan nilainya JSON string — bukan objek. Dikirim form-urlencoded, jadi tiap
-// kunci berdiri sendiri. Urutan lampiran mengikuti urutan slide.
-const body = {};
-ids.forEach((id, i) => {
-  body[`attached_media[${i}]`] = JSON.stringify({ media_fbid: String(id) });
-});
+/**
+ * SATU field `attached_media` berisi array JSON, bukan kunci ber-indeks per foto.
+ *
+ * Bentuk `attached_media[0]`, `attached_media[1]`, … jumlah kuncinya ikut jumlah slide,
+ * jadi dia tidak muat di daftar bodyParameters n8n yang panjangnya tetap saat build.
+ * Jalan keluar sebelumnya `specifyBody:'json'` di atas `contentType:'form-urlencoded'` —
+ * dan itu kombinasi yang TIDAK didukung n8n: node-nya membalas "JSON parameter needs to
+ * be valid JSON" dan Facebook tidak pernah sekali pun kebagian post.
+ *
+ * Graph API menentukan parameter bertipe list dalam sintaksis JSON, jadi satu field
+ * `attached_media=[{"media_fbid":"1"},{"media_fbid":"2"}]` adalah bentuk yang sah dan
+ * panjangnya tetap satu kunci berapa pun jumlah fotonya. Dengan itu node-nya bisa memakai
+ * keypair biasa — pola yang sama persis dengan `FB unggah foto` dan `IG carousel
+ * container`, dua node yang memang sudah terbukti jalan.
+ *
+ * Urutan lampiran mengikuti urutan slide.
+ */
+const attached_media = JSON.stringify(ids.map((id) => ({ media_fbid: String(id) })));
 
-return [{ json: { body, jumlah: ids.length } }];
+return [{ json: { attached_media, jumlah: ids.length } }];

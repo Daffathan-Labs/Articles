@@ -1389,7 +1389,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Kumpulkan id foto hasil unggah unpublished jadi satu body post feed.\n//\n// Facebook tidak punya endpoint carousel. Pola resminya dua langkah: tiap foto\n// diunggah dengan published=false (tercipta, tapi tidak tayang sendiri-sendiri),\n// lalu SATU post feed melampirkan semuanya lewat attached_media[n].\n//\n// Sama seperti carousel IG: node FB memakai onError:continueRegularOutput supaya\n// satu foto gagal tidak mematikan eksekusi — tapi post dengan lampiran bolong\n// jangan diterbitkan. Lebih baik gagal keras di sini daripada tayang cacat.\nconst items = $input.all();\nconst ids = items.map((i) => i.json && i.json.id).filter(Boolean);\n\nif (ids.length !== items.length) {\n  const gagal = items.filter((i) => !(i.json && i.json.id));\n  throw new Error(\n    `${ids.length}/${items.length} foto FB berhasil diunggah. Contoh error: ` +\n      JSON.stringify(gagal[0] && gagal[0].json).slice(0, 400)\n  );\n}\nif (ids.length < 2) throw new Error(`Post FB butuh minimal 2 foto, dapat ${ids.length}.`);\n\n// Bentuk kunci ber-indeks `attached_media[0]` adalah bentuk yang didokumentasikan\n// Meta, dan nilainya JSON string — bukan objek. Dikirim form-urlencoded, jadi tiap\n// kunci berdiri sendiri. Urutan lampiran mengikuti urutan slide.\nconst body = {};\nids.forEach((id, i) => {\n  body[`attached_media[${i}]`] = JSON.stringify({ media_fbid: String(id) });\n});\n\nreturn [{ json: { body, jumlah: ids.length } }];"
+        "jsCode": "// Kumpulkan id foto hasil unggah unpublished jadi satu body post feed.\n//\n// Facebook tidak punya endpoint carousel. Pola resminya dua langkah: tiap foto\n// diunggah dengan published=false (tercipta, tapi tidak tayang sendiri-sendiri),\n// lalu SATU post feed melampirkan semuanya lewat attached_media[n].\n//\n// Sama seperti carousel IG: node FB memakai onError:continueRegularOutput supaya\n// satu foto gagal tidak mematikan eksekusi — tapi post dengan lampiran bolong\n// jangan diterbitkan. Lebih baik gagal keras di sini daripada tayang cacat.\nconst items = $input.all();\nconst ids = items.map((i) => i.json && i.json.id).filter(Boolean);\n\nif (ids.length !== items.length) {\n  const gagal = items.filter((i) => !(i.json && i.json.id));\n  throw new Error(\n    `${ids.length}/${items.length} foto FB berhasil diunggah. Contoh error: ` +\n      JSON.stringify(gagal[0] && gagal[0].json).slice(0, 400)\n  );\n}\nif (ids.length < 2) throw new Error(`Post FB butuh minimal 2 foto, dapat ${ids.length}.`);\n\n/**\n * SATU field `attached_media` berisi array JSON, bukan kunci ber-indeks per foto.\n *\n * Bentuk `attached_media[0]`, `attached_media[1]`, … jumlah kuncinya ikut jumlah slide,\n * jadi dia tidak muat di daftar bodyParameters n8n yang panjangnya tetap saat build.\n * Jalan keluar sebelumnya `specifyBody:'json'` di atas `contentType:'form-urlencoded'` —\n * dan itu kombinasi yang TIDAK didukung n8n: node-nya membalas \"JSON parameter needs to\n * be valid JSON\" dan Facebook tidak pernah sekali pun kebagian post.\n *\n * Graph API menentukan parameter bertipe list dalam sintaksis JSON, jadi satu field\n * `attached_media=[{\"media_fbid\":\"1\"},{\"media_fbid\":\"2\"}]` adalah bentuk yang sah dan\n * panjangnya tetap satu kunci berapa pun jumlah fotonya. Dengan itu node-nya bisa memakai\n * keypair biasa — pola yang sama persis dengan `FB unggah foto` dan `IG carousel\n * container`, dua node yang memang sudah terbukti jalan.\n *\n * Urutan lampiran mengikuti urutan slide.\n */\nconst attached_media = JSON.stringify(ids.map((id) => ({ media_fbid: String(id) })));\n\nreturn [{ json: { attached_media, jumlah: ids.length } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1407,8 +1407,22 @@
         "url": "=https://graph.facebook.com/v25.0/{{ $('Kredensial').first().json.fb_page_id }}/feed",
         "sendBody": true,
         "contentType": "form-urlencoded",
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify(Object.assign({ message: $('Rakit slide').first().json.fb_caption, access_token: $('Kredensial').first().json.fb_page_token }, $json.body)) }}"
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ $('Rakit slide').first().json.fb_caption }}"
+            },
+            {
+              "name": "attached_media",
+              "value": "={{ $json.attached_media }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Kredensial').first().json.fb_page_token }}"
+            }
+          ]
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
