@@ -814,7 +814,14 @@ N('IG carousel container', 'n8n-nodes-base.httpRequest', 4.2, [3680, 460], igBod
 ]), { onError: 'continueRegularOutput' });
 hubung('Kumpulkan children', 'IG carousel container');
 
-N('IG publish', 'n8n-nodes-base.httpRequest', 4.2, [3900, 460], http({
+// Jeda yang dipandu status_code, bukan Wait node berdurasi tebakan: yang ditunggu adalah
+// Instagram selesai mengunduh gambar dari render-svc, dan lamanya tidak tetap.
+N('Tunggu IG matang', 'n8n-nodes-base.code', 2, [3900, 460], {
+  jsCode: baca('tunggu-ig-matang.js'),
+});
+hubung('IG carousel container', 'Tunggu IG matang');
+
+N('IG publish', 'n8n-nodes-base.httpRequest', 4.2, [4120, 460], http({
   method: 'POST',
   url: `=https://graph.instagram.com/v23.0/{{ ${K('ig_user_id')} }}/media_publish`,
   sendBody: true,
@@ -826,9 +833,9 @@ N('IG publish', 'n8n-nodes-base.httpRequest', 4.2, [3900, 460], http({
     ],
   },
 }), { onError: 'continueRegularOutput' });
-hubung('IG carousel container', 'IG publish');
+hubung('Tunggu IG matang', 'IG publish');
 
-N('IG permalink', 'n8n-nodes-base.httpRequest', 4.2, [4120, 460], http({
+N('IG permalink', 'n8n-nodes-base.httpRequest', 4.2, [4340, 460], http({
   url: '=https://graph.instagram.com/v23.0/{{ $json.id }}',
   sendQuery: true,
   queryParameters: {

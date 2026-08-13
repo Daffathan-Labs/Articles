@@ -127,6 +127,12 @@ hitungan menit dan penerbitnya mencabutnya. Jadi build menghasilkan dua file:
 Node dan koneksinya identik; yang berbeda hanya nilai di dalam `Kredensial`. Jadi hasil
 edit di n8n tetap bisa di-diff terhadap versi ter-commit.
 
+**Dua-duanya keluaran `build.mjs`, bukan masukan.** Menimpa `.local.json` dengan hasil
+ekspor dari n8n terasa seperti menyimpan pekerjaan, padahal build berikutnya menulisnya
+ulang dan editannya hilang tanpa pesan. Yang permanen cuma dua tempat: **struktur** node
+di `n8n/src/build.mjs`, **nilai kredensial** di `n8n/src/secrets.local.json`. Ubah di
+sana, jalankan build, deploy — editan kanvas yang tidak ikut ke situ akan ketimpa.
+
 Satu test mengunci ini: `file ter-commit tidak membawa kredensial hidup` gagal kalau ada
 nilai asli yang bocor ke file yang ter-commit.
 
@@ -264,7 +270,7 @@ di bawah.
 
 | | Portofolio Publish | Portofolio Ulang |
 |---|---|---|
-| Node | 59 | 55 |
+| Node | 60 | 56 |
 | Platform | LinkedIn + Instagram + Facebook | Instagram + Facebook |
 | Subject e-mail | `[Portofolio] …` | **`[ULANG] [Portofolio] …`** |
 | `path` webhook | `portofolio` | `portofolio-ulang` |
@@ -753,6 +759,32 @@ Satu hal yang gampang terlewat: `urls[]` yang dikembalikan render-svc disusun da
 env `PUBLIC_URL` **milik container itu**, bukan dari `render_url` yang kita kirim.
 Kalau nanti service-nya dipindah ke domain ber-TLS, `PUBLIC_URL` di container harus
 ikut diubah — mengubah `render_url` saja membuat gambar tetap disajikan di alamat lama.
+
+### Carousel Instagram harus ditunggu matang
+
+`media_publish` yang dipanggil langsung setelah container dibuat dibalas **400 `Media ID
+is not available`** (code 9007, subcode 2207027 — *"Media belum siap untuk menerbitkan,
+tunggu beberapa saat lagi"*). Lalu `IG permalink` ikut gagal dengan `Unsupported get
+request`, karena `$json.id` kosong dan yang dipanggil jadi `/v23.0/undefined`. Dua error,
+satu sebab.
+
+Sebabnya: Instagram **mengunduh sendiri** kelima gambar dari render-svc setelah container
+dibuat, jadi lamanya ikut kecepatan server kita — bukan kecepatan n8n. Ini balapan, bukan
+bug tetap. Dia menang berkali-kali waktu render-svc masih di host lama, lalu kalah begitu
+servicenya pindah. Facebook tidak kena karena `published=false` + `/feed` tidak punya
+tahap "container matang".
+
+Node `Tunggu IG matang` menutupnya: polling `GET /{container-id}?fields=status_code`
+tiap 3 detik sampai statusnya bukan `IN_PROGRESS` lagi, maksimal 20 ronde (60 detik).
+
+> Bukan Wait node berdurasi tebakan, dan bukan `retryOnFail`. Yang ditunggu tidak punya
+> durasi tetap, dan `retryOnFail` di n8n mentok 5 percobaan × 5 detik — cukup untuk hari
+> baik, dan diam-diam kurang untuk hari render-svc lagi lambat.
+
+Node itu **tidak pernah melempar**, juga waktu menyerah. Melempar mematikan cabang IG,
+dan barrier `Tunggu N cabang` lalu menunggu cabang yang tidak akan datang: e-mail hasilnya
+hilang sama sekali. Kalau menyerah, `id`-nya diteruskan supaya `IG publish` yang gagal
+dengan pesan Meta apa adanya — dan subject e-mail tetap bilang `SEBAGIAN GAGAL`.
 
 ### `render_url` yang menentukan alamat gambar, bukan `PUBLIC_URL`
 

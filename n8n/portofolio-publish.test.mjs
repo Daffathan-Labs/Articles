@@ -785,6 +785,82 @@ test("alamat slide untuk Meta diambil dari render_url, bukan dari PUBLIC_URL con
   ]);
 });
 
+// -- kematangan carousel Instagram -----------------------------------------------
+// Jeda aslinya 3 detik per ronde. Test menukar setTimeout dengan yang langsung jalan:
+// yang diuji jumlah pemeriksaan dan kapan berhenti, bukan kemampuan Node menunggu.
+const tungguIG = async (json, balasan) => {
+  const AsyncFn = Object.getPrototypeOf(async function () {}).constructor;
+  const diminta = [];
+  const asli = globalThis.setTimeout;
+  globalThis.setTimeout = (f) => f();
+  try {
+    const hasil = await new AsyncFn(
+      "$json",
+      "$",
+      byName["Tunggu IG matang"].parameters.jsCode
+    ).call(
+      {
+        helpers: {
+          httpRequest: async (o) => {
+            diminta.push(o);
+            return balasan(diminta.length);
+          },
+        },
+      },
+      json,
+      () => ({ first: () => ({ json: { ig_token: "TOKEN" } }) })
+    );
+    return { hasil, diminta };
+  } finally {
+    globalThis.setTimeout = asli;
+  }
+};
+
+test("IG publish menunggu container matang, bukan menerbitkan container mentah", async () => {
+  // media_publish langsung setelah container dibuat dibalas 400 "Media ID is not
+  // available" — Instagram masih mengunduh sendiri kelima gambarnya dari render-svc.
+  // Ini balapan yang menang berkali-kali lalu kalah begitu render-svc pindah host.
+  assert.deepEqual(
+    wf.connections["IG carousel container"].main[0].map((c) => c.node),
+    ["Tunggu IG matang"],
+    "carousel container masih menembak langsung ke IG publish"
+  );
+  assert.deepEqual(
+    wf.connections["Tunggu IG matang"].main[0].map((c) => c.node),
+    ["IG publish"]
+  );
+
+  const { hasil, diminta } = await tungguIG({ id: "999" }, (ke) => ({
+    status_code: ke < 3 ? "IN_PROGRESS" : "FINISHED",
+  }));
+  assert.equal(diminta.length, 3, "berhenti terlalu cepat atau terlalu lama");
+  assert.match(diminta[0].url, /graph\.instagram\.com\/v23\.0\/999$/);
+  assert.equal(diminta[0].qs.fields, "status_code");
+  assert.deepEqual(hasil, [{ json: { id: "999", status: "FINISHED" } }]);
+});
+
+test("penjaga kematangan IG tidak pernah membunuh cabangnya sendiri", async () => {
+  // Melempar di sini mematikan cabang IG, dan barrier menunggu cabang yang tidak akan
+  // datang: e-mail hasil hilang SAMA SEKALI. Lebih baik `IG publish` yang gagal dengan
+  // pesan Meta apa adanya — subject e-mailnya tetap bilang SEBAGIAN GAGAL.
+  const gagal = await tungguIG({ id: "999" }, () => {
+    throw new Error("522 dari Meta");
+  });
+  assert.equal(gagal.hasil[0].json.id, "999", "id harus tetap diteruskan");
+
+  // Container yang errornya permanen tidak ditungguin sampai batas atas.
+  const rusak = await tungguIG({ id: "999" }, () => ({ status_code: "ERROR" }));
+  assert.equal(rusak.diminta.length, 1);
+
+  // Container gagal dibuat -> tidak ada id -> nol panggilan, bukan 20 kali /undefined.
+  const kosong = await tungguIG({ error: "gagal" }, () => ({ status_code: "IN_PROGRESS" }));
+  assert.equal(kosong.diminta.length, 0);
+
+  // Batas atasnya nyata: IN_PROGRESS selamanya harus berhenti, bukan menggantung.
+  const lama = await tungguIG({ id: "999" }, () => ({ status_code: "IN_PROGRESS" }));
+  assert.equal(lama.diminta.length, 20, "batas ronde hilang — cabang bisa menggantung");
+});
+
 test("Pecah URL slide: hero.jpg bukan slide, jadi tidak boleh masuk carousel", () => {
   // hero menumpang panggilan Render yang sama dan selalu jadi entri terakhir urls[].
   // Tanpa saringan dia jadi slide ke-6 di Instagram DAN foto ke-6 di Facebook —

@@ -1297,6 +1297,19 @@
     },
     {
       "parameters": {
+        "jsCode": "/**\n * Tunggu carousel container Instagram matang sebelum diterbitkan.\n *\n * `media_publish` yang dipanggil langsung setelah container dibuat dibalas 400\n * `Media ID is not available` (code 9007, subcode 2207027, \"Media belum siap untuk\n * menerbitkan, tunggu beberapa saat lagi\"). Instagram masih MENGUNDUH sendiri kelima\n * gambarnya dari render-svc, jadi lamanya ikut kecepatan server kita — bukan kecepatan\n * n8n. Ini balapan, bukan bug tetap: dia menang berkali-kali waktu render-svc masih di\n * host lama, lalu kalah begitu servicenya pindah.\n *\n * Sinyal matangnya ada dan resmi: `status_code` di container itu sendiri. IN_PROGRESS\n * berarti tunggu; FINISHED, ERROR, EXPIRED, atau PUBLISHED berarti tidak ada gunanya\n * menunggu lagi.\n *\n * TIDAK PERNAH melempar, sengaja. Kalau menyerah, `id`-nya tetap diteruskan supaya yang\n * gagal adalah `IG publish` dengan pesan Meta apa adanya — jauh lebih informatif daripada\n * error karangan node ini. Melempar di sini mematikan cabang IG, dan barrier `Tunggu N\n * cabang` menunggu cabang yang tidak akan pernah datang: e-mail hasilnya hilang sama\n * sekali, persis jenis gagal-senyap yang sudah menyembunyikan Facebook mati berminggu.\n */\nconst id = $json.id;\nconst token = $('Kredensial').first().json.ig_token;\n\n// 20 x 3 detik = 60 detik. Gambar carousel biasanya matang di bawah 10 detik; batas ini\n// untuk hari waktu render-svc lagi lambat, bukan untuk video yang memang bisa bermenit.\nconst RONDE = 20;\nconst JEDA = 3000;\n\nlet status = null;\nfor (let ronde = 0; id && ronde < RONDE; ronde += 1) {\n  try {\n    const r = await this.helpers.httpRequest({\n      url: `https://graph.instagram.com/v23.0/${id}`,\n      qs: { fields: 'status_code', access_token: token },\n      json: true,\n    });\n    status = r.status_code;\n  } catch (e) {\n    // Satu balasan jelek di tengah penantian bukan alasan mematikan cabangnya.\n    status = `gagal-cek: ${String(e.message).slice(0, 120)}`;\n    break;\n  }\n  if (status !== 'IN_PROGRESS') break;\n  await new Promise((lanjut) => setTimeout(lanjut, JEDA));\n}\n\nreturn [{ json: { id, status } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3900,
+        460
+      ],
+      "id": "Tunggu IG matang",
+      "name": "Tunggu IG matang"
+    },
+    {
+      "parameters": {
         "options": {},
         "method": "POST",
         "url": "=https://graph.instagram.com/v23.0/{{ $('Kredensial').first().json.ig_user_id }}/media_publish",
@@ -1318,7 +1331,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3900,
+        4120,
         460
       ],
       "id": "IG publish",
@@ -1346,7 +1359,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4120,
+        4340,
         460
       ],
       "id": "IG permalink",
@@ -2034,6 +2047,17 @@
       ]
     },
     "IG carousel container": {
+      "main": [
+        [
+          {
+            "node": "Tunggu IG matang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tunggu IG matang": {
       "main": [
         [
           {
