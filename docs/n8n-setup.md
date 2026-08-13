@@ -49,6 +49,10 @@ n8n → **Workflows → Import from File** → **`n8n/portofolio-publish.local.j
 Workflow-nya sudah membawa `webhookId` yang sama dengan webhook yang sudah kamu buat,
 jadi path `/webhook/portofolio` tidak berubah.
 
+Import **`n8n/portofolio-ulang.local.json`** juga, dan biarkan **keduanya aktif**. Yang
+kedua mendengarkan `/webhook/portofolio-ulang` dan melayani `[repost:]` — bedanya cuma
+LinkedIn dilewati. Rinciannya di [3d](#3d-workflow-kedua-posting-tanpa-linkedin).
+
 ### Kredensial node — semuanya sudah terisi
 
 | Node | Jenis kredensial | Kredensial n8n |
@@ -252,6 +256,9 @@ Sebagian besar sudah terlanjur ada di LinkedIn (terbit sebelum pipeline ini ada)
 `Approve?` bercabang ke semua platform tanpa syarat, jadi `[repost:]` lewat workflow
 normal berarti LinkedIn kena dua kali.
 
+Aktif bersamaan dengan yang normal, di `path` webhook sendiri. Yang memilih tujuan
+`publish.js`, bukan saklar aktif di n8n.
+
 Prosedur lengkapnya di [Mem-posting artikel LAMA ke Instagram + Facebook](#mem-posting-artikel-lama-ke-instagram--facebook)
 di bawah.
 
@@ -260,7 +267,9 @@ di bawah.
 | Node | 59 | 55 |
 | Platform | LinkedIn + Instagram + Facebook | Instagram + Facebook |
 | Subject e-mail | `[Portofolio] …` | **`[ULANG] [Portofolio] …`** |
-| `path` webhook | `portofolio` | `portofolio` — **sama** |
+| `path` webhook | `portofolio` | `portofolio-ulang` |
+| Dipicu oleh | folder artikel baru | penanda `[repost:]` |
+| Aktif | ya | ya — **keduanya bersamaan** |
 
 **Diturunkan, bukan disalin.** `tanpaLinkedIn()` di `build.mjs` mengambil workflow normal
 yang sudah jadi lalu membuang 4 node LinkedIn, merapatkan indeks input node Merge,
@@ -305,25 +314,35 @@ node n8n/uji-film.mjs                    # daftar artikel yang ada
 node n8n/uji-film.mjs review-supergirl   # caption + link pratinjau, nol e-mail, nol posting
 ```
 
-**Kenapa cukup dua perintah:** `Portofolio Ulang` adalah workflow yang **aktif secara
-tetap**, bukan mode sementara yang harus dinyalakan lalu dimatikan lagi. Semua yang lewat
-webhook `portofolio` — artikel lama maupun artikel baru — naik ke Instagram + Facebook.
-Awalan `[ULANG]` di subject e-mail yang memberi tahu workflow mana yang berjalan,
-**sebelum** tombol Approve diklik.
+**Kenapa cukup dua perintah:** kedua workflow **aktif bersamaan**, di `path` webhook yang
+berbeda, dan `publish.js` yang memilih tujuan — tidak ada saklar yang perlu ditukar dan
+tidak ada yang perlu diingat.
 
-Harganya, dan ini disengaja: selama ini yang aktif, **artikel baru pun tidak naik ke
-LinkedIn**. Kedua workflow mendengarkan `path` webhook yang sama, jadi n8n sendiri yang
-memaksa cuma satu boleh aktif — "jangan lupa matikan yang satu" bukan kedisiplinan yang
-harus diingat. Mau LinkedIn ikut? Tukar yang aktif di n8n sebelum push:
+| Yang dikirim | `path` | Workflow | Naik ke |
+|---|---|---|---|
+| Folder artikel **baru** (semua `.md`-nya berstatus A) | `portofolio` | Portofolio Publish | LinkedIn + Instagram + Facebook |
+| Penanda **`[repost:]`** | `portofolio-ulang` | Portofolio Ulang | Instagram + Facebook |
 
-| Mau | Aktifkan | Matikan |
-|---|---|---|
-| IG + FB saja | `Portofolio Ulang` (`QWTpbHLwKNrDXx14`) | `Portofolio Publish` |
-| Semua sosmed | `Portofolio Publish` (`qrjc4O4wKrfFKZfEWvJvv`) | `Portofolio Ulang` |
+Satu push yang membawa artikel baru **dan** penanda `[repost:]` sekaligus dikirim **dua
+kali**, satu per tujuan. Digabung, salah satunya pasti salah alamat: artikel barunya
+kehilangan LinkedIn, atau artikel lamanya naik ke LinkedIn untuk kedua kali. Artikelnya
+sendiri ikut di kedua badan, dan itu aman — sisi API-nya upsert.
 
-Selama keduanya berbagi `path`, "artikel baru ke semua sosmed" dan "artikel lama ke IG+FB
-saja" tidak bisa berlaku bersamaan. Memisahkannya butuh `path` webhook sendiri untuk
-`Portofolio Ulang` dan `publish.js` yang memilih tujuan — belum dikerjakan.
+URL kedua **diturunkan** dari `WEBHOOK_URL` dengan menambahkan `-ulang`, bukan secret
+kedua: satu nilai lagi yang harus diisi tangan adalah satu nilai lagi yang bisa lupa
+diisi, dan gejalanya nanti "kirim ulang diam-diam tidak jalan". Bentuknya diperiksa keras
+di `publish.js` — `WEBHOOK_URL` yang tidak berakhiran `/portofolio` menggagalkan Action
+dengan pesan jelas, bukan 404 yang tidak menjelaskan apa-apa.
+
+Awalan `[ULANG]` di subject e-mail tetap ada: dia yang memberi tahu jalur mana yang
+berjalan, **sebelum** tombol Approve diklik.
+
+> **Kenapa dulu tidak begini.** `path`-nya sengaja disamakan supaya n8n memaksa cuma satu
+> workflow boleh aktif — "cuma satu yang aktif" jadi aturan yang ditegakkan mesin, bukan
+> kedisiplinan manusia. Harganya baru terasa belakangan: dua kebutuhan yang sah tidak
+> pernah bisa berlaku bersamaan, dan yang menentukan cuma saklar aktif di n8n. Saklar itu
+> **bergeser sendiri** waktu workflow-nya di-deploy ulang (2026-08-13), tanpa satu pun
+> tanda — dan sekali bergeser, artikel berikutnya diam-diam tidak naik ke LinkedIn.
 
 > **Satu artikel per eksekusi.** `siapkan-brief.js` cuma memproses `baru[0]`; sisanya
 > masuk daftar `dilewat` dan **tidak disimpan di mana pun**. Jadi menyusulkan banyak

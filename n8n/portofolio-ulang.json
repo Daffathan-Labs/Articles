@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "portofolio",
+        "path": "portofolio-ulang",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -16,7 +16,7 @@
       ],
       "id": "Webhook",
       "name": "Webhook",
-      "webhookId": "7df7abbe-8eb6-43b7-9b47-5061592604aa"
+      "webhookId": "3c9d5f81-2a47-4e60-9b8d-7f1a2c3e4d55"
     },
     {
       "parameters": {

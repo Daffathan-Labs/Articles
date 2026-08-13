@@ -13,6 +13,53 @@ const HEADERS = {
   ...(process.env.WEBHOOK_TOKEN ? { "X-Portofolio-Token": process.env.WEBHOOK_TOKEN } : {}),
 };
 
+/**
+ * URL webhook untuk kirim ulang, DITURUNKAN dari WEBHOOK_URL — bukan secret kedua.
+ *
+ * Secret kedua berarti satu nilai lagi yang harus diisi tangan dan bisa lupa diisi, dan
+ * gejalanya nanti "kirim ulang diam-diam tidak jalan". Dua path itu bersebelahan di
+ * instance n8n yang sama (`…/webhook/portofolio` dan `…/webhook/portofolio-ulang`), jadi
+ * yang satu bisa dihitung dari yang lain.
+ *
+ * Bentuknya diperiksa keras: WEBHOOK_URL yang tidak berakhiran `/portofolio` berarti
+ * turunan ini pasti salah, dan salahnya berupa 404 yang tidak menjelaskan apa-apa.
+ * Host-nya disamarkan di pesan error — ini berjalan di log Action yang bisa dibaca siapa
+ * pun yang punya akses repo.
+ */
+function urlUlang(base) {
+  const u = String(base == null ? "" : base);
+  if (!/\/portofolio$/.test(u)) {
+    throw new Error(
+      "WEBHOOK_URL harus berakhiran /portofolio supaya URL kirim-ulang bisa diturunkan " +
+        `darinya. Dapat: ${u.replace(/\/\/[^/]+/, "//…")}`
+    );
+  }
+  return `${u}-ulang`;
+}
+
+/**
+ * Folder ini dikirim ke mana: `baru`, `ulang`, atau null (tidak ke sosmed sama sekali).
+ *
+ * Dua workflow n8n sekarang aktif bersamaan di path yang berbeda, dan di sinilah bedanya
+ * ditentukan — bukan lagi oleh saklar aktif yang bisa bergeser sendiri waktu deploy:
+ *
+ *   baru  -> `portofolio`        -> LinkedIn + Instagram + Facebook
+ *   ulang -> `portofolio-ulang`  -> Instagram + Facebook saja
+ *
+ * Artikel lama hampir selalu sudah terlanjur ada di LinkedIn, jadi mengirimnya ke jalur
+ * normal berarti LinkedIn kena dua kali.
+ */
+function tujuanFolder(folder, files, only) {
+  // Mode sync berisi SEMUA artikel; satu workflow_dispatch tidak boleh mengantre
+  // puluhan posting sekaligus.
+  if (!only) return null;
+  // Folder dianggap baru hanya kalau SEMUA berkas .md yang ada sekarang berstatus A.
+  // Menambah terjemahan EN ke artikel lama tidak menghitung ulang sebagai baru.
+  const added = only.addedMd.get(folder);
+  if (added && files.length > 0 && files.every((f) => added.has(f))) return "baru";
+  return only.repost.includes(folder) ? "ulang" : null;
+}
+
 function parseArticle(dir, folder, file) {
   const rawMd = fs.readFileSync(path.join(dir, folder, file), "utf8");
 
@@ -215,7 +262,9 @@ async function main() {
   }
 
   const articles = [];
-  const newFolders = [];
+  // Dua keranjang, dua tujuan. Alasannya di atas `tujuanFolder`.
+  const baru = [];
+  const ulang = [];
   // folder -> nama berkas .md-nya. n8n butuh ini kalau harus menulis balik gambar
   // hasil generate ke markdown-nya. Nama berkasnya sengaja tidak ditebak dari nama
   // folder: parseArticle menerima empat bentuk sufiks locale, dan menebak salah
@@ -231,20 +280,12 @@ async function main() {
       articles.push(parseArticle(dir, folder, file));
     }
 
-    // Folder dianggap baru hanya kalau SEMUA file .md yang ada sekarang berstatus A.
-    // Menambah terjemahan EN ke artikel lama karena itu tidak menghitung ulang sebagai
-    // baru — file ID-nya tidak muncul di diff, jadi `every` gagal dan sosmed dilewati.
-    const added = only && only.addedMd.get(folder);
-    if (added && files.length > 0 && files.every((f) => added.has(f))) {
-      newFolders.push(folder);
-    } else if (only && only.repost.includes(folder)) {
-      // Sengaja hanya di mode delta. Di mode sync `folders` berisi SEMUA artikel,
-      // jadi satu workflow_dispatch bisa mengantre puluhan posting sekaligus.
-      newFolders.push(folder);
-    }
+    const tujuan = tujuanFolder(folder, files, only);
+    if (tujuan === "baru") baru.push(folder);
+    else if (tujuan === "ulang") ulang.push(folder);
   }
 
-  const payload = {
+  const badan = (newFolders) => ({
     mode: only ? "delta" : "sync",
     sha: process.env.SHA || "HEAD",
     repo: process.env.REPO || "",
@@ -254,21 +295,41 @@ async function main() {
     // API. Jangan tambah field di sini: /articles pakai forbidNonWhitelisted,
     // satu field asing = 400. Metadata pipeline hidup di level atas payload.
     articles,
-  };
-
-  console.log(
-    `\n>> ${payload.mode}: ${articles.length} artikel dari ${folders.length} folder` +
-      `${newFolders.length ? `, ${newFolders.length} folder baru → sosmed` : ""}\n`
-  );
-
-  const res = await axios.post(WEBHOOK_URL, payload, {
-    headers: HEADERS,
-    // Di atas timeout /articles/sync (300s) di sisi n8n, supaya yang menyerah
-    // duluan selalu n8n dengan pesan error jelas — bukan axios dengan ECONNABORTED.
-    timeout: 310000,
   });
 
-  console.log(`🎉 n8n balas ${res.status}: ${JSON.stringify(res.data)}`);
+  /**
+   * Satu kiriman per tujuan yang benar-benar punya isi.
+   *
+   * Push yang membawa artikel baru DAN penanda `[repost:]` sekaligus dikirim dua kali —
+   * bukan digabung. Digabung, salah satunya pasti salah alamat: artikel barunya kehilangan
+   * LinkedIn, atau artikel lamanya naik ke LinkedIn untuk kedua kali. Artikelnya sendiri
+   * ikut di kedua badan, dan itu aman: sisi API-nya upsert.
+   */
+  const kiriman = [
+    [WEBHOOK_URL, baru, "artikel baru → LinkedIn + Instagram + Facebook"],
+    [urlUlang(WEBHOOK_URL), ulang, "kirim ulang → Instagram + Facebook"],
+  ].filter(([, f]) => f.length);
+
+  // Tidak ada satu pun yang ke sosmed — misalnya perbaikan typo di artikel lama. Tetap
+  // dikirim SEKALI ke webhook utama supaya website-nya ikut ter-update; `new_folders`
+  // kosong yang membuat cabang sosmed berhenti di gerbang `Ada artikel baru?`.
+  if (!kiriman.length) kiriman.push([WEBHOOK_URL, [], "website saja"]);
+
+  console.log(
+    `\n>> ${only ? "delta" : "sync"}: ${articles.length} artikel dari ${folders.length} folder` +
+      `${baru.length ? `, ${baru.length} baru` : ""}${ulang.length ? `, ${ulang.length} kirim ulang` : ""}\n`
+  );
+
+  for (const [url, newFolders, label] of kiriman) {
+    console.log(`>> ${label}${newFolders.length ? `: ${newFolders.join(", ")}` : ""}`);
+    const res = await axios.post(url, badan(newFolders), {
+      headers: HEADERS,
+      // Di atas timeout /articles/sync (300s) di sisi n8n, supaya yang menyerah
+      // duluan selalu n8n dengan pesan error jelas — bukan axios dengan ECONNABORTED.
+      timeout: 310000,
+    });
+    console.log(`🎉 n8n balas ${res.status}: ${JSON.stringify(res.data)}`);
+  }
 }
 
 if (require.main === module) {
@@ -280,4 +341,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArticle, classifyDiff, parseRepost, changedFolders };
+module.exports = { parseArticle, classifyDiff, parseRepost, changedFolders, urlUlang, tujuanFolder };

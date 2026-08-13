@@ -224,3 +224,75 @@ test("checkout mengambil riwayat penuh — fetch-depth dangkal bikin repost hila
   assert.ok(m, "fetch-depth harus disebut eksplisit, bukan default 1");
   assert.equal(m[1], "0", `fetch-depth ${m[1]} tidak cukup untuk push multi-commit`);
 });
+
+// ─────────────────────────────────────────── dua tujuan, dua webhook path
+const { urlUlang, tujuanFolder } = mod;
+
+test("URL kirim ulang diturunkan dari WEBHOOK_URL, bukan secret kedua", () => {
+  assert.equal(
+    urlUlang("https://n8n.contoh.id/webhook/portofolio"),
+    "https://n8n.contoh.id/webhook/portofolio-ulang"
+  );
+  // Bentuk yang tidak sesuai harus GAGAL KERAS. Diturunkan diam-diam dari URL yang
+  // bentuknya lain, hasilnya 404 yang tidak menjelaskan apa-apa dan kirim ulang
+  // berhenti bekerja tanpa satu pun pesan.
+  for (const salah of ["", null, "https://n8n.contoh.id/webhook/portofolio/", "https://n8n.contoh.id/hook/lain"]) {
+    assert.throws(() => urlUlang(salah), /berakhiran \/portofolio/, `diterima: ${salah}`);
+  }
+  // Host disamarkan — ini berjalan di log Action yang bisa dibaca siapa pun yang
+  // punya akses repo.
+  assert.throws(() => urlUlang("https://rahasia.internal/hook/x"), (e) => {
+    assert.doesNotMatch(e.message, /rahasia\.internal/, "host bocor ke log");
+    return true;
+  });
+});
+
+test("artikel baru dan [repost:] pergi ke tujuan yang berbeda", () => {
+  const only = (repost, added) => ({ repost, addedMd: new Map(added) });
+
+  // Semua .md berstatus A = artikel baru = jalur normal, LinkedIn ikut.
+  assert.equal(
+    tujuanFolder("a", ["a-id.md", "a-en.md"], only([], [["a", new Set(["a-id.md", "a-en.md"])]])),
+    "baru"
+  );
+  // Menambah terjemahan EN ke artikel lama BUKAN artikel baru — berkas ID-nya tidak
+  // muncul di diff, jadi ini tidak boleh mem-posting ulang apa pun.
+  assert.equal(
+    tujuanFolder("a", ["a-id.md", "a-en.md"], only([], [["a", new Set(["a-en.md"])]])),
+    null
+  );
+  // Penanda repost = jalur ulang, tanpa LinkedIn.
+  assert.equal(tujuanFolder("a", ["a-id.md"], only(["a"], [])), "ulang");
+  // Folder yang tidak disebut tidak ke mana-mana.
+  assert.equal(tujuanFolder("b", ["b-id.md"], only(["a"], [])), null);
+  // Mode sync (only = null) tidak pernah mengantre posting.
+  assert.equal(tujuanFolder("a", ["a-id.md"], null), null);
+
+  // Artikel yang benar-benar baru menang atas penanda repost untuk folder yang sama:
+  // dia belum pernah ke LinkedIn, jadi jalur normal yang benar.
+  assert.equal(
+    tujuanFolder("a", ["a-id.md"], only(["a"], [["a", new Set(["a-id.md"])]])),
+    "baru"
+  );
+});
+
+test("kedua workflow n8n punya path webhook sendiri dan boleh aktif bersamaan", () => {
+  // Dulu path-nya sengaja sama supaya n8n memaksa cuma satu yang aktif. Akibatnya
+  // "artikel baru ke semua sosmed" dan "artikel lama ke IG+FB saja" tidak pernah bisa
+  // berlaku bersamaan — dan yang menentukan cuma saklar aktif, yang ternyata bisa
+  // bergeser sendiri waktu workflow-nya di-deploy ulang.
+  const wf = (n) =>
+    JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "..", "..", "n8n", n), "utf8"));
+  const hook = (w) => w.nodes.find((x) => x.type === "n8n-nodes-base.webhook");
+  const a = hook(wf("portofolio-publish.json"));
+  const b = hook(wf("portofolio-ulang.json"));
+
+  assert.equal(a.parameters.path, "portofolio");
+  assert.equal(b.parameters.path, "portofolio-ulang");
+  assert.equal(
+    b.parameters.path,
+    urlUlang("https://x/webhook/" + a.parameters.path).split("/").pop(),
+    "path Ulang tidak cocok dengan yang diturunkan publish.js — kirim ulang jadi 404"
+  );
+  assert.notEqual(a.webhookId, b.webhookId, "webhookId sama: n8n mendaftarkan webhook yang sama dua kali");
+});

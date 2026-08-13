@@ -959,10 +959,19 @@ const wf = bungkus('Portofolio Publish');
 // DITURUNKAN, bukan disalin. Berkas kedua yang dirawat tangan pasti melenceng dari yang
 // pertama, dan melencengnya baru ketahuan waktu postingan salah sudah tayang.
 //
-// `path` webhook sengaja TIDAK diubah — tetap `portofolio`. Itu yang bikin Action GitHub
-// memicu salah satu tanpa WEBHOOK_URL disentuh: yang menjawab adalah yang sedang aktif.
-// n8n menolak dua workflow aktif berbagi path, jadi "cuma satu yang aktif" dipaksa n8n,
-// bukan kedisiplinan yang harus diingat.
+// `path` webhook DIBEDAKAN: `portofolio` untuk yang normal, `portofolio-ulang` untuk yang
+// ini. Itu yang membuat KEDUANYA bisa aktif bersamaan, dan `publish.js` yang memilih
+// tujuan — folder baru ke path normal, `[repost:]` ke path ulang.
+//
+// Sebelumnya path-nya sengaja disamakan supaya cuma satu boleh aktif dan Action tidak
+// perlu tahu bedanya. Itu berarti "artikel baru ke semua sosmed" dan "artikel lama ke
+// Instagram + Facebook saja" tidak pernah bisa berlaku bersamaan, dan yang menentukan
+// cuma saklar aktif di n8n — saklar yang ternyata bisa bergeser sendiri waktu workflow-nya
+// di-deploy ulang, tanpa satu pun tanda. Sekali bergeser, artikel berikutnya diam-diam
+// tidak naik ke LinkedIn, atau artikel lama diam-diam naik ke LinkedIn untuk kedua kali.
+//
+// `webhookId` ikut dibedakan. Dua workflow aktif dengan webhookId sama membuat n8n
+// mendaftarkan webhook yang sama dua kali.
 const LINKEDIN = ['LinkedIn init upload', 'Ambil gambar LinkedIn', 'LinkedIn upload', 'LinkedIn post'];
 
 /** Semua sambungan main yang masuk ke `ke`, sebagai referensi hidup ke w.connections. */
@@ -1019,6 +1028,13 @@ const tanpaLinkedIn = (sumber, nama) => {
   ganti(w, barrier.name, `Tunggu ${masuk.length} cabang`);
 
   const node = (n) => w.nodes.find((x) => x.name === n);
+
+  // Path DAN webhookId dibedakan — alasan lengkapnya di atas fungsi ini. Keduanya wajib:
+  // path yang sama bikin n8n menolak workflow kedua diaktifkan, webhookId yang sama bikin
+  // dia mendaftarkan webhook yang sama dua kali.
+  const wh = w.nodes.find((n) => n.type === 'n8n-nodes-base.webhook');
+  wh.parameters.path = 'portofolio-ulang';
+  wh.webhookId = '3c9d5f81-2a47-4e60-9b8d-7f1a2c3e4d55';
 
   node('Email hasil').parameters.message = wajibUbah(
     node('Email hasil').parameters.message,

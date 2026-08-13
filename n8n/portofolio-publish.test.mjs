@@ -1492,12 +1492,20 @@ test("workflow ulang: setiap node tetap terjangkau dari Webhook", () => {
   assert.deepEqual(putus, [], `node tidak terjangkau: ${putus.join(", ")}`);
 });
 
-test("kedua workflow berbagi path webhook yang sama", () => {
-  // Inilah yang bikin Action GitHub memicu salah satu tanpa WEBHOOK_URL disentuh:
-  // yang menjawab adalah yang sedang aktif. n8n juga menolak dua workflow aktif
-  // berbagi path, jadi "cuma satu yang aktif" dipaksa n8n, bukan diingat manusia.
-  const p = (w) => w.nodes.find((n) => n.type === "n8n-nodes-base.webhook").parameters.path;
-  assert.equal(p(ul), p(wf));
+test("kedua workflow punya path webhook SENDIRI, jadi boleh aktif bersamaan", () => {
+  // Dulu path-nya sengaja disamakan supaya n8n memaksa cuma satu yang aktif. Harganya:
+  // "artikel baru ke semua sosmed" dan "artikel lama ke Instagram + Facebook saja" tidak
+  // pernah bisa berlaku bersamaan, dan yang menentukan cuma saklar aktif di n8n — saklar
+  // yang ternyata bergeser sendiri waktu workflow-nya di-deploy ulang, tanpa satu pun
+  // tanda. Sekali bergeser, artikel berikutnya diam-diam tidak naik ke LinkedIn.
+  const hook = (w) => w.nodes.find((n) => n.type === "n8n-nodes-base.webhook");
+  assert.equal(hook(wf).parameters.path, "portofolio");
+  assert.equal(hook(ul).parameters.path, "portofolio-ulang");
+  // publish.js menurunkan URL kedua dengan menambahkan "-ulang" ke yang pertama.
+  assert.equal(`${hook(wf).parameters.path}-ulang`, hook(ul).parameters.path);
+  // webhookId sama = n8n mendaftarkan webhook yang sama dua kali.
+  assert.notEqual(hook(wf).webhookId, hook(ul).webhookId);
+  assert.match(hook(ul).webhookId, /^[0-9a-f-]{36}$/);
 });
 
 test("setiap e-mail dari workflow ulang berawalan [ULANG]", () => {
