@@ -51,8 +51,12 @@ YANG HARUS DIHASILKAN
    Alurnya: [1] hook yang bikin berhenti scroll, [2][3][4] tiga poin konkret dari artikel,
    [5] penutup.
    - heading: MAKSIMAL 8 KATA. Bahasa Indonesia. Kalimat, bukan judul bab.
-   - body: MAKSIMAL 25 KATA. Bahasa Indonesia. Boleh kosong untuk slide 1.
-     Batas kata ini keras — teksnya di-render ke kanvas tetap dan kelebihan akan terpotong.
+   - body: 22-32 KATA. Bahasa Indonesia. Boleh kosong untuk slide 1.
+     Dua kalimat, bukan satu: satu kalimat menyebut faktanya, satu lagi kenapa itu penting.
+     Batas BAWAH-nya sama seriusnya dengan batas atas. Panel teksnya tinggi tetap, jadi
+     body sembilan kata meninggalkan sepertiga slide sebagai bidang kosong — dan itu
+     terbaca sebagai desain yang belum jadi, bukan sebagai desain yang lapang.
+     Di atas 32 kata teksnya dipotong sistem, jadi jangan lewat.
    - SLIDE 5: heading dan body-nya DIISI SISTEM, apa pun yang kamu tulis akan ditimpa.
      Untuk slide 5 kamu cukup memberi image_prompt yang cocok sebagai penutup.
    - DILARANG menulis URL, nama domain, nama akun, atau "link di bio" di heading maupun

@@ -50,12 +50,24 @@ for (let i = 0; i < polos.length && pilih.length < MAKS; i += 1) {
   if (!pilih.includes(polos[i])) pilih.push(polos[i]);
 }
 
-// Dua ukuran, dan bedanya penting. `url` w1280 yang nanti benar-benar dipasang di slide;
-// yang dikirim ke model w500. Sepuluh gambar w1280 jadi ~5 MB base64 dalam satu badan
-// permintaan, sementara w500 sudah lebih dari cukup untuk mengenali kostum dan warna
-// rambut — yang ditanyakan "siapa yang terlihat", bukan detail sehelai rambut.
+/**
+ * Dua ukuran: `url` w1280 yang dipasang di slide, w780 yang dikirim ke model.
+ *
+ * Sempat w500, dan itu yang menerbitkan orang yang salah. Wajah di still 16:9 tingginya
+ * sekitar 16% frame, jadi di w500 dia cuma ~45 piksel — cukup untuk melihat ADA orang,
+ * tidak cukup untuk membedakan dua perempuan berambut kemerahan di bawah cahaya tungsten.
+ * Modelnya menyebut Zendaya sebagai Sadie Sink, dan itu yang terbit.
+ *
+ * Anehnya w500 BENAR kalau cuma dua still yang dikirim — ukurannya baru menggigit waktu
+ * kolamnya besar. Jadi jangan pernah menguji ini dengan dua gambar lalu menyimpulkan
+ * ukurannya cukup: diuji dengan 40 still yang sama persis dengan produksi, w500 salah
+ * orang dan w780 benar.
+ *
+ * w780, bukan w1280: w1280 juga benar tapi badannya jadi ~10 MB base64, dan tidak ada
+ * bukti dia lebih benar dari w780.
+ */
 const url = pilih.map((b) => `https://image.tmdb.org/t/p/w1280${b.file_path}`);
-const kecil = pilih.map((b) => `https://image.tmdb.org/t/p/w500${b.file_path}`);
+const kecil = pilih.map((b) => `https://image.tmdb.org/t/p/w780${b.file_path}`);
 
 // Artikel bukan film berhenti di sini: nol kandidat, nol unduhan, dan `body` null bikin
 // `Terangkan still` dibalas 400 lalu diteruskan onError. Itu jalur normalnya — 45 dari 46
@@ -74,18 +86,28 @@ const roster = cast
  * "Sadie Sink sebagai Jean Grey" sebuah still berisi perempuan berambut cokelat yang
  * sebetulnya MJ. Dengan foto acuan, "rambut merah" berhenti jadi tebakan.
  *
- * Delapan teratas saja, ukuran w185: ini cuma untuk mencocokkan wajah, bukan untuk
- * dipajang, dan pemain di bawah urutan itu praktis tidak pernah jadi subjek still.
+ * Delapan teratas saja, ukuran w500. Sempat w185 — potret 185x278, wajahnya ~120 piksel —
+ * dan acuan sekecil itu tidak menjaga apa pun: yang dibandingkan dua-duanya kabur.
+ * Delapan gambar w500 cuma ~0,4 MB, jadi menghematnya di sini tidak membeli apa-apa.
  */
 const acuan = cast.filter((p) => p.profile_path).slice(0, 8);
 
 /*
- * Tiga field, bukan satu, dan dua yang terakhir yang menentukan mutunya.
+ * Tiga field, bukan satu, dan `wajah` yang paling gampang ditulis salah.
  *
- * `tokoh` saja pernah menghasilkan slide "Sadie Sink sebagai Jean Grey" berisi sosok
- * bertudung yang wajahnya gelap total — modelnya benar bahwa dia ada di frame, tapi tidak
- * ada yang bisa mengenalinya. `utama` memisahkan "dia yang jadi subjek" dari "dia lewat di
- * latar", dan `wajah` memisahkan "kelihatan" dari "cuma siluet".
+ * `tokoh` saja pernah menghasilkan slide "Sadie Sink sebagai Jean Grey" berisi sosok yang
+ * cuma lewat di latar. `utama` memisahkan "dia yang jadi subjek" dari "dia lewat".
+ *
+ * `wajah` versi pertama berbunyi "bertudung berarti false", dan itu SALAH sampai merusak
+ * hasilnya: still Sadie Sink terbaik di kolam justru dia bertudung di dalam kereta —
+ * wajahnya besar, terang, menghadap kamera, tidak bisa keliru. Aturan itu menurunkan
+ * nilainya ke 2, lalu still lain yang tokohnya salah kenal menang dengan 3, dan yang
+ * terbit adalah perempuan yang bukan Sadie Sink. Tudung bukan ukurannya; yang jadi
+ * ukuran cuma satu — bisa atau tidak orang mengenalinya dari frame itu saja.
+ *
+ * Pengenalannya juga diikat ke foto acuan, bukan ke konteks adegan. "Perempuan berambut
+ * kemerahan di bengkel Peter, berarti Jean Grey" adalah tebakan yang terdengar masuk akal
+ * dan tetap salah orang.
  */
 /*
  * Sampul artikel ikut dikirim, DI URUTAN TERAKHIR.
@@ -112,12 +134,16 @@ const prompt = [
       'sebagai pembanding adegan.'
     : '',
   `Pemainnya: ${roster}.`,
-  'Untuk SETIAP still jawab hal berikut. Pakai kostum, warna rambut, dan ciri tokoh sebagai',
-  'dasar; kalau tidak ada yang jelas, kembalikan daftar kosong dan utama "".',
-  '- tokoh: semua tokoh dari daftar yang terlihat.',
+  'Untuk SETIAP still jawab hal berikut. Dasarnya COCOKKAN WAJAH dengan foto acuan di atas,',
+  'bukan menebak dari konteks adegan atau dari siapa yang "masuk akal" ada di situ.',
+  'Ragu sedikit pun = jangan sebut namanya. Daftar kosong dan utama "" itu jawaban yang sah,',
+  'dan jauh lebih baik daripada nama yang meleset.',
+  '- tokoh: semua tokoh dari daftar yang wajahnya benar-benar cocok dengan foto acuannya.',
   '- utama: SATU tokoh yang jadi subjek utama frame, "" kalau tidak ada yang menonjol.',
-  '- wajah: true HANYA kalau wajah tokoh utama terlihat jelas dan bisa dikenali.',
-  '  Bertudung, membelakangi kamera, gelap, atau bertopeng penuh berarti false.',
+  '- wajah: true kalau wajah tokoh utama cukup BESAR, cukup TERANG, dan cukup MENGHADAP',
+  '  kamera untuk dikenali dari frame ini saja. Tudung, topi, dan kostum TIDAK membuatnya',
+  '  false — yang membuatnya false cuma wajah yang membelakangi kamera, gelap total,',
+  '  tertutup topeng penuh, menunduk, atau terlalu jauh/kecil untuk dikenali.',
   sampul
     ? `- sama_sampul: true kalau adegannya sama dengan gambar ke-${url.length + acuan.length + 1}.`
     : '',
@@ -134,7 +160,7 @@ const prompt = [
 // Prompt di atas menyebut nomor-nomor itu apa adanya, jadi menukar urutan di sini
 // membuat modelnya menilai gambar yang salah tanpa satu pun error muncul.
 const semua = kecil
-  .concat(acuan.map((p) => `https://image.tmdb.org/t/p/w185${p.profile_path}`));
+  .concat(acuan.map((p) => `https://image.tmdb.org/t/p/w500${p.profile_path}`));
 
 const ROMBONGAN = 8;
 const gambar = [];

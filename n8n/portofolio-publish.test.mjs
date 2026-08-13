@@ -359,7 +359,7 @@ function rakit({
 } = {}) {
   const slide = {
     heading: heading ?? "Satu dua tiga empat lima enam tujuh delapan",
-    body: body ?? Array.from({ length: 25 }, (_, i) => `kata${i}`).join(" "),
+    body: body ?? Array.from({ length: 32 }, (_, i) => `kata${i}`).join(" "),
     pakai_foto: fotoAsli,
   };
   const palsu = {
@@ -1818,6 +1818,60 @@ test("kelas potret cuma menempel di slide yang fotonya potret", () => {
   assert.doesNotMatch(rakit({ layout: "tengah" }).slides[0], /class="[^"]*potret/);
 });
 
+test("panel teks mengisi sisa kanvas, tidak menyisakan bidang kosong di bawah", () => {
+  // Keluhannya: "banyak banget whitespace di bawah nya tuh ... jangan ada whitespace yang
+  // bener bener menyisakan ruang". Panelnya dulu setinggi ISINYA, jadi body sembilan kata
+  // berhenti di sekitar 980px dan 370px terakhir benar-benar kosong.
+  //
+  // Dua hal yang memperbaikinya, dan dua-duanya harus tetap ada.
+  const css = gaya(rakit({ layout: "blok-bawah", fotoAsli: true }).slides[0]);
+  const aturan = (sel) => css.match(new RegExp(`\\${sel}\\{([^}]*)\\}`))[1];
+
+  // 1. Panelnya tumbuh mengisi ruang, bukan setinggi isinya.
+  const teks = aturan(".l-pias .teks");
+  assert.match(teks, /flex:\s*1/, "panel pias balik setinggi isinya — lubang di bawah balik");
+  assert.match(teks, /justify-content:\s*center/, "isi panel tidak dipusatkan, numpuk di atas");
+
+  // 2. Tidak ada jarak tambahan antara tepi foto dan panel: padding-atas .wrap PERSIS
+  //    setinggi kotak fotonya. Sisa 36px yang dulu ada di sini sekarang jadi padding
+  //    dalam .teks, jadi warnanya menyambung alih-alih memutus panel dari fotonya.
+  const wrap = aturan(".l-pias .wrap");
+  const atas = Number(wrap.match(/padding:(\d+)px/)[1]);
+  const foto = Number(css.match(/\.l-pias \.bg\{[^}]*height:(\d+)px/)[1]);
+  assert.equal(atas, foto, `panel mulai di ${atas}px padahal foto habis di ${foto}px`);
+  assert.equal(
+    Number(css.match(/\.l-pias\.potret \.wrap\{[^}]*padding-top:(\d+)px/)[1]),
+    Number(css.match(/\.l-pias\.potret \.bg\{[^}]*height:(\d+)px/)[1]),
+    "slide potret masih menyisakan jarak antara foto dan panel"
+  );
+
+  // Luapan HARUS tetap terbaca render-svc. Panel yang mengisi sisa kanvas gampang
+  // sekaligus mengunci tingginya — dan begitu terkunci, teks kepanjangan terpotong
+  // diam-diam, dibalas 200, dan loop penyusutan tidak pernah jalan.
+  assert.doesNotMatch(teks, /overflow/, "panel pias mengunci luapannya sendiri");
+  assert.doesNotMatch(teks, /height:/, "tinggi panel dipatok — luapan berhenti terukur");
+});
+
+test("body slide dikasih ruang 32 kata, bukan 25", () => {
+  // Panel pias tingginya 742px dan body 25 kata cuma mengisi separuhnya. Batas ini jalan
+  // berpasangan dengan prompt: batas naik tanpa prompt naik tidak menambah satu kata pun.
+  const kata = (n) => Array.from({ length: n }, (_, i) => `k${i}`).join(" ");
+  assert.doesNotMatch(rakit({ ronde: 0, body: kata(32) }).slides[0], /…/, "32 kata dipangkas");
+  assert.match(rakit({ ronde: 0, body: kata(40) }).slides[0], /…/, "batas atas hilang");
+  // Lantai penyusutan tidak boleh ikut naik: ronde 8 tetap 10 kata, kalau tidak slide
+  // yang meluber butuh lebih dari 8 ronde untuk sembuh dan carousel-nya gagal terbit.
+  const sisa = (r) => rakit({ ronde: r, body: kata(40) }).slides[0]
+    .match(/<p>([^<]*)<\/p>/)[1].replace("…", "").trim().split(/\s+/).length;
+  assert.equal(sisa(8), 10, "lantai ronde 8 bergeser dari 10 kata");
+  assert.ok(sisa(1) < sisa(0), "tiap ronde harus benar-benar memangkas lebih banyak");
+
+  assert.match(
+    fs.readFileSync(new URL("./src/prompt-copy.txt", import.meta.url), "utf8"),
+    /body: 22-32 KATA/,
+    "prompt masih meminta body pendek — panelnya bakal tetap bolong"
+  );
+});
+
 test("panel bukan hitam rata: warnanya ikut aksen, kontras tetap aman", () => {
   // Keluhannya: "jangan sampai statis warna hitam dan tulisan putih aja". Panelnya dulu
   // #0B0F14 di SEMUA artikel — aksen cuma muncul di chip kecil, jadi review film dan
@@ -1931,10 +1985,15 @@ const ISI_FILM = [
   { heading: "penutup", body: "" },
 ];
 
-test("yang dikirim ke model gambar KECIL, yang dipasang di slide yang besar", async () => {
-  // Sepuluh gambar w1280 jadi ~5 MB base64 dalam satu badan permintaan — mahal, lambat,
-  // dan gampang ditolak. w500 sudah cukup untuk mengenali kostum dan warna rambut, dan
-  // yang ditanyakan memang "siapa yang terlihat", bukan detail sehelai rambut.
+test("gambar yang diperiksa model cukup besar untuk mengenali wajah", async () => {
+  // Ini yang menerbitkan orang yang salah. Stillnya dulu dikirim w500, dan wajah di
+  // still 16:9 tingginya cuma ~16% frame — jadi ~45 piksel. Cukup untuk melihat ADA
+  // orang, tidak cukup untuk membedakan dua perempuan berambut kemerahan: modelnya
+  // menyebut Zendaya sebagai Sadie Sink, dan itu yang terbit.
+  //
+  // Yang bikin jebakannya halus: w500 BENAR kalau cuma dua still yang dikirim. Ukurannya
+  // baru menggigit waktu kolamnya 40. Diuji dengan kolam yang sama persis dengan
+  // produksi — w500 salah orang, w780 benar.
   const diminta = [];
   const $ = (n) => ({
     isExecuted: true,
@@ -1958,7 +2017,9 @@ test("yang dikirim ke model gambar KECIL, yang dipasang di slide yang besar", as
   assert.equal(diminta.length, 10 + CAST.length, "jumlah gambar yang diunduh untuk model berubah");
   const still = diminta.slice(0, 10);
   const wajah = diminta.slice(10);
-  for (const u of wajah) assert.match(u, /\/t\/p\/w185\//, `foto acuan bukan ukuran kecil: ${u}`);
+  // Acuan w500, bukan w185. Potret 185x278 punya wajah ~120 piksel, dan acuan sekecil
+  // itu tidak menjaga apa pun — yang dibandingkan dua-duanya kabur.
+  for (const u of wajah) assert.match(u, /\/t\/p\/w500\//, `foto acuan terlalu kecil: ${u}`);
   assert.deepEqual(
     wajah.map((u) => u.split("/").pop()),
     CAST.map((p) => p.profile_path.slice(1)),
@@ -1989,7 +2050,9 @@ test("yang dikirim ke model gambar KECIL, yang dipasang di slide yang besar", as
   assert.ok(luas.url.length >= 40, `cuma ${luas.url.length} dari 54 backdrop polos diperiksa`);
   assert.equal(new Set(luas.url).size, luas.url.length, "ada kandidat kembar");
 
-  for (const u of still) assert.match(u, /\/t\/p\/w500\//, `dikirim ke model ukuran besar: ${u}`);
+  // w780: wajahnya terbaca, badannya masih ~5 MB. w500 salah orang, w1280 juga benar
+  // tapi badannya ~10 MB tanpa satu pun bukti dia lebih benar.
+  for (const u of still) assert.match(u, /\/t\/p\/w780\//, `still yang diperiksa bukan w780: ${u}`);
   for (const u of hasil.url) assert.match(u, /\/t\/p\/w1280\//, `slide dipasangi ukuran kecil: ${u}`);
   // Urutannya harus sejajar — kalau tidak, keterangan gambar ke-3 menempel di gambar lain.
   assert.deepEqual(
@@ -2029,6 +2092,48 @@ test("yang dikirim ke model gambar KECIL, yang dipasang di slide yang besar", as
   assert.equal(bagian[bagian.length - 1].inline_data.data, "U0FNUFVM", "sampul bukan gambar terakhir");
   assert.match(bagian[0].text, /sama_sampul/, "model tidak diminta membandingkan sampul");
   assert.equal(berSampul.url.length, 10, "sampul ikut terhitung sebagai kandidat still");
+});
+
+test("tudung bukan alasan menolak sebuah wajah", async () => {
+  // Ini yang menerbitkan orang yang salah. Aturan `wajah` versi pertama berbunyi
+  // "Bertudung, membelakangi kamera, gelap, atau bertopeng penuh berarti false" — dan
+  // still Sadie Sink TERBAIK di kolam justru dia bertudung di dalam kereta: wajahnya
+  // besar, terang, menghadap kamera, tidak bisa keliru. Aturan itu menurunkannya ke
+  // nilai 2, still lain yang salah kenal menang dengan 3, dan yang terbit perempuan
+  // yang bukan Sadie Sink.
+  const prompt = (
+    await new AsyncFn("$", byName["Siapkan kandidat"].parameters.jsCode).call(
+      { helpers: { httpRequest: async () => Buffer.from("g") } },
+      (n) => ({
+        isExecuted: true,
+        first: () => ({
+          json: n === "Still film" ? { backdrops: backdropPalsu(10) }
+            : n === "Pemain film" ? { cast: CAST }
+            : {},
+        }),
+        all: () => [],
+      })
+    )
+  )[0].json.body.contents[0].parts[0].text;
+
+  const barisWajah = prompt.split("\n").filter((b) => /wajah|tudung|Tudung/i.test(b)).join(" ");
+  assert.match(barisWajah, /[Tt]udung/, "tudung tidak disinggung sama sekali — aturannya jadi tebak-tebakan");
+  assert.match(
+    barisWajah,
+    /[Tt]udung[^.]*TIDAK membuatnya\s*\n?\s*false/,
+    "tudung masih dihitung sebagai wajah tak terlihat"
+  );
+  // Ukurannya harus soal bisa-tidaknya dikenali, bukan soal apa yang dipakai tokohnya.
+  assert.match(barisWajah, /BESAR/, "ukuran wajah tidak jadi ukuran");
+  assert.match(barisWajah, /TERANG/, "cahaya wajah tidak jadi ukuran");
+  assert.match(barisWajah, /MENGHADAP/, "arah wajah tidak jadi ukuran");
+
+  // Penamaannya diikat ke foto acuan, bukan ke konteks adegan. "Perempuan berambut
+  // kemerahan di bengkel Peter, berarti Jean Grey" adalah tebakan yang terdengar masuk
+  // akal dan tetap salah orang — persis yang terjadi.
+  assert.match(prompt, /COCOKKAN WAJAH dengan foto acuan/, "pengenalan tidak diikat ke foto acuan");
+  assert.match(prompt, /bukan menebak dari konteks/, "menebak dari konteks masih dibolehkan");
+  assert.match(prompt, /Ragu sedikit pun = jangan sebut namanya/, "tidak ada jalan keluar untuk model yang ragu");
 });
 
 test("still yang isinya cocok menang atas potret publisitas", async () => {

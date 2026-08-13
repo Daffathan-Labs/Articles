@@ -124,9 +124,13 @@ const LOGO = '{{LOGO}}';
 // Teks dari model untuk slide terakhir sengaja ditimpa — penutup tidak perlu
 // berubah tiap artikel, dan membiarkan model menulisnya cuma menambah satu
 // peluang gagal (menyelipkan URL sendiri, atau ajakan yang meleset).
+// Body-nya sepanjang body slide lain (22-32 kata), bukan satu baris. Panel teks tingginya
+// tetap, jadi penutup 13 kata meninggalkan sepertiga slide sebagai bidang kosong —
+// dan slide terakhir justru yang paling lama dilihat orang sebelum memutuskan mengklik.
 const CTA_AKHIR = {
   heading: 'Artikel lengkapnya di link bio',
-  body: 'Semua tulisan aku ada di sana — teknis, review film, sampai catatan keseharian.',
+  body: 'Semua tulisan aku ada di sana — catatan teknis, review film, sampai hal kecil ' +
+    'yang kepikiran di tengah kerjaan. Kalau ada yang kepake, ambil aja.',
 };
 
 // ── warna aksen: dipilih model, TIDAK dipercaya ─────────────────────────────────
@@ -314,18 +318,27 @@ p{font-size:${px(34)}px;line-height:1.42;color:#D7DEE6;margin-top:${px(22)}px}
 /* Panel dipasang di body supaya warnanya menyambung dari tepi foto sampai dasar
    kanvas tanpa sambungan yang terlihat. 45% ≈ tepi bawah foto. */
 .l-pias body{background:linear-gradient(180deg,${tinta(0.34)} 45%,${tinta(0.06)} 100%)}
-/* Mulai dari transparan: pelindung teks yang menambah kontras di bagian bawah panel
+/* Panel teks MENGISI seluruh sisa kanvas di bawah foto — flex:1, bukan setinggi
+   isinya. Setinggi isi, sisanya jadi bidang kosong yang benar-benar kosong: di render
+   uji teksnya berhenti di 980px dan 370px terakhir tidak ada apa-apa. Sekarang panelnya
+   sampai ke dasar dan isinya dipusatkan, jadi sisa ruang terbagi rata alih-alih menumpuk
+   jadi satu lubang di bawah.
+   Mulai dari transparan: pelindung teks yang menambah kontras di bagian bawah panel
    tanpa memunculkan kotak bersudut di atas gradien body. */
-.l-pias .teks{background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.3) 100%);border-radius:0;padding-top:${px(40)}px}
+.l-pias .teks{flex:1;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.3) 100%);border-radius:0;padding:${px(44)}px ${px(64)}px ${px(60)}px}
 /* Teks duduk TEPAT di bawah foto, bukan di dasar kanvas.
    .wrap memakai space-between, jadi .teks dulu terlempar ke bawah dan menyisakan
    lubang 228px antara tepi foto dan chip kategori — persis "whitespace kejauhan".
    Diperbaiki dengan menaikkan padding-atas .wrap setinggi kotak foto, bukan dengan
    memosisikan .teks secara absolut: .teks HARUS tetap di aliran normal supaya teks
    yang meluber tetap menambah scrollHeight dan render-svc masih bisa membalas 422.
+   Dipusatkan, bukan diratakan ke atas, dan luapan tetap terbaca: kotaknya berakhir
+   persis di 1350, jadi isi yang kepanjangan mendorong tepi bawahnya lewat kanvas.
+   Padding kiri-kanan pindah ke .teks supaya panelnya penuh dari tepi ke tepi seperti
+   fotonya, bukan kotak melayang dengan bahu kosong.
    Kepala dipindah ke absolut — dia memang cuma melayang di atas foto. */
-.l-pias .wrap{justify-content:flex-start;padding-top:${PIAS + px(36)}px}
-.l-pias.potret .wrap{padding-top:${PIAS_POTRET + px(36)}px}
+.l-pias .wrap{justify-content:flex-start;padding:${PIAS}px 0 0}
+.l-pias.potret .wrap{padding-top:${PIAS_POTRET}px}
 .l-pias .atas{position:absolute;top:${px(72)}px;left:${px(64)}px;right:${px(64)}px}
 /* Slide berfoto PEMAIN: kotaknya ditinggikan karena potret 2:3 arahnya berlawanan
    dengan still 16:9 — alasan lengkapnya di atas PIAS_POTRET. Kelasnya menempel di
@@ -363,7 +376,12 @@ const slides = meta.map((m, i) => {
   const sumber = akhir ? CTA_AKHIR : m;
 
   const heading = maksKata(polos(sumber.heading), Math.max(5, 8 - Math.floor(ronde / 2)));
-  const body = maksKata(polos(sumber.body), Math.max(10, 25 - ronde * 2));
+  // 32, bukan 25. Panel pias tingginya 742px dan body 25 kata cuma mengisi separuhnya —
+  // sisanya bidang kosong. Batas ini jalan berpasangan dengan permintaan 22-32 kata di
+  // prompt: menaikkan batas saja tidak menambah satu kata pun kalau modelnya tetap
+  // menulis sembilan. Turunnya juga dipercepat (3 per ronde, bukan 2) supaya lantai
+  // ronde 8 tetap di 10 kata seperti sebelumnya.
+  const body = maksKata(polos(sumber.body), Math.max(10, 32 - ronde * 3));
 
   const teks =
     `<div class="teks">` +

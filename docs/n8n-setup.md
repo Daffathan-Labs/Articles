@@ -365,7 +365,7 @@ bukan ulasan film). Dari situ tiga panggilan TMDB, **sekali per artikel bukan pe
 | `Cari film` | `search/movie` → id |
 | `Still film` | `movie/{id}/images` → backdrop |
 | `Pemain film` | `movie/{id}/credits` → nama pemain + nama karakter + foto |
-| `Siapkan kandidat` | saring backdrop polos, ambil 40, unduh w500, susun permintaan Gemini |
+| `Siapkan kandidat` | saring backdrop polos, ambil 40, unduh w780, susun permintaan Gemini |
 | `Terangkan still` | Gemini membaca isi kesalinya: siapa yang terlihat di gambar ke berapa |
 
 Lalu satu gerbang **per artikel**, bukan per slide:
@@ -385,34 +385,50 @@ yang ada di dalamnya — itu akar dari dua bug berturut-turut: slide *"Sadie Sin
 Jean Grey"* mula-mula dapat adegan Punisher, lalu setelah ditambal daftar pemain dia dapat
 potret karpet merah alih-alih adegan filmnya. Padahal still-nya ada di kolam.
 
-`Siapkan kandidat` mengunduh 40 backdrop polos di ukuran w500 dan mengirim semuanya
+`Siapkan kandidat` mengunduh 40 backdrop polos di ukuran w780 dan mengirim semuanya
 **dalam satu panggilan** ke Gemini bersama daftar pemain; modelnya menjawab per gambar:
 
 | Field | Isi | Kenapa ada |
 |---|---|---|
-| `tokoh` | semua tokoh yang terlihat | dasar pencocokan |
+| `tokoh` | tokoh yang wajahnya cocok dengan foto acuan | dasar pencocokan |
 | `utama` | satu tokoh yang jadi subjek frame | memisahkan "jadi subjek" dari "lewat di latar" |
-| `wajah` | wajah tokoh utama terlihat jelas | memisahkan "kelihatan" dari "cuma siluet" |
+| `wajah` | wajah tokoh utama cukup besar, terang, menghadap kamera | memisahkan "bisa dikenali" dari "cuma ada di frame" |
 | `sama_sampul` | adegannya sama dengan sampul artikel | slide 1 selalu sampul; kembarannya = satu gambar diulang |
 
 **Urutan gambar dalam permintaan adalah kontraknya**, dan prompt menyebut nomornya apa
-adanya: still `1..N`, lalu **foto acuan wajah pemain** (8 teratas, w185), lalu sampul
+adanya: still `1..N`, lalu **foto acuan wajah pemain** (8 teratas, w500), lalu sampul
 artikel. Menukar urutannya bikin model menilai gambar yang salah tanpa satu pun error
 muncul — ada test yang mengunci ketiganya. Foto acuan ada supaya modelnya tidak menebak
 dari nama: tanpa itu dia cuma punya daftar teks dan tidak tahu Sadie Sink yang mana.
 
-Dua field terakhir yang menentukan mutunya. Tanpa `wajah`, slide Sadie Sink dapat sosok
-**bertudung yang wajahnya gelap total** — modelnya tidak salah, dia memang ada di frame,
-tapi tidak ada yang bisa mengenalinya. Nilainya 3 (subjek utama + wajah jelas) > 2 (subjek
-utama) > 1 (ada di frame), dan yang tertinggi menang — **bukan yang pertama cocok**.
+Nilainya 3 (subjek utama + wajah bisa dikenali) > 2 (subjek utama) > 1 (ada di frame), dan
+yang tertinggi menang — **bukan yang pertama cocok**.
 
 Angka 40 juga bukan hiasan: sempat 10, dan hasilnya still Sadie Sink yang ADA di antara 54
 backdrop polos tidak pernah ikut diperiksa. Cakupan yang bolong bikin fitur ini kelihatan
-gagal padahal yang salah cuma daftar yang dilihat. 40 gambar w500 ≈ 4,8 MB dan ~10 ribu
-token, sekali per artikel film.
+gagal padahal yang salah cuma daftar yang dilihat.
 
-Yang dikirim ke model w500, yang dipasang di slide w1280 — sepuluh gambar w1280 saja sudah
-~5 MB dalam satu badan permintaan, dan yang ditanyakan cuma "siapa yang terlihat".
+### Dua jebakan di jalur ini, dua-duanya menerbitkan orang yang salah
+
+**Ukuran gambar yang diperiksa.** Stillnya sempat dikirim w500 dan acuannya w185. Wajah di
+still 16:9 tingginya ~16% frame, jadi di w500 dia cuma **~45 piksel** — cukup untuk melihat
+ada orang, tidak cukup untuk membedakan dua perempuan berambut kemerahan di bawah cahaya
+tungsten. Modelnya menyebut **Zendaya sebagai Sadie Sink**, dan itu yang terbit.
+
+Jebakannya halus: w500 **benar** kalau cuma dua still yang dikirim, dan ukurannya baru
+menggigit waktu kolamnya 40. Jangan pernah menguji ini dengan dua gambar lalu menyimpulkan
+ukurannya cukup — diuji dengan 40 still yang sama persis dengan produksi, w500 salah orang
+dan w780 benar. w1280 juga benar, tapi badannya ~10 MB tanpa bukti dia lebih benar.
+Sekarang: 40×w780 + 8×w500 ≈ 4,1 MB, sekali per artikel film.
+
+**"Bertudung berarti wajahnya tidak kelihatan."** Aturan `wajah` versi pertama berbunyi
+begitu, dan itu salah sampai merusak hasilnya: still Sadie Sink terbaik di kolam justru dia
+**bertudung di dalam kereta** — wajahnya besar, terang, menghadap kamera, tidak bisa keliru.
+Aturan itu menurunkannya ke nilai 2, still lain yang salah kenal menang dengan 3. Tudung dan
+kostum bukan ukurannya; yang jadi ukuran cuma **bisa atau tidak orang mengenalinya dari
+frame itu saja**. Pengenalannya juga diikat ke foto acuan, bukan ke konteks adegan —
+*"perempuan berambut kemerahan di bengkel Peter, berarti Jean Grey"* adalah tebakan yang
+terdengar masuk akal dan tetap salah orang.
 
 **Potret publisitas jadi jaring pengaman TERAKHIR**, dipakai hanya kalau slide menyebut
 seorang pemain dan tidak ada satu pun still yang memuat dia. Slide yang menyebut nama tapi
@@ -449,6 +465,19 @@ Teks duduk **tepat di bawah** kotak foto, bukan di dasar kanvas: `.wrap` dulu me
 Perbaikannya menaikkan `padding-top` `.wrap` setinggi kotak foto — **bukan** memosisikan
 `.teks` secara absolut, karena `.teks` harus tetap di aliran normal supaya teks yang
 meluber tetap menambah `scrollHeight` dan render-svc masih bisa membalas 422.
+
+**Panelnya mengisi sisa kanvas, bukan setinggi isinya.** Menutup lubang di atas saja
+memindahkan lubangnya ke bawah: body sembilan kata berhenti di ~980px dan 370px terakhir
+benar-benar kosong. `.teks` sekarang `flex:1` dengan isi dipusatkan, jadi sisa ruang terbagi
+rata alih-alih menumpuk jadi satu bidang kosong, dan warnanya menyambung sampai dasar
+kanvas. Tingginya **tidak boleh** dipatok dan `overflow` **tidak boleh** disetel — begitu
+terkunci, teks kepanjangan terpotong diam-diam, render dibalas 200, dan loop penyusutan
+tidak pernah jalan.
+
+Setengah lagi ada di teksnya: prompt meminta body **22-32 kata** (dulu "maksimal 25"), dan
+`maksKata` di `rakit-slide.js` ikut naik ke 32. Batas atas yang dinaikkan tanpa batas bawah
+tidak menambah satu kata pun — modelnya tetap menulis sembilan. Teks penutup slide 5 yang
+dipatok di kode ikut dipanjangkan karena alasan yang sama.
 
 `cover` mengisi kotak dengan cara membuang bagian foto yang tidak muat, dan yang dibuang
 selalu tepi — kepala, bahu, dagu tepat di garis panel teks. Itu keluhan yang menutup
