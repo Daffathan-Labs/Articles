@@ -1699,6 +1699,8 @@ const bagiFoto = async ({
   isiSlide = null,
   // Keterangan isi tiap kandidat, seindeks dengan kolamnya. null = panggilan visi gagal.
   keterangan = null,
+  // Folder artikel — kunci daftar foto pilihan tangan di Pecah slide.
+  folder = "artikel-uji",
 } = {}) => {
   // `Siapkan kandidat` dijalankan APA ADANYA dari JSON hasil build, bukan dipalsukan
   // keluarannya: dia yang menyaring backdrop berjudul dan mengambil selang, dan fixture
@@ -1723,7 +1725,7 @@ const bagiFoto = async ({
   const palsu = {
     "Siapkan kandidat": { json: kandidat },
     "Terangkan still": balasanVisi(keterangan),
-    "Siapkan brief": { json: { code: "uji" } },
+    "Siapkan brief": { json: { code: "uji", folder } },
     "Gemini copy": {
       json: {
         output: {
@@ -2134,6 +2136,69 @@ test("tudung bukan alasan menolak sebuah wajah", async () => {
   assert.match(prompt, /COCOKKAN WAJAH dengan foto acuan/, "pengenalan tidak diikat ke foto acuan");
   assert.match(prompt, /bukan menebak dari konteks/, "menebak dari konteks masih dibolehkan");
   assert.match(prompt, /Ragu sedikit pun = jangan sebut namanya/, "tidak ada jalan keluar untuk model yang ragu");
+});
+
+test("foto pilihan tangan menang atas pencocokan, dan tidak dipakai dua kali", async () => {
+  // Pencocokan otomatis punya satu batas yang tidak bisa ditutup dengan aturan: selera.
+  // Slide "Dinamika Peter dan MJ" jatuh ke Spider-Man di atas tank karena "MJ" cuma DUA
+  // huruf dan daftar nama membuang nama di bawah empat huruf.
+  const kode = byName["Pecah slide"].parameters.jsCode;
+  const dipilih = kode.match(
+    /'review-spiderman-brand-new-day-2026':\s*\[[\s\S]*?sebut:\s*'MJ',\s*url:\s*'([^']+)'/
+  );
+  assert.ok(dipilih, "daftar foto pilihan hilang dari Pecah slide");
+  assert.match(dipilih[1], /w1280/, "foto pilihan bukan ukuran yang dipasang di slide");
+
+  // Kolam SENGAJA memuat berkas yang dipilih itu, supaya penguncian benar-benar diuji:
+  // tanpa kunci, slide lain ikut mengambilnya dari kolam dan satu gambar muncul dua kali.
+  // Vote-nya TERTINGGI supaya dia jadi kandidat pertama — di situlah penguncian benar-benar
+  // menggigit. Ditaruh di tengah kolam, pengisian berurutan tidak pernah sampai ke dia dan
+  // test-nya lolos tanpa menjaga apa pun (mutasi AZ membuktikannya).
+  const berkas = dipilih[1].split("/").pop();
+  const kolam = [
+    { file_path: `/${berkas}`, vote_average: 101 },
+    ...backdropPalsu(9),
+  ];
+  // Slide yang menyebut MJ ada di posisi BERBEDA di dua susunan ini. Kuncinya kata, bukan
+  // nomor: model menulis ulang topik tiap eksekusi, jadi "slide 4" satu kali berarti MJ
+  // dan berikutnya berarti Sadie Sink — nomor slide sempat dipakai dan langsung meleset.
+  const susun = (urut) =>
+    urut.map((h) => ({ heading: h, body: "", image_prompt: "p", image_mode: "tempat" }));
+  const opsi = { backdrops: kolam, keterangan: null };
+
+  for (const [posisi, urut] of [
+    [3, ["hook", "Sadie Sink sebagai Jean Grey", "Aksi berayun", "Dinamika Peter dan MJ", "tutup"]],
+    [1, ["hook", "Dinamika Peter dan MJ", "Sadie Sink sebagai Jean Grey", "Aksi berayun", "tutup"]],
+  ]) {
+    const slides = await bagiFoto({
+      ...opsi, folder: "review-spiderman-brand-new-day-2026", isiSlide: susun(urut),
+    });
+    assert.equal(slides[posisi].foto_url, dipilih[1], `slide MJ di posisi ${posisi + 1} meleset`);
+    assert.equal(slides[posisi].foto_potret, false, "foto pilihan ditandai potret");
+    const terpakai = slides.map((s) => s.foto_url).filter(Boolean);
+    assert.equal(new Set(terpakai).size, terpakai.length, "foto pilihan bocor ke slide lain");
+  }
+
+  // Artikel LAIN tidak boleh ikut terkunci — daftarnya per folder, bukan global.
+  const lain = await bagiFoto({
+    ...opsi, folder: "review-superman-2025",
+    isiSlide: susun(["hook", "Dinamika Peter dan MJ", "b", "c", "tutup"]),
+  });
+  assert.notEqual(lain[1].foto_url, dipilih[1], "foto pilihan bocor ke artikel lain");
+});
+
+test("slide terakhir tidak dicocokkan ke teks yang tidak pernah terbit", () => {
+  // Teks slide terakhir SELALU ditimpa ajakan tetap di `Rakit slide`, sama seperti slide 1
+  // yang selalu ditimpa sampul artikel. Mencocokkan fotonya ke teks model yang dibuang itu
+  // mencocokkan ke sesuatu yang tidak ada — sekali jalan hasilnya potret publisitas Tom
+  // Holland sebesar layar di bawah kalimat "Artikel lengkapnya di link bio".
+  const kode = byName["Pecah slide"].parameters.jsCode;
+  assert.match(
+    kode,
+    /i === 0 \|\| i === slides\.length - 1 \? \[\] : namaDi/,
+    "slide terakhir masih ikut dicocokkan ke nama pemain"
+  );
+  assert.match(kode, /i === slides\.length - 1 \|\|\s*\n?\s*jatah\[i\]/, "slide terakhir masih bisa dapat potret pemain");
 });
 
 test("still yang isinya cocok menang atas potret publisitas", async () => {

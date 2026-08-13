@@ -130,8 +130,12 @@ const namaDi = (teks) => cast.filter((c) => sebut(teks, c.nama)).map((c) => c.na
  * jadi memberinya still yang cocok cuma membuang satu still dari kolam tanpa ada yang
  * melihatnya.
  */
+// Slide TERAKHIR ikut dilewati, dengan alasan yang sama: teksnya juga dibuang, diganti
+// ajakan tetap "Artikel lengkapnya di link bio". Mencocokkan fotonya ke teks yang tidak
+// pernah terbit itu mencocokkan ke sesuatu yang tidak ada — dan sekali jalan hasilnya
+// potret publisitas Tom Holland sebesar layar di bawah kalimat ajakan.
 const namaSlide = slides.map((s, i) =>
-  i === 0 ? [] : namaDi(`${s.heading || ''} ${s.body || ''}`)
+  i === 0 || i === slides.length - 1 ? [] : namaDi(`${s.heading || ''} ${s.body || ''}`)
 );
 
 /**
@@ -154,8 +158,55 @@ const nilaiStill = (k, nama) => {
   return ket.tokoh.some(kena) ? 1 : 0;
 };
 
+/**
+ * Foto yang dipilih TANGAN, per artikel. Kuncinya KATA yang disebut slide, bukan nomornya.
+ *
+ * Ada karena pencocokan otomatis punya satu batas yang tidak bisa ditutup dengan aturan:
+ * slide "Dinamika Peter dan MJ" di Brand New Day jatuh ke Spider-Man di atas tank karena
+ * `MJ` cuma DUA huruf, dan daftar nama sengaja membuang nama di bawah empat huruf — tanpa
+ * batas itu "MJ" dan "Grey" kena di kata lain dan yang tampil justru orang yang tidak
+ * dibahas. Menurunkan batasnya menutup kasus ini tapi menggeser foto di slide lain yang
+ * sudah benar, jadi yang dipakai daftar ini.
+ *
+ * Kuncinya KATA, dan itu bukan detail: nomor slide sempat dipakai dan langsung meleset —
+ * model menulis ulang topik tiap eksekusi, jadi "slide 4" satu kali berarti MJ dan
+ * berikutnya berarti Sadie Sink, dan foto MJ menempel di slide Sadie. Kata yang disebut
+ * slide ikut pindah bersama topiknya; nomor slide tidak.
+ *
+ * Cuma berlaku untuk folder yang namanya disebut, dan satu URL cuma dipakai sekali.
+ */
+const PILIHAN = {
+  'review-spiderman-brand-new-day-2026': [
+    // Slide tentang MJ harus menampilkan mereka berdua berhadapan, bukan Spider-Man
+    // sendirian. w1280 seperti kolam, bukan `original` — kotaknya cuma 1080 lebar, jadi
+    // yang lebih besar cuma menambah berat tanpa menambah satu piksel yang terlihat.
+    { sebut: 'MJ', url: 'https://image.tmdb.org/t/p/w1280/2Es8HvjgIoNxYbsQnVa8OJVz2Wk.jpg' },
+  ],
+};
+
+// Slide 1 dilewati: dia selalu ditimpa sampul artikel di `Rakit slide`, jadi mengunci foto
+// di situ cuma membuang satu gambar dari kolam tanpa ada yang melihatnya.
+const sudah = new Set();
+const pilihanSlide = slides.map((s, i) => {
+  if (i === 0 || i === slides.length - 1) return null;
+  const teks = `${s.heading || ''} ${s.body || ''}`;
+  const p = (PILIHAN[brief.folder] || []).find(
+    (x) => !sudah.has(x.url) && sebut(teks, x.sebut)
+  );
+  if (!p) return null;
+  sudah.add(p.url);
+  return p.url;
+});
+
 const dipakai = new Set();
+// Foto pilihan dikunci lebih dulu: kalau tidak, slide lain bisa mengambilnya dari kolam
+// lewat pengisian berurutan dan yang terbit jadi satu gambar yang sama di dua slide.
+kolam.forEach((u, k) => {
+  if (pilihanSlide.indexOf(u) >= 0) dipakai.add(k);
+});
+
 const jatah = slides.map((s, i) => {
+  if (pilihanSlide[i]) return pilihanSlide[i];
   if (!namaSlide[i].length) return null;
   let terbaik = -1;
   let nilaiTerbaik = 0;
@@ -227,8 +278,12 @@ return slides.map((s, i) => {
       'this set, but a clearly different scene, subject and camera angle.';
 
   // Potret cuma dipakai kalau slide ini menyebut seorang pemain DAN tidak kebagian still
-  // sama sekali. Slide 1 dilewati: dia selalu ditimpa foto artikel di `Rakit slide`.
-  const orang = i === 0 || jatah[i] ? null : cariOrang(`${s.heading || ''} ${s.body || ''}`);
+  // sama sekali. Slide pertama dan terakhir dilewati: teks dua-duanya ditimpa di
+  // `Rakit slide`, jadi tidak ada nama yang benar-benar terbit untuk dicocokkan.
+  const orang =
+    i === 0 || i === slides.length - 1 || jatah[i]
+      ? null
+      : cariOrang(`${s.heading || ''} ${s.body || ''}`);
 
   return {
     json: {
