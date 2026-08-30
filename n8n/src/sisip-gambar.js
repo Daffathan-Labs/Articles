@@ -63,9 +63,19 @@ for (const item of $input.all()) {
     // bukan disisipi. Menyisipi bikin artikel yang sudah punya baris kosong di situ
     // berakhir dengan dua baris kosong berturut-turut — jejak yang tidak perlu ada
     // di diff artikel orang.
+    // 38 dari 46 artikel menulis judulnya sebagai H1 lalu H2 subjudul. Gambar yang
+    // disisipkan tepat setelah H1 memisahkan judul dari subjudulnya, dan itu tidak
+    // pernah terlihat sampai ada artikel tanpa cover yang benar-benar lewat jalur ini.
+    // Jadi kalau H1 langsung diikuti H2, yang jadi patokan H2-nya.
+    let akhirJudul = iJudul;
     let j = iJudul + 1;
     while (j < hasil.length && hasil[j].trim() === '') j++;
-    hasil = [...hasil.slice(0, iJudul + 1), '', img, '', ...hasil.slice(j)];
+    if (j < hasil.length && hasil[j].startsWith('## ')) {
+      akhirJudul = j;
+      j += 1;
+      while (j < hasil.length && hasil[j].trim() === '') j++;
+    }
+    hasil = [...hasil.slice(0, akhirJudul + 1), '', img, '', ...hasil.slice(j)];
   } else {
     const i = hasil.findIndex((b) => b.trim() && !/^<!--/.test(b));
     if (i < 0) throw new Error(`${g.path}: tidak ada isi setelah blok metadata`);

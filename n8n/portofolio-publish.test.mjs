@@ -100,6 +100,36 @@ test("Code node cuma memakai global yang benar-benar ada di sandbox n8n", () => 
   }
 });
 
+test("binary dibaca lewat helper, bukan lewat ekspresi $binary", () => {
+  // Instance ini menyimpan binary di FILESYSTEM. Di mode itu `binary.data.data` berisi
+  // string literal "filesystem-v2", bukan base64 — berkas aslinya di disk dan cuma bisa
+  // dibaca lewat `this.helpers.getBinaryDataBuffer`, yang cuma ada di Code node.
+  //
+  // `Simpan gambar` sempat memakai `content: $binary.data.data` dan GitHub membalas
+  // 422 "content wasn't supplied", tanpa menyebut binary sama sekali. Cabang sosmed
+  // tetap hijau, jadi yang ketahuan cuma satu gejala: artikelnya tayang tanpa gambar.
+  for (const n of wf.nodes) {
+    assert.doesNotMatch(
+      JSON.stringify(n.parameters),
+      /$binary/,
+      `${n.name} membaca binary lewat ekspresi; di mode filesystem isinya bukan base64`
+    );
+  }
+});
+
+test("hero lewat base64 dulu sebelum di-commit ke GitHub", () => {
+  // Rantainya: unduh dari render-svc -> ubah jadi base64 -> PUT ke contents API.
+  // Node tengahnya memakai sumber yang sama dengan `Cover base64`, jadi kalau helper-nya
+  // berubah, ketiganya ikut berubah bersamaan.
+  assert.deepEqual(wf.connections["Ambil hero"].main[0].map((c) => c.node), ["Hero base64"]);
+  assert.deepEqual(wf.connections["Hero base64"].main[0].map((c) => c.node), ["Simpan gambar"]);
+  assert.equal(byName["Hero base64"].parameters.jsCode, byName["Cover base64"].parameters.jsCode);
+  assert.ok(
+    byName["Simpan gambar"].parameters.jsonBody.includes("content: $json.b64"),
+    "Simpan gambar tidak mengirim base64 hasil Hero base64"
+  );
+});
+
 test("setiap node terjangkau dari Webhook", () => {
   const lihat = new Set();
   (function jalan(n) {
@@ -1318,6 +1348,27 @@ test("Sisip gambar: metadata setelah excerpt, <img> setelah judul H1", () => {
   assert.equal(iImageMeta, iExcerpt + 1, "baris metadata tidak tepat setelah excerpt");
   assert.ok(iImg > iJudul, "<img> harus setelah judul H1, sama seperti artikel lain");
   assert.ok(iImg < iJudul + 4, "<img> terlalu jauh dari judul");
+});
+
+test("Sisip gambar: judul H1 + H2 tidak dipisah gambar", () => {
+  // 38 dari 46 artikel menulis judulnya sebagai H1 lalu H2 subjudul. Menyisipkan
+  // gambar tepat setelah H1 memisahkan judul dari subjudulnya. Fixture artikel di
+  // atas kebetulan salah satu dari 8 yang TIDAK memakai subjudul, jadi bentuk yang
+  // dipakai mayoritas artikel tidak terjaga sampai test ini ada.
+  const md = `<!-- title: Uji -->
+<!-- excerpt: x -->
+
+# Judul Besar
+## Subjudulnya
+
+Paragraf.`;
+  const baris = Buffer.from(sisip(md)[0].json.isi_b64, "base64").toString("utf8").split("\n");
+  const iH1 = baris.indexOf("# Judul Besar");
+  const iH2 = baris.indexOf("## Subjudulnya");
+  const iImg = baris.findIndex((b) => b.startsWith("<img"));
+  assert.ok(iH1 >= 0 && iH2 >= 0, "judul hilang");
+  assert.equal(iH2, iH1 + 1, "H2 tidak lagi menempel di bawah H1");
+  assert.ok(iImg > iH2, "gambar menyelip di antara judul dan subjudulnya");
 });
 
 test("Sisip gambar: alt di-escape, tidak bisa memecah atribut", () => {

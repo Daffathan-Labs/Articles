@@ -762,6 +762,19 @@
     },
     {
       "parameters": {
+        "jsCode": "// Ubah binary jadi base64 yang benar-benar bisa dipakai di <img src=\"data:…\">.\n//\n// Instance ini menyimpan binary di FILESYSTEM (N8N_DEFAULT_BINARY_DATA_MODE=filesystem),\n// jadi `binary.data.data` berisi string literal \"filesystem-v2\" — bukan base64. Berkas\n// aslinya ada di disk dan cuma bisa dibaca lewat helper. Dipasang apa adanya ke\n// <img src=\"data:image/webp;base64,…\">, yang keluar adalah ikon gambar rusak, di setiap\n// slide, tanpa satu pun error di n8n dan dengan render-svc tetap membalas 200.\n//\n// Ditulis sebagai loop yang mengeluarkan SATU item per item masuk — termasuk yang tanpa\n// binary. Node bawaan `Extract From File` tidak bisa dipakai di sini: dia MEMBUANG item\n// tanpa binary alih-alih menandainya. Lima slide dengan dua gambar berhasil keluar\n// sebagai dua item, dan pasangan per-indeks slide↔gambar hilang tanpa jejak; kalau\n// semuanya gagal, keluarannya nol item dan seluruh cabang berhenti diam-diam sambil\n// tetap dilaporkan \"success\".\nconst masuk = $input.all();\nconst keluar = [];\n\nfor (let i = 0; i < masuk.length; i++) {\n  const b = masuk[i].binary && masuk[i].binary.data;\n  keluar.push({\n    json: {\n      b64: b ? Buffer.from(await this.helpers.getBinaryDataBuffer(i, 'data')).toString('base64') : null,\n      // Mime ikut dibawa, bukan diasumsikan: API menyajikan cover sebagai WebP, dan\n      // menuliskannya sebagai image/jpeg bikin Chromium menolak merender gambarnya.\n      mime: (b && b.mimeType) || null,\n    },\n  });\n}\n\nreturn keluar;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        660
+      ],
+      "id": "Hero base64",
+      "name": "Hero base64"
+    },
+    {
+      "parameters": {
         "options": {},
         "method": "PUT",
         "url": "=https://api.github.com/repos/{{ $('Susun commit').first().json.repo }}/contents/{{ $('Susun commit').first().json.path_gambar }}",
@@ -784,12 +797,12 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ message: 'chore: gambar otomatis untuk ' + $('Susun commit').first().json.folder, content: $binary.data.data }) }}"
+        "jsonBody": "={{ JSON.stringify({ message: 'chore: gambar otomatis untuk ' + $('Susun commit').first().json.folder, content: $json.b64 }) }}"
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2800,
+        3020,
         660
       ],
       "id": "Simpan gambar",
@@ -803,7 +816,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3020,
+        3240,
         660
       ],
       "id": "Pecah md",
@@ -834,7 +847,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3240,
+        3460,
         660
       ],
       "id": "Ambil md",
@@ -843,12 +856,12 @@
     },
     {
       "parameters": {
-        "jsCode": "// Sisipkan gambar ke markdown: satu baris metadata dan satu <img> di isi.\n//\n// Dua-duanya perlu, dan gunanya beda. `<!-- image: -->` jadi thumbnail kartu dan\n// og:image. `<img>` di isi jadi gambar besar di halaman detail — halaman itu merender\n// `content`, jadi tanpa <img> tidak ada gambar yang terlihat saat artikel dibuka.\n//\n// Selain dua baris itu, berkasnya tidak boleh berubah sedikit pun. Ini menulis ke repo\n// tulisan orang; diff yang mengandung perubahan lain adalah bug, bukan kerapian.\n\n/** Sisip satu baris SETELAH baris pertama yang cocok, tanpa menyentuh yang lain. */\nconst sisipSetelah = (baris, cocok, isi) => {\n  const i = baris.findIndex(cocok);\n  if (i < 0) return null;\n  return [...baris.slice(0, i + 1), isi, ...baris.slice(i + 1)];\n};\n\nconst esc = (s) =>\n  String(s == null ? '' : s).replace(/[&<>\"]/g, (c) =>\n    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c])\n  );\n\nconst keluar = [];\n\nfor (const item of $input.all()) {\n  const g = item.json;\n  const rencana = $('Pecah md').all().find((x) => x.json.path === g.path);\n  if (!rencana) throw new Error(`tidak ketemu rencana untuk ${g.path}`);\n  const url = rencana.json.url_gambar;\n\n  if (typeof g.content !== 'string' || !g.sha) {\n    throw new Error(\n      `balasan GET /contents tidak lengkap untuk ${g.path}: ${JSON.stringify(g).slice(0, 200)}`\n    );\n  }\n\n  // GitHub mengembalikan base64 ber-baris-baru; atob/Buffer sama-sama tidak masalah,\n  // tapi barisnya harus dibuang dulu di sebagian runtime.\n  const asli = Buffer.from(String(g.content).replace(/\\s/g, ''), 'base64').toString('utf8');\n\n  // Sudah punya gambar berarti ada yang menambahkannya di antara publish dan sekarang.\n  // Menimpanya berarti membuang gambar pilihan manusia demi gambar mesin.\n  if (/<!--\\s*image:\\s*\\S/i.test(asli)) {\n    keluar.push({ json: { path: g.path, lewati: true, alasan: 'sudah punya <!-- image: -->' } });\n    continue;\n  }\n\n  const baris = asli.split('\\n');\n  const judul = (/<!--\\s*title:\\s*(.*?)\\s*-->/i.exec(asli) || [])[1] || 'Gambar artikel';\n\n  // 1) baris metadata. Ditaruh setelah `excerpt` supaya urutannya sama dengan 45\n  //    artikel yang sudah ada; kalau tidak ada excerpt, setelah komentar terakhir.\n  let hasil =\n    sisipSetelah(baris, (b) => /^<!--\\s*excerpt:/i.test(b), `<!-- image: ${url} -->`) ||\n    sisipSetelah(baris, (b) => /^<!--[\\s\\S]*-->\\s*$/.test(b), `<!-- image: ${url} -->`);\n  if (!hasil) throw new Error(`${g.path}: tidak ada blok metadata <!-- ... --> di atas berkas`);\n\n  // 2) <img> di isi, setelah judul H1 — persis pola 45 artikel yang sudah ada.\n  //    Kalau tidak ada H1, ditaruh sebelum paragraf pertama.\n  const img = `<img width=\"800\" alt=\"${esc(judul)}\" src=\"${url}\" />`;\n  const iJudul = hasil.findIndex((b) => /^#\\s+\\S/.test(b));\n  if (iJudul >= 0) {\n    // Deretan baris kosong setelah judul diganti pola baku `kosong, img, kosong`,\n    // bukan disisipi. Menyisipi bikin artikel yang sudah punya baris kosong di situ\n    // berakhir dengan dua baris kosong berturut-turut — jejak yang tidak perlu ada\n    // di diff artikel orang.\n    let j = iJudul + 1;\n    while (j < hasil.length && hasil[j].trim() === '') j++;\n    hasil = [...hasil.slice(0, iJudul + 1), '', img, '', ...hasil.slice(j)];\n  } else {\n    const i = hasil.findIndex((b) => b.trim() && !/^<!--/.test(b));\n    if (i < 0) throw new Error(`${g.path}: tidak ada isi setelah blok metadata`);\n    hasil = [...hasil.slice(0, i), img, '', ...hasil.slice(i)];\n  }\n\n  keluar.push({\n    json: {\n      path: g.path,\n      sha: g.sha,\n      lewati: false,\n      isi_b64: Buffer.from(hasil.join('\\n'), 'utf8').toString('base64'),\n    },\n  });\n}\n\nreturn keluar;"
+        "jsCode": "// Sisipkan gambar ke markdown: satu baris metadata dan satu <img> di isi.\n//\n// Dua-duanya perlu, dan gunanya beda. `<!-- image: -->` jadi thumbnail kartu dan\n// og:image. `<img>` di isi jadi gambar besar di halaman detail — halaman itu merender\n// `content`, jadi tanpa <img> tidak ada gambar yang terlihat saat artikel dibuka.\n//\n// Selain dua baris itu, berkasnya tidak boleh berubah sedikit pun. Ini menulis ke repo\n// tulisan orang; diff yang mengandung perubahan lain adalah bug, bukan kerapian.\n\n/** Sisip satu baris SETELAH baris pertama yang cocok, tanpa menyentuh yang lain. */\nconst sisipSetelah = (baris, cocok, isi) => {\n  const i = baris.findIndex(cocok);\n  if (i < 0) return null;\n  return [...baris.slice(0, i + 1), isi, ...baris.slice(i + 1)];\n};\n\nconst esc = (s) =>\n  String(s == null ? '' : s).replace(/[&<>\"]/g, (c) =>\n    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c])\n  );\n\nconst keluar = [];\n\nfor (const item of $input.all()) {\n  const g = item.json;\n  const rencana = $('Pecah md').all().find((x) => x.json.path === g.path);\n  if (!rencana) throw new Error(`tidak ketemu rencana untuk ${g.path}`);\n  const url = rencana.json.url_gambar;\n\n  if (typeof g.content !== 'string' || !g.sha) {\n    throw new Error(\n      `balasan GET /contents tidak lengkap untuk ${g.path}: ${JSON.stringify(g).slice(0, 200)}`\n    );\n  }\n\n  // GitHub mengembalikan base64 ber-baris-baru; atob/Buffer sama-sama tidak masalah,\n  // tapi barisnya harus dibuang dulu di sebagian runtime.\n  const asli = Buffer.from(String(g.content).replace(/\\s/g, ''), 'base64').toString('utf8');\n\n  // Sudah punya gambar berarti ada yang menambahkannya di antara publish dan sekarang.\n  // Menimpanya berarti membuang gambar pilihan manusia demi gambar mesin.\n  if (/<!--\\s*image:\\s*\\S/i.test(asli)) {\n    keluar.push({ json: { path: g.path, lewati: true, alasan: 'sudah punya <!-- image: -->' } });\n    continue;\n  }\n\n  const baris = asli.split('\\n');\n  const judul = (/<!--\\s*title:\\s*(.*?)\\s*-->/i.exec(asli) || [])[1] || 'Gambar artikel';\n\n  // 1) baris metadata. Ditaruh setelah `excerpt` supaya urutannya sama dengan 45\n  //    artikel yang sudah ada; kalau tidak ada excerpt, setelah komentar terakhir.\n  let hasil =\n    sisipSetelah(baris, (b) => /^<!--\\s*excerpt:/i.test(b), `<!-- image: ${url} -->`) ||\n    sisipSetelah(baris, (b) => /^<!--[\\s\\S]*-->\\s*$/.test(b), `<!-- image: ${url} -->`);\n  if (!hasil) throw new Error(`${g.path}: tidak ada blok metadata <!-- ... --> di atas berkas`);\n\n  // 2) <img> di isi, setelah judul H1 — persis pola 45 artikel yang sudah ada.\n  //    Kalau tidak ada H1, ditaruh sebelum paragraf pertama.\n  const img = `<img width=\"800\" alt=\"${esc(judul)}\" src=\"${url}\" />`;\n  const iJudul = hasil.findIndex((b) => /^#\\s+\\S/.test(b));\n  if (iJudul >= 0) {\n    // Deretan baris kosong setelah judul diganti pola baku `kosong, img, kosong`,\n    // bukan disisipi. Menyisipi bikin artikel yang sudah punya baris kosong di situ\n    // berakhir dengan dua baris kosong berturut-turut — jejak yang tidak perlu ada\n    // di diff artikel orang.\n    // 38 dari 46 artikel menulis judulnya sebagai H1 lalu H2 subjudul. Gambar yang\n    // disisipkan tepat setelah H1 memisahkan judul dari subjudulnya, dan itu tidak\n    // pernah terlihat sampai ada artikel tanpa cover yang benar-benar lewat jalur ini.\n    // Jadi kalau H1 langsung diikuti H2, yang jadi patokan H2-nya.\n    let akhirJudul = iJudul;\n    let j = iJudul + 1;\n    while (j < hasil.length && hasil[j].trim() === '') j++;\n    if (j < hasil.length && hasil[j].startsWith('## ')) {\n      akhirJudul = j;\n      j += 1;\n      while (j < hasil.length && hasil[j].trim() === '') j++;\n    }\n    hasil = [...hasil.slice(0, akhirJudul + 1), '', img, '', ...hasil.slice(j)];\n  } else {\n    const i = hasil.findIndex((b) => b.trim() && !/^<!--/.test(b));\n    if (i < 0) throw new Error(`${g.path}: tidak ada isi setelah blok metadata`);\n    hasil = [...hasil.slice(0, i), img, '', ...hasil.slice(i)];\n  }\n\n  keluar.push({\n    json: {\n      path: g.path,\n      sha: g.sha,\n      lewati: false,\n      isi_b64: Buffer.from(hasil.join('\\n'), 'utf8').toString('base64'),\n    },\n  });\n}\n\nreturn keluar;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3460,
+        3680,
         660
       ],
       "id": "Sisip gambar",
@@ -883,7 +896,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3680,
+        3900,
         660
       ],
       "id": "Simpan md",
@@ -903,7 +916,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        3900,
+        4120,
         660
       ],
       "id": "Lapor commit",
@@ -1865,6 +1878,17 @@
       ]
     },
     "Ambil hero": {
+      "main": [
+        [
+          {
+            "node": "Hero base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hero base64": {
       "main": [
         [
           {

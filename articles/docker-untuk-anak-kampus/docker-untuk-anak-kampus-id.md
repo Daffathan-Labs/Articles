@@ -1,11 +1,14 @@
 <!-- title: Docker untuk Anak Kampus — Satu PC Lab, 40 Mahasiswa, Nol Bentrok -->
 <!-- excerpt: Panduan langkah demi langkah memakai Docker buat mahasiswa SE, DS, dan AI yang harus install skripsi di satu PC lab bersama. Lengkap dengan studi kasus dari repo yang benar-benar jalan, plus jalur GitHub Actions buat yang tidak mau install Docker di laptop sendiri. -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/docker-untuk-anak-kampus/hero.jpg -->
 <!-- date: 2026-08-31 -->
 <!-- posting_date: 2026-08-31 -->
 <!-- tags: Docker, Docker Compose, GitHub Actions, DevOps, Tutorial -->
 
 # 🐳 Docker untuk Anak Kampus
 ## Satu PC Lab, 40 Mahasiswa, Nol Bentrok
+
+<img width="800" alt="Docker untuk Anak Kampus — Satu PC Lab, 40 Mahasiswa, Nol Bentrok" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/docker-untuk-anak-kampus/hero.jpg" />
 
 Ada satu PC lab. Ada 40-an mahasiswa yang harus install skripsi di situ.
 

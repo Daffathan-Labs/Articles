@@ -615,7 +615,15 @@ hubung('Susun commit', 'Ambil hero');
 // Berkas baru, jadi tanpa `sha`. Kalau hero.jpg sudah ada, GitHub membalas 422
 // "already exists" — dan itu ditangani sebagai sukses di `Pecah md`, karena URL-nya
 // tetap benar dan yang penting bagi markdown cuma berkasnya ada.
-N('Simpan gambar', 'n8n-nodes-base.httpRequest', 4.2, [2800, 660], http({
+// Binary tidak bisa dibaca lewat ekspresi `$binary.data.data`: instance ini menyimpan
+// binary di FILESYSTEM, dan di mode itu isinya string literal "filesystem-v2". Yang
+// terkirim ke GitHub jadi bukan base64, dan balasannya 422 "content wasn't supplied",
+// tanpa menyebut binary sama sekali. Berkasnya cuma bisa dibaca lewat helper, dan itu
+// yang dilakukan `ke-base64.js` — sumber yang sama persis dengan `Cover base64`.
+N('Hero base64', 'n8n-nodes-base.code', 2, [2800, 660], KE_B64);
+hubung('Ambil hero', 'Hero base64');
+
+N('Simpan gambar', 'n8n-nodes-base.httpRequest', 4.2, [3020, 660], http({
   method: 'PUT',
   url: `=https://api.github.com/repos/{{ $('Susun commit').first().json.repo }}/contents/{{ $('Susun commit').first().json.path_gambar }}`,
   sendHeaders: true,
@@ -624,24 +632,24 @@ N('Simpan gambar', 'n8n-nodes-base.httpRequest', 4.2, [2800, 660], http({
   specifyBody: 'json',
   jsonBody:
     "={{ JSON.stringify({ message: 'chore: gambar otomatis untuk ' + $('Susun commit').first().json.folder, " +
-    'content: $binary.data.data }) }}',
+    'content: $json.b64 }) }}',
 }), { onError: 'continueRegularOutput' });
-hubung('Ambil hero', 'Simpan gambar');
+hubung('Hero base64', 'Simpan gambar');
 
-N('Pecah md', 'n8n-nodes-base.code', 2, [3020, 660], { jsCode: baca('pecah-md.js') });
+N('Pecah md', 'n8n-nodes-base.code', 2, [3240, 660], { jsCode: baca('pecah-md.js') });
 hubung('Simpan gambar', 'Pecah md');
 
-N('Ambil md', 'n8n-nodes-base.httpRequest', 4.2, [3240, 660], http({
+N('Ambil md', 'n8n-nodes-base.httpRequest', 4.2, [3460, 660], http({
   url: "=https://api.github.com/repos/{{ $json.repo }}/contents/{{ $json.path }}",
   sendHeaders: true,
   headerParameters: { parameters: GH() },
 }), { onError: 'continueRegularOutput' });
 hubung('Pecah md', 'Ambil md');
 
-N('Sisip gambar', 'n8n-nodes-base.code', 2, [3460, 660], { jsCode: baca('sisip-gambar.js') });
+N('Sisip gambar', 'n8n-nodes-base.code', 2, [3680, 660], { jsCode: baca('sisip-gambar.js') });
 hubung('Ambil md', 'Sisip gambar');
 
-N('Simpan md', 'n8n-nodes-base.httpRequest', 4.2, [3680, 660], http({
+N('Simpan md', 'n8n-nodes-base.httpRequest', 4.2, [3900, 660], http({
   method: 'PUT',
   url: `=https://api.github.com/repos/{{ $('Susun commit').first().json.repo }}/contents/{{ $json.path }}`,
   sendHeaders: true,
@@ -654,7 +662,7 @@ N('Simpan md', 'n8n-nodes-base.httpRequest', 4.2, [3680, 660], http({
 }), { onError: 'continueRegularOutput' });
 hubung('Sisip gambar', 'Simpan md');
 
-N('Lapor commit', 'n8n-nodes-base.gmail', 2.2, [3900, 660], gmail(
+N('Lapor commit', 'n8n-nodes-base.gmail', 2.2, [4120, 660], gmail(
   "=[Portofolio] Gambar otomatis: {{ $('Susun commit').first().json.folder }}",
   '=<p>Artikel ini tidak punya gambar, jadi latar slide 1 dipromosikan jadi gambar artikel ' +
     'dan di-commit balik ke repo.</p>' +

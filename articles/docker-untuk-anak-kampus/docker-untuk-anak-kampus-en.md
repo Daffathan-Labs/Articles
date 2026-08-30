@@ -1,11 +1,14 @@
 <!-- title: Docker for Campus Students — One Lab PC, 40 Students, Zero Collisions -->
 <!-- excerpt: A step-by-step Docker guide for SE, DS, and AI students who have to install their thesis projects on one shared lab PC. Includes case studies from repositories that actually run, plus a GitHub Actions path for anyone who would rather not install Docker on their own laptop. -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/docker-untuk-anak-kampus/hero.jpg -->
 <!-- date: 2026-08-31 -->
 <!-- posting_date: 2026-08-31 -->
 <!-- tags: Docker, Docker Compose, GitHub Actions, DevOps, Tutorial -->
 
 # 🐳 Docker for Campus Students
 ## One Lab PC, 40 Students, Zero Collisions
+
+<img width="800" alt="Docker for Campus Students — One Lab PC, 40 Students, Zero Collisions" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/docker-untuk-anak-kampus/hero.jpg" />
 
 There is one lab PC. There are 40-odd students who need to install their thesis projects on it.
 
