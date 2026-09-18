@@ -1,11 +1,14 @@
 <!-- title: web-slicing-skills — Slicing UI 1:1 buat Claude Code, Playwright Udah Nempel -->
 <!-- excerpt: Dua skill Claude Code buat slicing UI web dan mobile 1:1 dari mockup, sekarang jadi plugin publik. Playwright kepasang otomatis, tanpa langkah manual setelah install. -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/web-slicing-skills/hero.jpg -->
 <!-- date: 2026-09-18 -->
 <!-- posting_date: 2026-09-18 -->
 <!-- tags: Claude Code, Playwright, Plugin, Frontend, Developer Tools -->
 
 # 🔪 web-slicing-skills
 ## Slicing UI 1:1, Playwright Udah Nempel
+
+<img width="800" alt="web-slicing-skills — Slicing UI 1:1 buat Claude Code, Playwright Udah Nempel" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/web-slicing-skills/hero.jpg" />
 
 Nyocokin UI ke mockup persis piksel biasanya kerjaan manual: buka DevTools, ukur satu-satu, bolak-balik bandingin screenshot sama mata sendiri. Dua skill ini aku bikin buat mindahin kerjaan itu ke Claude Code.
 
