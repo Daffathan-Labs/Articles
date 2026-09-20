@@ -1,11 +1,14 @@
 <!-- title: The End of Oak Street (2026) Review: Terrifying Dinosaurs, A Mid Story -->
 <!-- excerpt: The End of Oak Street gives its dinosaurs a more scientific and frightening design than the Jurassic films, even though the story feels fairly mid. -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-end-of-oak-street-2026/hero.jpg -->
 <!-- date: 2026-09-21 -->
 <!-- posting_date: 2026-09-21 -->
 <!-- tags: Movie Review, The End of Oak Street, Dinosaur Horror, Horror, Sci-Fi -->
 
 # 🦖 The End of Oak Street (2026) Review
 ## Terrifying Dinosaurs, A Story That Feels Mid
+
+<img width="800" alt="The End of Oak Street (2026) Review: Terrifying Dinosaurs, A Mid Story" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-end-of-oak-street-2026/hero.jpg" />
 
 <img width="800" alt="The End of Oak Street Banner" src="" />
 
