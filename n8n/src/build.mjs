@@ -135,7 +135,7 @@ const FB_AKTIF = true;
 
 const FIELD = [
   ['article_api_url', 'https://api.daffathan-labs.my.id', 'https://api.daffathan-labs.my.id'],
-  ['article_api_key', 'ISI_ARTICLE_API_KEY', 'daffathan-labs-articles-pipeline'],
+  ['article_api_key', 'ISI_ARTICLE_API_KEY', asli('article_api_key', 'ISI_ARTICLE_API_KEY')],
   ['site_url', 'https://daffathan-labs.my.id', 'https://daffathan-labs.my.id'],
   ['render_url', 'ISI_RENDER_URL', asli('render_url', 'ISI_RENDER_URL')],
   ['render_token', 'ISI_RENDER_TOKEN', asli('render_token', 'ISI_RENDER_TOKEN')],
@@ -162,7 +162,7 @@ const FIELD = [
   // Gemini — satu-satunya jalan ke foto yang benar-benar menampilkan subjeknya adalah
   // mengambil yang memang sudah ada. TMDB gratis dan memang dibangun untuk ini.
   ['tmdb_api_key', 'ISI_TMDB_API_KEY', asli('tmdb_api_key', 'ISI_TMDB_API_KEY')],
-  ['notify_email', 'ISI_EMAIL_TUJUAN', 'daffa.fathan9@gmail.com'],
+  ['notify_email', 'ISI_EMAIL_TUJUAN', asli('notify_email', 'ISI_EMAIL_TUJUAN')],
 ];
 const kondisi = (leftValue, operator, rightValue) => ({
   options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
@@ -1128,7 +1128,7 @@ const FIELD_REFRESH = [
   ['n8n_api_key', 'ISI_N8N_API_KEY', asli('n8n_api_key', 'ISI_N8N_API_KEY')],
   // ID workflow publish, terbaca di URL editornya: /workflow/<id>
   ['workflow_id', 'ISI_ID_WORKFLOW_PUBLISH', asli('workflow_id', 'ISI_ID_WORKFLOW_PUBLISH')],
-  ['notify_email', 'ISI_EMAIL_TUJUAN', 'daffa.fathan9@gmail.com'],
+  ['notify_email', 'ISI_EMAIL_TUJUAN', asli('notify_email', 'ISI_EMAIL_TUJUAN')],
 ];
 
 // Tiap bulan, bukan tiap 55 hari: kalau satu eksekusi gagal (n8n mati, API key dicabut)
