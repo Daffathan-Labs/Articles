@@ -1,11 +1,14 @@
 <!-- title: The End of Oak Street (2026) Review — Dinosaurus Mengerikan, Cerita Masih Mid -->
 <!-- excerpt: The End of Oak Street punya dinosaurus yang terasa lebih ilmiah dan menakutkan daripada versi Jurassic, meski ceritanya masih cukup mid. -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-end-of-oak-street-2026/hero.jpg -->
 <!-- date: 2026-09-21 -->
 <!-- posting_date: 2026-09-21 -->
 <!-- tags: Movie Review, The End of Oak Street, Dinosaur Horror, Horror, Sci-Fi -->
 
 # 🦖 The End of Oak Street (2026) Review
 ## Dinosaurusnya Mengerikan, Ceritanya Masih Mid
+
+<img width="800" alt="The End of Oak Street (2026) Review — Dinosaurus Mengerikan, Cerita Masih Mid" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/review-the-end-of-oak-street-2026/hero.jpg" />
 
 <img width="800" alt="The End of Oak Street Banner" src="" />
 
