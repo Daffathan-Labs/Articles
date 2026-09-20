@@ -1,11 +1,14 @@
 <!-- title: web-slicing-skills — 1:1 UI Slicing for Claude Code, Playwright Included -->
 <!-- excerpt: Two Claude Code skills for pixel-perfect web and mobile UI slicing from a mockup, now a public plugin. Playwright installs itself, no manual step after install. -->
+<!-- image: https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/web-slicing-skills/hero.jpg -->
 <!-- date: 2026-09-18 -->
 <!-- posting_date: 2026-09-18 -->
 <!-- tags: Claude Code, Playwright, Plugin, Frontend, Developer Tools -->
 
 # 🔪 web-slicing-skills
 ## 1:1 UI Slicing, Playwright Already Wired In
+
+<img width="800" alt="web-slicing-skills — 1:1 UI Slicing for Claude Code, Playwright Included" src="https://raw.githubusercontent.com/Daffathan-Labs/Articles/main/articles/web-slicing-skills/hero.jpg" />
 
 Matching a UI to a mockup pixel-for-pixel is usually manual work: open DevTools, measure everything by hand, flip back and forth between screenshots and eyeball the difference. I built these two skills to hand that work to Claude Code instead.
 
