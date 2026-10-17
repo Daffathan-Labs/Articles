@@ -193,7 +193,8 @@ const LAYOUT = ['blok-bawah', 'pias-bawah', 'tengah'];
  * memberi foto area 1080x783 dan cuma membuang 22%.
  *
  * Artikel non-film tetap bebas memilih ketiganya: gambar Gemini digenerate langsung di
- * rasio kanvas, jadi tidak ada yang dibuang.
+ * rasio layout-nya (`aspect_ratio` dari `Pecah slide`: 16:9 untuk pias, 4:5 lainnya),
+ * jadi tidak ada yang dibuang.
  */
 const adaFotoAsli = meta.some((m) => m.pakai_foto);
 const layout = adaFotoAsli
@@ -309,7 +310,11 @@ p{font-size:${px(34)}px;line-height:1.42;color:#D7DEE6;margin-top:${px(22)}px}
    ruang; ruang sisa itu diisi gradien aksen di .fotolayer, bukan hitam. Untuk still
    16:9 tidak ada ruang sisa sama sekali — pas persis. */
 .l-pias .fotolayer{height:${PIAS}px;bottom:auto;background:linear-gradient(200deg,${tinta(0.4)} 0%,${tinta(0.12)} 100%);box-shadow:inset 0 -${px(8)}px 0 ${aksen}}
-.l-pias .bg{height:${PIAS}px;object-fit:contain}
+/* contain cuma untuk foto ASLI (still/potret film) yang tidak boleh dipotong. Gambar
+   Gemini sekarang digenerate 16:9 jadi cover pas tanpa membuang apa-apa, dan sampul
+   artikel non-film yang rasionya meleset lebih baik dipotong sedikit daripada tampil
+   sebagai kotak kecil berpita warna — itu yang dikeluhkan sebagai "ditempel asal". */
+.l-pias .bg{height:${PIAS}px;object-fit:${adaFotoAsli ? 'contain' : 'cover'}}
 .l-pias .kartu{height:${PIAS}px;bottom:auto}
 /* Teks pias tidak pernah berdiri di atas foto, jadi redup sekanvas cuma memudarkan
    fotonya tanpa menjaga apa pun. */
