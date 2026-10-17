@@ -1,0 +1,49 @@
+# CI v2 — detail di https://github.com/Daffathan-Labs/.github/blob/main/CI.md
+#   PR polos  : gitleaks aja. Kasih label `ci` buat test + scan lengkap.
+#   push main : test + scan.
+# Publish artikel tetap di publish-articles.yml (push ke main → webhook n8n), bukan di sini.
+name: CI (Articles)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  pull_request:
+    types: [opened, reopened, ready_for_review, labeled]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 20 * * 0' # Senin 03:00 WIB, scan keamanan penuh
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    if: github.event_name != 'schedule' && (github.event.action != 'labeled' || github.event.label.name == 'ci')
+    uses: Daffathan-Labs/.github/.github/workflows/guard.yml@v1
+
+  # Repo ini gak punya package.json, jadi ci-node gak cocok: test-nya node --test biasa.
+  ci:
+    if: github.event_name != 'schedule' && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci'))
+    name: 🧪 Self-check publish + n8n
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-audit --no-fund axios marked
+      - run: node --test .github/scripts/publish.test.mjs n8n/portofolio-publish.test.mjs
+
+  security:
+    if: github.event_name == 'schedule' || github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci')
+    uses: Daffathan-Labs/.github/.github/workflows/security.yml@v1
+    with:
+      full: ${{ github.event_name == 'schedule' }}
