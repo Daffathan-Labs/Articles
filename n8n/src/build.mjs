@@ -486,15 +486,26 @@ hubung('Siapkan kandidat', 'Terangkan still');
 N('Pecah slide', 'n8n-nodes-base.code', 2, [1260, 460], { jsCode: baca('pecah-slide.js') });
 hubung('Terangkan still', 'Pecah slide');
 
-N('Gemini gambar', '@n8n/n8n-nodes-langchain.googleGemini', 1, [1480, 460], {
-  resource: 'image',
-  // gemini-3-pro-image-preview membalas "The service is receiving too many requests
-  // from you" untuk KELIMA slide, berhari-hari berturut-turut — kuota preview-nya
-  // memang kecil. Kuota di Gemini dihitung per model, jadi pindah model adalah
-  // perbaikan satu baris; `-image` yang stabil punya jatah jauh lebih besar.
-  modelId: { __rl: true, value: 'models/gemini-2.5-flash-image', mode: 'id' },
-  prompt: '={{ $json.image_prompt }}',
-  options: {},
+// HTTP biasa, bukan node Gemini bawaan: node itu tidak bisa mengirim `imageConfig`, jadi
+// rasio tidak pernah diminta dan yang datang selalu bujur sangkar. Di kotak 16:9
+// `pias-bawah` hasilnya persegi kecil di tengah dengan pita warna kiri-kanan.
+// `aspect_ratio` dipasang `Pecah slide` sesuai layout artikel.
+//
+// gemini-3-pro-image-preview membalas "The service is receiving too many requests
+// from you" untuk KELIMA slide, berhari-hari berturut-turut — kuota preview-nya
+// memang kecil. Kuota di Gemini dihitung per model; `-image` yang stabil punya jatah
+// jauh lebih besar.
+N('Gemini gambar', 'n8n-nodes-base.httpRequest', 4.2, [1480, 460], {
+  method: 'POST',
+  url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent',
+  authentication: 'predefinedCredentialType',
+  nodeCredentialType: 'googlePalmApi',
+  sendBody: true,
+  specifyBody: 'json',
+  jsonBody:
+    "={{ JSON.stringify({ contents: [{ parts: [{ text: $json.image_prompt }] }], " +
+    "generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: $json.aspect_ratio || '4:5' } } }) }}",
+  options: { timeout: 120000 },
 }, {
   credentials: GEMINI_CRED,
   // onError:continueRegularOutput menangkap kegagalan PER ITEM — node-nya sendiri tidak
@@ -508,6 +519,13 @@ N('Gemini gambar', '@n8n/n8n-nodes-langchain.googleGemini', 1, [1480, 460], {
   waitBetweenTries: 5000,
   onError: 'continueRegularOutput',
 });
+
+// Balasan HTTP itu JSON berisi base64 (`inlineData`), bukan berkas. Node ini yang
+// mengubahnya jadi binary supaya `Jadi JPEG` bisa mengecilkannya seperti sebelumnya.
+// Satu item keluar per item masuk, termasuk yang gagal — pasangan slide↔gambar per
+// indeks tidak boleh bergeser.
+N('Gambar ke file', 'n8n-nodes-base.code', 2, [1590, 460], { jsCode: baca('gambar-ke-file.js') });
+hubung('Gemini gambar', 'Gambar ke file');
 // Gambar digenerate untuk SEMUA slide, termasuk artikel yang punya foto sendiri.
 // Sempat ada gerbang yang melewati cabang ini kalau cover ada — hemat kuota, tapi
 // hasilnya satu foto yang sama di kelima slide, dan seberapa pun cropnya digeser itu
@@ -549,7 +567,7 @@ N('Jadi JPEG', 'n8n-nodes-base.editImage', 1, [1700, 460], {
   resizeOption: 'onlyIfLarger',
   options: { format: 'jpeg', quality: 85 },
 }, { onError: 'continueRegularOutput' });
-hubung('Gemini gambar', 'Jadi JPEG');
+hubung('Gambar ke file', 'Jadi JPEG');
 
 // Sama seperti `Cover base64`: tanpa ini `Rakit slide` memasang string "filesystem-v2"
 // sebagai isi gambar. Slide yang gambarnya gagal masuk ke sini tanpa binary dan keluar

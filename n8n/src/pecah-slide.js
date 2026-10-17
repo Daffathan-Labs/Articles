@@ -28,15 +28,26 @@ if (slides.length < 2) {
 //
 // Yang tetap dikunci di kode cuma dua, karena keduanya syarat teknis yang tidak boleh
 // dinegosiasikan model: nol teks di raster, dan ruang lapang di zona teks.
+//
+// Rasio ikut dikunci di sini dan dikirim ke API gambar sebagai `aspectRatio`. Tanpa itu
+// Gemini membalas bujur sangkar, dan di kotak 16:9 `pias-bawah` gambarnya jadi persegi
+// kecil di tengah dengan pita warna di kiri-kanan — "kayak ditempel asal". Bingkai yang
+// ditulis di RUANG harus sama dengan rasio yang diminta, kalau tidak model menyusun
+// komposisi untuk bingkai yang salah.
+const layoutGambar = ['blok-bawah', 'pias-bawah', 'tengah'].includes(c.layout) ? c.layout : 'blok-bawah';
+const RASIO = layoutGambar === 'pias-bawah' ? '16:9' : '4:5';
 const RUANG = {
-  'blok-bawah': 'Leave the lower third visually calm and uncluttered.',
-  'pias-bawah': 'Keep the main subject in the upper half of the frame.',
-  tengah: 'Leave the centre of the frame open and uncluttered.',
+  'blok-bawah':
+    'Vertical 4:5 frame. Place the subject in the upper two-thirds and keep the lower third calm and uncluttered.',
+  // Teks pias tidak pernah di atas foto; yang menindih cuma badge merek di kiri atas.
+  'pias-bawah':
+    'Wide 16:9 landscape frame filled edge to edge. Keep the whole subject inside the frame and the top-left corner calm.',
+  tengah: 'Vertical 4:5 frame. Leave the centre open and uncluttered, with the subject toward the edges.',
 };
 const mood = String(c.image_mood || '').trim();
 const SUFIKS =
-  `Photographic, shallow depth of field.${mood ? ` ${mood}.` : ''} ` +
-  `${RUANG[c.layout] || RUANG['blok-bawah']} ` +
+  'Editorial documentary photograph, realistic scale and textures, natural light falloff, subtle film grain.' +
+  `${mood ? ` ${mood}.` : ''} ${RUANG[layoutGambar]} ` +
   'Absolutely no text, letters, numbers, watermarks, logos or user interface anywhere.';
 
 /**
@@ -267,7 +278,9 @@ const CADANGAN = {
 
 return slides.map((s, i) => {
   const mode = CADANGAN[s.image_mode] ? s.image_mode : 'konseptual';
-  const inti = String(s.image_prompt || '').trim() || CADANGAN[mode];
+  // Titik akhir dibuang: image_prompt sekarang 2-3 kalimat, dan sambungan di bawah
+  // menambahkan titiknya sendiri.
+  const inti = String(s.image_prompt || '').trim().replace(/[.\s]+$/, '') || CADANGAN[mode];
   // Slide 2+ diikat ke seri yang sama supaya carousel-nya tidak terbaca sebagai lima
   // gambar acak yang kebetulan bersebelahan. Yang diikat cuma cahaya dan warnanya —
   // dulu baris ini juga mengunci "same location", dan hasilnya lima frame yang nyaris
@@ -294,6 +307,7 @@ return slides.map((s, i) => {
       heading: String(s.heading || '').trim(),
       body: String(s.body || '').trim(),
       image_prompt: `${c.image_series || ''} ${inti}.${lanjutan} ${SUFIKS}`.trim(),
+      aspect_ratio: RASIO,
       // Nilainya SAMA di kelima item. Gerbang `Ada foto asli?` dievaluasi per item, jadi
       // bendera yang berbeda antar item bakal membelah kelimanya ke dua cabang dan
       // menghancurkan pasangan indeks slide↔gambar.

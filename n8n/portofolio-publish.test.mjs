@@ -1994,6 +1994,7 @@ const bagiFoto = async ({
   keterangan = null,
   // Folder artikel — kunci daftar foto pilihan tangan di Pecah slide.
   folder = "artikel-uji",
+  layout = "blok-bawah",
 } = {}) => {
   // `Siapkan kandidat` dijalankan APA ADANYA dari JSON hasil build, bukan dipalsukan
   // keluarannya: dia yang menyaring backdrop berjudul dan mengambil selang, dan fixture
@@ -2024,7 +2025,7 @@ const bagiFoto = async ({
         output: {
           film,
           image_series: "S",
-          layout: "blok-bawah",
+          layout,
           slides:
             isiSlide ||
             Array.from({ length: jumlahSlide }, (_, i) => ({
@@ -2804,7 +2805,9 @@ test("gerbang sumber foto bercabang benar dan bertemu lagi di Jadi JPEG", () => 
   assert.deepEqual(keluar("Ada foto asli?", 0), ["Ambil foto"], "cabang 'ada' salah tujuan");
   assert.deepEqual(keluar("Ada foto asli?", 1), ["Gemini gambar"], "cabang 'tidak ada' salah tujuan");
   // Dua cabang WAJIB bertemu lagi, kalau tidak `Slide base64` cuma menerima separuhnya.
-  for (const dari of ["Ambil foto", "Gemini gambar"]) {
+  // Cabang Gemini lewat `Gambar ke file` dulu: balasannya JSON base64, bukan berkas.
+  assert.deepEqual(keluar("Gemini gambar"), ["Gambar ke file"]);
+  for (const dari of ["Ambil foto", "Gambar ke file"]) {
     assert.deepEqual(keluar(dari), ["Jadi JPEG"], `${dari} tidak bermuara di Jadi JPEG`);
   }
   assert.deepEqual(
@@ -2870,4 +2873,70 @@ test("lapisan foto dipotong pembungkusnya, lapisan teks tidak", () => {
     // Lapisan TEKS justru harus tetap boleh meluber, kalau tidak aturan 11 mati total.
     assert.doesNotMatch(css.match(/\.wrap\{([^}]*)\}/)[1], /overflow:\s*hidden/);
   }
+});
+
+// ── rasio gambar Gemini ─────────────────────────────────────────────────────────
+// Keluhan: gambar artikel teknis (Docker di PC lab, infra DevOps) tampil sebagai persegi
+// kecil di tengah kotak 16:9 dengan pita warna kiri-kanan — "kayak ditempel asal".
+// Akarnya dua: rasio tidak pernah diminta (Gemini membalas 1:1), dan `.l-pias .bg`
+// selalu `contain`. Tiga test di bawah mengunci ketiga sisi perbaikannya.
+
+test("Gemini gambar meminta rasio sesuai layout, lewat imageConfig", () => {
+  const n = byName["Gemini gambar"];
+  assert.equal(n.type, "n8n-nodes-base.httpRequest", "node bawaan tidak bisa kirim imageConfig");
+  assert.match(n.parameters.url, /gemini-2\.5-flash-image:generateContent$/);
+  const body = n.parameters.jsonBody;
+  assert.match(body, /imageConfig:\s*\{\s*aspectRatio:\s*\$json\.aspect_ratio/, "aspectRatio tidak dikirim");
+  assert.match(body, /responseModalities:\s*\['IMAGE'\]/);
+  assert.equal(n.onError, "continueRegularOutput", "satu gambar gagal tidak boleh mematikan carousel");
+});
+
+test("Pecah slide: 16:9 untuk pias-bawah, 4:5 untuk lainnya, dan prompt-nya sebingkai", async () => {
+  for (const [layout, rasio, bingkai] of [
+    ["pias-bawah", "16:9", /16:9 landscape/],
+    ["blok-bawah", "4:5", /Vertical 4:5/],
+    ["tengah", "4:5", /Vertical 4:5/],
+    ["ngaco", "4:5", /Vertical 4:5/],
+  ]) {
+    const hasil = await bagiFoto({ film: "", layout });
+    for (const s of hasil) {
+      assert.equal(s.aspect_ratio, rasio, `${layout}: rasio salah`);
+      assert.match(s.image_prompt, bingkai, `${layout}: bingkai di prompt beda dengan rasio`);
+      assert.match(s.image_prompt, /no text, letters, numbers/i, "larangan teks hilang");
+      assert.doesNotMatch(s.image_prompt, /\.\./, "titik dobel dari image_prompt 2-3 kalimat");
+    }
+  }
+});
+
+test("pias-bawah: gambar Gemini cover (isi penuh), foto asli film tetap contain", () => {
+  const ai = gaya(rakit({ layout: "pias-bawah" }).slides[1]).match(/\.l-pias \.bg\{([^}]*)\}/)[1];
+  assert.match(ai, /object-fit:\s*cover/, "gambar AI masih contain — persegi kecil berpita lagi");
+  const film = gaya(rakit({ layout: "pias-bawah", fotoAsli: true }).slides[1]).match(/\.l-pias \.bg\{([^}]*)\}/)[1];
+  assert.match(film, /object-fit:\s*contain/, "still film ikut dipotong");
+});
+
+test("Gambar ke file: satu item keluar per item masuk, yang gagal tanpa binary", async () => {
+  const AF = Object.getPrototypeOf(async function () {}).constructor;
+  const png = Buffer.from("gambar").toString("base64");
+  const masuk = [
+    { json: { candidates: [{ content: { parts: [{ text: "ok" }, { inlineData: { mimeType: "image/png", data: png } }] } }] } },
+    { json: { error: { message: "too many requests" } } },
+    { json: { candidates: [{ content: { parts: [{ text: "cuma teks" }] } }] } },
+  ];
+  const dibuat = [];
+  const helpers = {
+    prepareBinaryData: async (buf, nama, mime) => {
+      dibuat.push(buf.toString());
+      return { data: "filesystem-v2", mimeType: mime, fileName: nama };
+    },
+  };
+  const keluar = await new AF("$input", byName["Gambar ke file"].parameters.jsCode).call(
+    { helpers },
+    { all: () => masuk }
+  );
+  assert.equal(keluar.length, 3, "jumlah item bergeser — pasangan slide↔gambar rusak");
+  assert.equal(keluar[0].binary.data.mimeType, "image/png");
+  assert.deepEqual(dibuat, ["gambar"]);
+  assert.equal(keluar[1].binary, undefined);
+  assert.equal(keluar[2].binary, undefined);
 });

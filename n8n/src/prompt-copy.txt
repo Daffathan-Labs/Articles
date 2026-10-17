@@ -65,13 +65,33 @@ YANG HARUS DIHASILKAN
      Untuk slide 5 kamu cukup memberi image_prompt yang cocok sebagai penutup.
    - DILARANG menulis URL, nama domain, nama akun, atau "link di bio" di heading maupun
      body slide MANA PUN. Tidak ada alamat yang boleh muncul di gambar.
-   - image_prompt: bahasa INGGRIS, 1-2 kalimat. Deskripsi FOTO latar belakang saja:
-     subjek, lokasi, cahaya. Ini jadi latar gelap di belakang teks putih, jadi pilih
-     komposisi yang lapang dan tidak ramai di bagian tengah.
+   - image_prompt: bahasa INGGRIS, 2-3 kalimat, ditulis seperti brief untuk fotografer
+     dokumenter. Gambarnya diturunkan dari heading + body slide INI, bukan dari judul
+     artikel secara umum. WAJIB memuat, berurutan:
+       a. SUBJEK KONKRET — benda, orang, atau tempat yang disebut atau jelas tersirat di
+          slide itu. Sebut jenis, jumlah, bahan, dan kondisinya.
+          Benar : "a row of twelve beige desktop PCs with worn keyboards in a university
+                   computer lab, one monitor glowing with a dark terminal window"
+          Salah : "computers", "technology", "a modern workspace"
+       b. TEMPAT dan WAKTU yang masuk akal untuk cerita itu: lab kampus di Indonesia,
+          kamar kos, ruang server kecil, meja kerja malam hari, gedung bioskop.
+       c. KAMERA: jenis shot dan lensanya (wide establishing shot 24mm, eye-level 35mm,
+          close-up 85mm, top-down) dan dari mana cahayanya datang.
+     Konsep abstrak (deployment, container, pipeline, caching, zero downtime) DITERJEMAHKAN
+     ke metafora FISIK yang bisa difoto, lalu dideskripsikan sekonkret poin a. Contoh:
+     zero-downtime → dua jalur kereta di stasiun, kereta baru masuk sebelum yang lama
+     berangkat; container → peti kemas berwarna di dermaga; pipeline → ban berjalan di
+     pabrik. Pilih yang paling dekat dengan isi slide, bukan yang paling dramatis.
+     DILARANG: hologram, otak digital, kode melayang, partikel atau garis biru menyala,
+     robot, "futuristic", "cyber", jaringan titik-garis, server room generik penuh lampu
+     biru. Itu klise stok yang bikin semua artikel teknis terlihat sama. Juga dilarang
+     menyebut tulisan yang bisa dibaca di layar, logo, atau nama merek.
    - image_mode: salah satu dari konseptual, tekstur, dokumenter, tempat, properti.
 
 6. image_series — satu kalimat bahasa Inggris yang mengikat kelima gambar jadi satu seri
-   (subjek, lokasi, dan gaya cahaya yang sama). Dipakai sebagai jangkar konsistensi.
+   lewat PALET, CAHAYA, dan GRADING yang sama, misalnya "Shot on 35mm film, cool
+   fluorescent overhead light mixed with warm desk lamps, muted teal-and-amber grade".
+   JANGAN mengunci subjek atau lokasi di sini — tiap slide adegannya harus berbeda.
 
 7. accent — SATU warna #RRGGBB, WAJIB dari keluarga biru (hue 180-265: teal, biru, indigo).
    Di dalam rentang itu, pilih yang paling cocok dengan suasana artikel: indigo pekat
@@ -83,7 +103,9 @@ YANG HARUS DIHASILKAN
    foto dan layout sudah beda tiap artikel, warna yang menjaga orang tetap mengenali
    postingannya sebagai satu akun yang sama.
 
-8. layout — pilih SATU yang paling cocok dengan foto yang kamu bayangkan:
+8. layout — pilih SATU yang paling cocok dengan foto yang kamu bayangkan. Gambarnya
+   digenerate langsung di rasio layout itu (16:9 untuk pias-bawah, 4:5 untuk dua lainnya),
+   jadi bayangkan komposisinya di bingkai itu:
    - blok-bawah : foto tampil penuh, teks duduk di blok pekat di bagian bawah.
                   Untuk foto ramai atau subjek di tengah frame.
    - pias-bawah : foto mengisi 58% atas, panel gelap solid di 42% bawah.
